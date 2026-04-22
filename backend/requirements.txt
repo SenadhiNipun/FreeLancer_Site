@@ -1,7 +1,9 @@
 fastapi
 uvicorn
 sqlalchemy
+mysql-connector-python
 pymysql
+colorlog
 alembic
 python-dotenv
 pydantic

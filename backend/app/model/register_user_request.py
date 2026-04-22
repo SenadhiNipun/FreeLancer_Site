@@ -1,13 +1,16 @@
-from pydantic import BaseModel, EmailStr, Field
-
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 class RegisterUserRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50)
+    first_name: str = Field(..., min_length=1, max_length=50)
+    last_name: str = Field(..., min_length=1, max_length=50)
     email: EmailStr
-    password: str = Field(..., min_length=6, max_length=100)
-    full_name: str | None = Field(default=None, max_length=100)
-    phone: str | None = Field(default=None, max_length=20)
-    university: str | None = Field(default=None, max_length=255)
-    course: str | None = Field(default=None, max_length=255)
-    address: str | None = None
-    profile_image_url: str | None = Field(default=None, max_length=255)
+    phone_number: str = Field(..., min_length=10, max_length=15)
+    password: str = Field(..., min_length=8)
+    verify_password: str = Field(..., min_length=8)
+
+    @field_validator('verify_password')
+    @classmethod
+    def passwords_match(cls, v, info):
+        if 'password' in info.data and v != info.data['password']:
+            raise ValueError('Passwords do not match')
+        return v

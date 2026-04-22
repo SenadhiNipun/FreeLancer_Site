@@ -8,7 +8,7 @@ class GenericResponse(BaseModel):
     results: Optional[Any] = None
 
     @classmethod
-    def success(cls, message:str,results:Optional[Any]):
+    def success(cls, message: str, results: Optional[Any] = None):
         return cls(
             is_error=False,
             message=message,
@@ -16,7 +16,7 @@ class GenericResponse(BaseModel):
         )
 
     @classmethod
-    def failed(cls, message:str,results:Optional[Any]):
+    def failed(cls, message: str, results: Optional[Any] = None):
         return cls(
             is_error=True,
             message=message,

@@ -1,8 +1,11 @@
 from sqlalchemy.orm import Session
+from typing import List
 
 from backend.app.entity.user_entity import UserEntity
 from backend.app.entity.user_profile_entity import UserProfileEntity
 from backend.app.entity.writer_profile_entity import WriterProfileEntity
+from backend.app.entity.user_role_entity import UserRoleEntity
+from backend.app.entity.writer_field_entity import WriterFieldEntity
 
 
 class UserRepository:
@@ -39,6 +42,13 @@ class UserRepository:
         return user
 
     @staticmethod
+    def save_user_role(db: Session, user_role: UserRoleEntity) -> UserRoleEntity:
+        db.add(user_role)
+        db.flush()
+        db.refresh(user_role)
+        return user_role
+
+    @staticmethod
     def save_user_profile(db: Session, user_profile: UserProfileEntity) -> UserProfileEntity:
         db.add(user_profile)
         db.flush()
@@ -51,3 +61,13 @@ class UserRepository:
         db.flush()
         db.refresh(writer_profile)
         return writer_profile
+
+    @staticmethod
+    def save_writer_fields(db: Session, writer_fields: List[WriterFieldEntity]):
+        db.add_all(writer_fields)
+        db.flush()
+
+    @staticmethod
+    def save_writer_qualifications(db: Session, qualifications: List[any]):
+        db.add_all(qualifications)
+        db.flush()

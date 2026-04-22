@@ -37,3 +37,7 @@ def get_logger(class_name: str):
 
     logger.propagate = False
     return logger
+
+
+# Default logger instance
+logger = get_logger("backend")
