@@ -12,10 +12,14 @@ class WriterProfileEntity(Base):
     whatsapp_number = Column(String(20), nullable=True)
     national_id_number = Column(String(50), nullable=True)
     profile_image_url = Column(String(255), nullable=True)
-    university = Column(String(255), nullable=True)
+    institution_name = Column(String(255), nullable=True)
+    education_level = Column(String(100), nullable=True)
+    academic_status = Column(String(50), nullable=True) # e.g. "STUDYING", "COMPLETED"
+    graduation_year = Column(Integer, nullable=True)
     
-    # qualification is still here for legacy/primary but moving to many-to-many/list soon
-    qualification = Column(String(255), nullable=True) 
+    city = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True)
+    
     experience_years = Column(Integer, nullable=True)
     bio = Column(Text, nullable=True)
     

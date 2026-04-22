@@ -8,17 +8,24 @@ from backend.app.entity.writer_qualification_entity import WriterQualificationEn
 from backend.app.entity.field_entity import FieldEntity
 from backend.app.entity.writer_field_entity import WriterFieldEntity
 
-def list_users():
+def list_all():
     db = SessionLocal()
     try:
         users = db.query(UserEntity).all()
-        print(f"Total users: {len(users)}")
+        print(f"--- Users ({len(users)}) ---")
         for u in users:
-            print(f"ID: {u.id}, Email: '{u.email}', Verified: {u.is_verified}")
+            roles = [ur.role.name for ur in u.user_roles]
+            print(f"ID: {u.id}, Email: '{u.email}', Roles: {roles}, Verified: {u.is_verified}, Code: {u.verification_code}")
+        
+        writers = db.query(WriterProfileEntity).all()
+        print(f"\n--- Writer Profiles ({len(writers)}) ---")
+        for w in writers:
+            print(f"Writer ID: {w.user_id}, Name: {w.full_name}, Status: {w.approval_status}")
+            
     except Exception as e:
         print(f"Error: {e}")
     finally:
         db.close()
 
 if __name__ == "__main__":
-    list_users()
+    list_all()

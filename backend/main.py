@@ -4,6 +4,7 @@ from backend.app.config.database import init_db, db_dependency
 from backend.app.config.cors_config import setup_cors
 from backend.app.config.logging_config import logger
 from backend.app.controller.auth_controller import router as auth_router
+from backend.app.controller.field_controller import router as field_router
 from backend.app.exceptions.exception_handler import register_exception_handlers
 from backend.app.util.response_util import success_response
 
@@ -16,6 +17,7 @@ init_db()
 setup_cors(app)
 register_exception_handlers(app)
 app.include_router(auth_router)
+app.include_router(field_router, prefix="/api/v1")
 
 
 @app.get("/")

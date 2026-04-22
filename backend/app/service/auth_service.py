@@ -110,6 +110,10 @@ class AuthService:
             raise NotFoundException(detail="WRITER role not found")
 
         try:
+            # 0. Generate Verification Code
+            verification_code = str(random.randint(100000, 999999))
+            expiry_time = datetime.now() + timedelta(minutes=15)
+
             # 1. Create Core User
             new_user = UserEntity(
                 uuid=str(uuid.uuid4()),
@@ -117,7 +121,9 @@ class AuthService:
                 email=request.email,
                 password_hash=hash_password(request.password),
                 is_active=True,
-                is_verified=False
+                is_verified=False,
+                verification_code=verification_code,
+                verification_code_expires_at=expiry_time
             )
             saved_user = UserRepository.save_user(db, new_user)
 
@@ -132,34 +138,30 @@ class AuthService:
                 full_name=full_name,
                 phone_number=request.phone_number,
                 whatsapp_number=request.whatsapp_number,
+                city=request.city,
+                country=request.country,
+                institution_name=request.institution_name,
+                education_level=request.education_level,
+                academic_status=request.academic_status,
+                graduation_year=request.graduation_year,
                 national_id_number=request.national_id_number,
-                university=request.university,
                 experience_years=request.experience_years,
                 bio=request.bio,
-                profile_image_url=request.profile_image_url,
                 approval_status=WriterApprovalStatusEnum.PENDING_APPROVAL,
             )
             saved_writer_profile = UserRepository.save_writer_profile(db, new_writer_profile)
             
-            # 4. Save Multiple Qualifications
-            if request.qualifications:
-                qual_entities = [
-                    WriterQualificationEntity(
-                        writer_profile_id=saved_writer_profile.id,
-                        qualification_name=q
-                    ) for q in request.qualifications
-                ]
-                UserRepository.save_writer_qualifications(db, qual_entities)
-            
-            # 5. Assign expertise fields
-            if request.expertise_field_ids:
-                writer_fields = [
-                    WriterFieldEntity(writer_user_id=saved_user.id, field_id=fid)
-                    for fid in request.expertise_field_ids
-                ]
-                UserRepository.save_writer_fields(db, writer_fields)
+            # 4. Assign Expertise (Specialization)
+            writer_fields = [
+                WriterFieldEntity(writer_user_id=saved_user.id, field_id=request.specialization_id)
+            ]
+            UserRepository.save_writer_fields(db, writer_fields)
 
             db.commit()
+
+            # 5. Send Verification Email
+            EmailUtil.send_verification_email(request.email, verification_code)
+
             return AuthService._build_user_response(saved_user, [writer_role.name])
 
         except Exception:
@@ -250,6 +252,8 @@ class AuthService:
 
         # Get user roles
         roles = [ur.role.name for ur in existing_user.user_roles]
+        print(f"DEBUG: Login roles for {existing_user.email}: {roles}")
+        
         if not roles:
             raise UnauthorizedException(detail="User has no assigned roles")
 
@@ -265,6 +269,9 @@ class AuthService:
         return TokenResponse(
             access_token=access_token,
             token_type="bearer",
+            roles=roles,
+            user_id=existing_user.id,
+            email=existing_user.email
         )
 
     @staticmethod
