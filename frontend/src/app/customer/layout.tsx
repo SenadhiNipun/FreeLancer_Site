@@ -1,0 +1,55 @@
+"use client";
+
+import React from "react";
+import { CustomerSidebar } from "@/components/layout/customer-sidebar";
+import { Bell, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+
+export default function CustomerLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-h-screen bg-background">
+      <CustomerSidebar />
+      
+      <div className="pl-72">
+        {/* Dashboard Header */}
+        <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-border/50 bg-background/70 px-8 backdrop-blur-xl">
+          <div className="relative w-96">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search orders, messages, writers..." 
+              className="pl-10 h-10 bg-muted/50 border-none rounded-xl focus-visible:ring-primary/20"
+            />
+          </div>
+
+          <div className="flex items-center gap-6">
+            <button className="relative rounded-xl p-2 text-muted-foreground hover:bg-muted transition-colors">
+              <Bell className="size-5" />
+              <span className="absolute top-2 right-2 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+              </span>
+            </button>
+            <div className="flex items-center gap-3 pl-6 border-l border-border/50">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-bold text-foreground">John Doe</p>
+                <p className="text-xs text-muted-foreground">Premium Client</p>
+              </div>
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20">
+                JD
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <main className="p-8">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
