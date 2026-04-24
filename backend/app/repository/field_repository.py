@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import List
-from backend.app.entity.field_entity import FieldEntity
+from app.entity.field_entity import FieldEntity
 
 class FieldRepository:
     @staticmethod

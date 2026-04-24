@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from backend.app.config.database import db_dependency
-from backend.app.exceptions.exception import UnauthorizedException
-from backend.app.model.generic_response import GenericResponse
-from backend.app.model.forgot_password_request import ForgotPasswordRequest
-from backend.app.model.login_request import LoginRequest
-from backend.app.model.register_user_request import RegisterUserRequest
-from backend.app.model.register_writer_request import RegisterWriterRequest
-from backend.app.model.reset_password_request import ResetPasswordRequest
-from backend.app.model.verify_email_request import VerifyEmailRequest
-from backend.app.service.auth_service import AuthService
+from app.config.database import db_dependency
+from app.exceptions.exception import UnauthorizedException
+from app.model.generic_response import GenericResponse
+from app.model.forgot_password_request import ForgotPasswordRequest
+from app.model.login_request import LoginRequest
+from app.model.register_user_request import RegisterUserRequest
+from app.model.register_writer_request import RegisterWriterRequest
+from app.model.reset_password_request import ResetPasswordRequest
+from app.model.verify_email_request import VerifyEmailRequest
+from app.service.auth_service import AuthService
 
 router = APIRouter(
     prefix="/api/v1/auth",
@@ -92,4 +92,4 @@ def get_current_user(
     return GenericResponse.success(
         message="Current user fetched successfully",
         results=result
-    )
+    )

@@ -2,36 +2,39 @@ from sqlalchemy.orm import Session
 import uuid
 from typing import List
 
-from backend.app.entity.user_entity import UserEntity
-from backend.app.entity.user_role_entity import UserRoleEntity
-from backend.app.entity.user_profile_entity import UserProfileEntity
-from backend.app.entity.writer_profile_entity import WriterProfileEntity
-from backend.app.entity.writer_qualification_entity import WriterQualificationEntity
-from backend.app.entity.writer_field_entity import WriterFieldEntity
+from app.entity.user_entity import UserEntity
+from app.entity.user_role_entity import UserRoleEntity
+from app.entity.user_profile_entity import UserProfileEntity
+from app.entity.writer_profile_entity import WriterProfileEntity
+from app.entity.writer_qualification_entity import WriterQualificationEntity
+from app.entity.writer_field_entity import WriterFieldEntity
 from datetime import datetime, timedelta
 import random
 import string
-from backend.app.enums.role_enum import RoleEnum
-from backend.app.enums.writer_approval_status_enum import WriterApprovalStatusEnum
-from backend.app.model.verify_email_request import VerifyEmailRequest
-from backend.app.util.email_util import EmailUtil
-from backend.app.enums.writer_approval_status_enum import WriterApprovalStatusEnum
-from backend.app.exceptions.exception import (
+from app.enums.role_enum import RoleEnum
+from app.enums.writer_approval_status_enum import WriterApprovalStatusEnum
+from app.model.verify_email_request import VerifyEmailRequest
+from app.util.email_util import EmailUtil
+from app.enums.writer_approval_status_enum import WriterApprovalStatusEnum
+from app.exceptions.exception import (
     NotFoundException,
     UnauthorizedException,
     ValidationException,
 )
-from backend.app.model.current_user_response import CurrentUserResponse
-from backend.app.model.forgot_password_request import ForgotPasswordRequest
-from backend.app.model.login_request import LoginRequest
-from backend.app.model.register_user_request import RegisterUserRequest
-from backend.app.model.register_writer_request import RegisterWriterRequest
-from backend.app.model.reset_password_request import ResetPasswordRequest
-from backend.app.model.token_response import TokenResponse
-from backend.app.repository.role_repository import RoleRepository
-from backend.app.repository.user_repository import UserRepository
-from backend.app.util.jwt_util import create_access_token, decode_access_token
-from backend.app.util.password_util import hash_password, verify_password
+from app.model.current_user_response import CurrentUserResponse
+from app.model.forgot_password_request import ForgotPasswordRequest
+from app.model.login_request import LoginRequest
+from app.model.register_user_request import RegisterUserRequest
+from app.model.register_writer_request import RegisterWriterRequest
+from app.model.reset_password_request import ResetPasswordRequest
+from app.model.token_response import TokenResponse
+from app.repository.role_repository import RoleRepository
+from app.repository.user_repository import UserRepository
+from app.util.jwt_util import create_access_token, decode_access_token
+from app.util.password_util import hash_password, verify_password
+from app.config.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class AuthService:
@@ -252,7 +255,7 @@ class AuthService:
 
         # Get user roles
         roles = [ur.role.name for ur in existing_user.user_roles]
-        print(f"DEBUG: Login roles for {existing_user.email}: {roles}")
+        logger.info(f"Login roles for {existing_user.email}: {roles}")
         
         if not roles:
             raise UnauthorizedException(detail="User has no assigned roles")

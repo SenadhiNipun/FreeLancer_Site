@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
-from backend.app.config.database import SessionLocal, engine
-from backend.app.entity.role_entity import RoleEntity
-from backend.app.entity.field_entity import FieldEntity
-from backend.app.enums.role_enum import RoleEnum
+from app.config.database import SessionLocal, engine
+from app.entity.role_entity import RoleEntity
+from app.entity.field_entity import FieldEntity
+from app.enums.role_enum import RoleEnum
 
 def seed_data():
     db = SessionLocal()

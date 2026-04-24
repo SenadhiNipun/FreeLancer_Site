@@ -1,6 +1,6 @@
 from sqlalchemy import Column, BIGINT, String, Boolean, TIMESTAMP, ForeignKey, text
 from sqlalchemy.orm import relationship
-from backend.app.config.database import Base
+from app.config.database import Base
 
 class FieldEntity(Base):
     __tablename__ = "fields"

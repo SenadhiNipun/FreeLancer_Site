@@ -3,8 +3,8 @@ from typing import Any
 
 from jose import JWTError, jwt
 
-from backend.app.config.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
-from backend.app.exceptions.exception import UnauthorizedException
+from app.config.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.exceptions.exception import UnauthorizedException
 
 
 def create_access_token(data: dict[str, Any]) -> str:

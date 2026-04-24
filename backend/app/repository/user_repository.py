@@ -1,11 +1,11 @@
 from sqlalchemy.orm import Session
 from typing import List
 
-from backend.app.entity.user_entity import UserEntity
-from backend.app.entity.user_profile_entity import UserProfileEntity
-from backend.app.entity.writer_profile_entity import WriterProfileEntity
-from backend.app.entity.user_role_entity import UserRoleEntity
-from backend.app.entity.writer_field_entity import WriterFieldEntity
+from app.entity.user_entity import UserEntity
+from app.entity.user_profile_entity import UserProfileEntity
+from app.entity.writer_profile_entity import WriterProfileEntity
+from app.entity.user_role_entity import UserRoleEntity
+from app.entity.writer_field_entity import WriterFieldEntity
 
 
 class UserRepository:

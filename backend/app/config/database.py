@@ -40,14 +40,14 @@ Base = declarative_base()
 def init_db():
     try:
         # Import entities here to avoid circular imports during registration
-        from backend.app.entity.user_entity import UserEntity
-        from backend.app.entity.role_entity import RoleEntity
-        from backend.app.entity.user_role_entity import UserRoleEntity
-        from backend.app.entity.user_profile_entity import UserProfileEntity
-        from backend.app.entity.writer_profile_entity import WriterProfileEntity
-        from backend.app.entity.writer_qualification_entity import WriterQualificationEntity
-        from backend.app.entity.field_entity import FieldEntity
-        from backend.app.entity.writer_field_entity import WriterFieldEntity
+        from app.entity.user_entity import UserEntity
+        from app.entity.role_entity import RoleEntity
+        from app.entity.user_role_entity import UserRoleEntity
+        from app.entity.user_profile_entity import UserProfileEntity
+        from app.entity.writer_profile_entity import WriterProfileEntity
+        from app.entity.writer_qualification_entity import WriterQualificationEntity
+        from app.entity.field_entity import FieldEntity
+        from app.entity.writer_field_entity import WriterFieldEntity
         
         logger.info("Initializing database schema...")
         Base.metadata.create_all(bind=engine)
@@ -74,30 +74,3 @@ def test_db_connection():
         logger.debug("Database connected successfully!")
     except Exception as exception:
         logger.error(f"Database connection failed: {exception}")
-
-
-test_db_connection()
-
-
-# from sqlalchemy import create_engine
-# from sqlalchemy.orm import sessionmaker, declarative_base
-# from .config import settings, MYSQL_USER, MYSQL_PASSWORD
-#
-# # Create engine
-# engine = create_engine(
-#     settings.DATABASE_URL,
-#     pool_pre_ping=True
-# )
-#
-# # Create SessionLocal class
-# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-#
-# # Base class for models
-# Base = declarative_base()
-#
-# def get_db():
-#     db = SessionLocal()
-#     try:
-#         yield db
-#     finally:
-#         db.close()

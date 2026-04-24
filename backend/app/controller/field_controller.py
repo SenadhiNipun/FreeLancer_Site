@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
-from backend.app.config.database import db_dependency
-from backend.app.model.generic_response import GenericResponse
-from backend.app.repository.field_repository import FieldRepository
+from app.config.database import db_dependency
+from app.model.generic_response import GenericResponse
+from app.repository.field_repository import FieldRepository
 
 router = APIRouter(
     prefix="/fields",

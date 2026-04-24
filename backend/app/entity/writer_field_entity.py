@@ -1,6 +1,6 @@
 from sqlalchemy import Column, BIGINT, ForeignKey, TIMESTAMP, text
 from sqlalchemy.orm import relationship
-from backend.app.config.database import Base
+from app.config.database import Base
 
 class WriterFieldEntity(Base):
     __tablename__ = "writer_fields"

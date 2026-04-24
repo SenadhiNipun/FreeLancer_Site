@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from backend.app.entity.role_entity import RoleEntity
+from app.entity.role_entity import RoleEntity
 
 
 class RoleRepository:

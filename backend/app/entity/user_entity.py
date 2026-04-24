@@ -1,6 +1,6 @@
 from sqlalchemy import Column, BIGINT, String, Boolean, DateTime, TIMESTAMP, text
 from sqlalchemy.orm import relationship
-from backend.app.config.database import Base
+from app.config.database import Base
 import uuid
 
 class UserEntity(Base):

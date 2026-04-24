@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 
-from backend.app.config.database import init_db, db_dependency
-from backend.app.config.cors_config import setup_cors
-from backend.app.config.logging_config import logger
-from backend.app.controller.auth_controller import router as auth_router
-from backend.app.controller.field_controller import router as field_router
-from backend.app.exceptions.exception_handler import register_exception_handlers
-from backend.app.util.response_util import success_response
+from app.config.database import init_db, db_dependency
+from app.config.cors_config import setup_cors
+from app.config.logging_config import logger
+from app.controller.auth_controller import router as auth_router
+from app.controller.field_controller import router as field_router
+from app.exceptions.exception_handler import register_exception_handlers
+from app.util.response_util import success_response
 
 app = FastAPI(
     title="Assignment System Backend",
@@ -45,4 +45,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

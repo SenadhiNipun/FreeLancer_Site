@@ -1,6 +1,6 @@
 from sqlalchemy import Column, BIGINT, String, Integer, Text, ForeignKey, TIMESTAMP, DateTime, text
 from sqlalchemy.orm import relationship
-from backend.app.config.database import Base
+from app.config.database import Base
 
 class WriterProfileEntity(Base):
     __tablename__ = "writer_profiles"
