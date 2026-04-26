@@ -4,7 +4,8 @@ class RegisterUserRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
     email: EmailStr
-    phone_number: str = Field(..., min_length=10, max_length=15)
+    mobile_number: str = Field(..., min_length=10, max_length=15)
+    whatsapp_number: str = Field(..., min_length=10, max_length=15)
     password: str = Field(..., min_length=8)
     verify_password: str = Field(..., min_length=8)
 

@@ -15,6 +15,7 @@ class UserRepository:
         return (
             db.query(UserEntity)
             .filter(UserEntity.email == email)
+            .filter(UserEntity.is_delete == False)
             .first()
         )
 
@@ -23,6 +24,7 @@ class UserRepository:
         return (
             db.query(UserEntity)
             .filter(UserEntity.username == username)
+            .filter(UserEntity.is_delete == False)
             .first()
         )
 
@@ -31,6 +33,7 @@ class UserRepository:
         return (
             db.query(UserEntity)
             .filter(UserEntity.id == user_id)
+            .filter(UserEntity.is_delete == False)
             .first()
         )
 

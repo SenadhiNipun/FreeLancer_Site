@@ -1,42 +1,34 @@
-from sqlalchemy import Column, BIGINT, String, Integer, Text, ForeignKey, TIMESTAMP, DateTime, text
+from sqlalchemy import Column, BIGINT, String, Integer, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from app.config.database import Base
+from app.entity.base_entity import BaseEntity
 
-class WriterProfileEntity(Base):
+class WriterProfileEntity(Base, BaseEntity):
     __tablename__ = "writer_profiles"
 
     id = Column(BIGINT, primary_key=True, autoincrement=True)
     user_id = Column(BIGINT, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
-    full_name = Column(String(100), nullable=True)
-    phone_number = Column(String(20), nullable=True)
-    whatsapp_number = Column(String(20), nullable=True)
-    national_id_number = Column(String(50), nullable=True)
-    profile_image_url = Column(String(255), nullable=True)
+    
+    education_level_id = Column(BIGINT, ForeignKey("education_levels.id"), nullable=True)
     institution_name = Column(String(255), nullable=True)
-    education_level = Column(String(100), nullable=True)
-    academic_status = Column(String(50), nullable=True) # e.g. "STUDYING", "COMPLETED"
-    graduation_year = Column(Integer, nullable=True)
+    academic_status = Column(String(50), nullable=True) # CURRENTLY_STUDYING, COMPLETED
+    
+    academic_category_id = Column(BIGINT, ForeignKey("academic_categories.id"), nullable=True)
+    specialization_id = Column(BIGINT, ForeignKey("specializations.id"), nullable=True)
     
     city = Column(String(100), nullable=True)
     country = Column(String(100), nullable=True)
     
-    experience_years = Column(Integer, nullable=True)
     bio = Column(Text, nullable=True)
+    experience_years = Column(Integer, nullable=True)
     
-    approval_status = Column(String(50), nullable=False)
-    approved_by = Column(BIGINT, ForeignKey("users.id"), nullable=True)
-    approved_at = Column(DateTime, nullable=True)
-    suspended_at = Column(DateTime, nullable=True)
-    
-    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
-    updated_at = Column(
-        TIMESTAMP,
-        server_default=text("CURRENT_TIMESTAMP"),
-        server_onupdate=text("CURRENT_TIMESTAMP")
-    )
+    profile_status = Column(String(50), default="INCOMPLETE", nullable=False) # INCOMPLETE, PENDING_APPROVAL, APPROVED, REJECTED, SUSPENDED
 
+    # Relationships
     user = relationship("UserEntity", back_populates="writer_profile", foreign_keys=[user_id])
-    approver = relationship("UserEntity", foreign_keys=[approved_by])
+    education_level = relationship("EducationLevelEntity")
+    academic_category = relationship("AcademicCategoryEntity")
+    specialization = relationship("SpecializationEntity")
     
-    # New relationship for multiple qualifications
+    documents = relationship("WriterDocumentEntity", back_populates="writer_profile", cascade="all, delete-orphan")
     qualifications = relationship("WriterQualificationEntity", back_populates="writer_profile", cascade="all, delete-orphan")

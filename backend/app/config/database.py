@@ -48,6 +48,19 @@ def init_db():
         from app.entity.writer_qualification_entity import WriterQualificationEntity
         from app.entity.field_entity import FieldEntity
         from app.entity.writer_field_entity import WriterFieldEntity
+        from app.entity.writer_document_entity import WriterDocumentEntity
+        from app.entity.education_level_entity import EducationLevelEntity
+        from app.entity.academic_category_entity import AcademicCategoryEntity
+        from app.entity.specialization_entity import SpecializationEntity
+        from app.entity.task_entity import TaskEntity
+        from app.entity.task_file_entity import TaskFileEntity
+        from app.entity.task_assignment_entity import TaskAssignmentEntity
+        from app.entity.task_submission_entity import TaskSubmissionEntity
+        from app.entity.submission_file_entity import SubmissionFileEntity
+        from app.entity.task_revision_entity import TaskRevisionEntity
+        from app.entity.payment_entity import PaymentEntity
+        from app.entity.chat_session_entity import ChatSessionEntity
+        from app.entity.chat_message_entity import ChatMessageEntity
         
         logger.info("Initializing database schema...")
         Base.metadata.create_all(bind=engine)

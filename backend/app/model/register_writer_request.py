@@ -10,23 +10,21 @@ class RegisterWriterRequest(BaseModel):
     confirm_password: str = Field(..., min_length=8)
     
     # Contact & Location
-    phone_number: str = Field(..., max_length=20)
-    whatsapp_number: Optional[str] = Field(None, max_length=20)
+    mobile_number: str = Field(..., min_length=10, max_length=15)
+    whatsapp_number: str = Field(..., min_length=10, max_length=15)
     city: str = Field(..., max_length=100)
     country: str = Field(..., max_length=100)
     
     # Academic Info
-    education_level: str = Field(..., description="Selected from predefined list")
+    education_level_id: int = Field(..., description="ID of the education level")
     institution_name: str = Field(..., max_length=255)
-    academic_status: str = Field(..., description="'Currently Studying' or 'Completed'")
-    graduation_year: Optional[int] = Field(None, ge=1900, le=2100)
+    academic_status: str = Field(..., description="CURRENTLY_STUDYING or COMPLETED")
     
     # Professional & Specialization
-    main_category_id: int = Field(..., description="ID of the main academic category")
+    academic_category_id: int = Field(..., description="ID of the main academic category")
     specialization_id: int = Field(..., description="ID of the specific specialization")
     experience_years: Optional[int] = Field(0, ge=0)
     bio: Optional[str] = Field(None, min_length=10)
-    national_id_number: str = Field(..., max_length=50)
     
     @field_validator('confirm_password')
     @classmethod

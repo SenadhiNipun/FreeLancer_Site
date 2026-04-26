@@ -1,0 +1,36 @@
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from app.entity.task_entity import TaskEntity
+
+class TaskRepository:
+
+    @staticmethod
+    def create_task(db: Session, task: TaskEntity) -> TaskEntity:
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        return task
+
+    @staticmethod
+    def get_task_by_id(db: Session, task_id: int) -> Optional[TaskEntity]:
+        return (
+            db.query(TaskEntity)
+            .filter(TaskEntity.id == task_id, TaskEntity.is_delete == False)
+            .first()
+        )
+
+    @staticmethod
+    def get_tasks_by_customer(db: Session, customer_id: int) -> List[TaskEntity]:
+        return (
+            db.query(TaskEntity)
+            .filter(TaskEntity.customer_id == customer_id, TaskEntity.is_delete == False)
+            .order_by(TaskEntity.created_at.desc())
+            .all()
+        )
+
+    @staticmethod
+    def get_all_tasks(db: Session, status: Optional[str] = None) -> List[TaskEntity]:
+        query = db.query(TaskEntity).filter(TaskEntity.is_delete == False)
+        if status:
+            query = query.filter(TaskEntity.task_status == status)
+        return query.order_by(TaskEntity.created_at.desc()).all()

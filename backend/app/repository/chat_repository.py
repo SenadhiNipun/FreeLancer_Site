@@ -1,0 +1,52 @@
+from sqlalchemy.orm import Session
+from app.entity.chat_session_entity import ChatSessionEntity
+from app.entity.chat_message_entity import ChatMessageEntity
+from typing import List, Optional
+
+class ChatRepository:
+    @staticmethod
+    def create_session(db: Session, session: ChatSessionEntity) -> ChatSessionEntity:
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        return session
+
+    @staticmethod
+    def get_session_by_id(db: Session, session_id: int) -> Optional[ChatSessionEntity]:
+        return db.query(ChatSessionEntity).filter(ChatSessionEntity.id == session_id).first()
+
+    @staticmethod
+    def get_session_by_task_and_users(db: Session, task_id: int, customer_id: int, writer_id: int) -> Optional[ChatSessionEntity]:
+        return db.query(ChatSessionEntity).filter(
+            ChatSessionEntity.task_id == task_id,
+            ChatSessionEntity.customer_id == customer_id,
+            ChatSessionEntity.writer_id == writer_id
+        ).first()
+
+    @staticmethod
+    def get_user_sessions(db: Session, user_id: int) -> List[ChatSessionEntity]:
+        return db.query(ChatSessionEntity).filter(
+            (ChatSessionEntity.customer_id == user_id) | (ChatSessionEntity.writer_id == user_id)
+        ).all()
+
+    @staticmethod
+    def create_message(db: Session, message: ChatMessageEntity) -> ChatMessageEntity:
+        db.add(message)
+        db.commit()
+        db.refresh(message)
+        return message
+
+    @staticmethod
+    def get_messages_by_session(db: Session, session_id: int) -> List[ChatMessageEntity]:
+        return db.query(ChatMessageEntity).filter(
+            ChatMessageEntity.session_id == session_id
+        ).order_by(ChatMessageEntity.created_at.asc()).all()
+
+    @staticmethod
+    def mark_messages_as_read(db: Session, session_id: int, user_id: int):
+        db.query(ChatMessageEntity).filter(
+            ChatMessageEntity.session_id == session_id,
+            ChatMessageEntity.sender_id != user_id,
+            ChatMessageEntity.is_read == False
+        ).update({"is_read": True})
+        db.commit()

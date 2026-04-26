@@ -51,9 +51,9 @@ class AuthService:
                 db.delete(existing_user)
                 db.flush()
 
-        user_role = RoleRepository.get_role_by_name(db, RoleEnum.USER.value)
-        if user_role is None:
-            raise NotFoundException(detail="USER role not found")
+        customer_role = RoleRepository.get_role_by_name(db, RoleEnum.CUSTOMER.value)
+        if customer_role is None:
+            raise NotFoundException(detail="CUSTOMER role not found")
 
         try:
             # 1. Create Core User
@@ -61,36 +61,31 @@ class AuthService:
             expiry_time = datetime.now() + timedelta(minutes=15)
 
             new_user = UserEntity(
-                uuid=str(uuid.uuid4()),
-                username=request.email, # Use email as default username
+                first_name=request.first_name,
+                last_name=request.last_name,
                 email=request.email,
+                username=request.email, # Use email as default username
                 password_hash=hash_password(request.password),
-                is_active=True,
-                is_verified=False,
+                mobile_number=request.mobile_number,
+                whatsapp_number=request.whatsapp_number,
+                role_id=customer_role.id,
+                status="PENDING",
+                is_email_verified=False,
                 verification_code=verification_code,
                 verification_code_expires_at=expiry_time
             )
             saved_user = UserRepository.save_user(db, new_user)
 
-            # 2. Assign Role
-            user_role_link = UserRoleEntity(user_id=saved_user.id, role_id=user_role.id)
+            # 2. Assign Role (using bridge table too for compatibility)
+            user_role_link = UserRoleEntity(user_id=saved_user.id, role_id=customer_role.id)
             UserRepository.save_user_role(db, user_role_link)
-
-            # 3. Create Profile
-            full_name = f"{request.first_name} {request.last_name}"
-            new_user_profile = UserProfileEntity(
-                user_id=saved_user.id,
-                full_name=full_name,
-                phone_number=request.phone_number
-            )
-            UserRepository.save_user_profile(db, new_user_profile)
 
             db.commit()
 
-            # 4. Send Verification Email
+            # 3. Send Verification Email
             EmailUtil.send_verification_email(request.email, verification_code)
 
-            return AuthService._build_user_response(saved_user, [user_role.name])
+            return AuthService._build_user_response(saved_user, [customer_role.role_name])
 
         except Exception:
             db.rollback()
@@ -119,12 +114,16 @@ class AuthService:
 
             # 1. Create Core User
             new_user = UserEntity(
-                uuid=str(uuid.uuid4()),
-                username=request.email, # Use email as default username
+                first_name=request.first_name,
+                last_name=request.last_name,
                 email=request.email,
+                username=request.email, # Use email as default username
                 password_hash=hash_password(request.password),
-                is_active=True,
-                is_verified=False,
+                mobile_number=request.mobile_number,
+                whatsapp_number=request.whatsapp_number,
+                role_id=writer_role.id,
+                status="PENDING",
+                is_email_verified=False,
                 verification_code=verification_code,
                 verification_code_expires_at=expiry_time
             )
@@ -135,37 +134,27 @@ class AuthService:
             UserRepository.save_user_role(db, user_role_link)
 
             # 3. Create Writer Profile
-            full_name = f"{request.first_name} {request.last_name}"
             new_writer_profile = WriterProfileEntity(
                 user_id=saved_user.id,
-                full_name=full_name,
-                phone_number=request.phone_number,
-                whatsapp_number=request.whatsapp_number,
+                education_level_id=request.education_level_id,
+                institution_name=request.institution_name,
+                academic_status=request.academic_status,
+                academic_category_id=request.academic_category_id,
+                specialization_id=request.specialization_id,
                 city=request.city,
                 country=request.country,
-                institution_name=request.institution_name,
-                education_level=request.education_level,
-                academic_status=request.academic_status,
-                graduation_year=request.graduation_year,
-                national_id_number=request.national_id_number,
-                experience_years=request.experience_years,
                 bio=request.bio,
-                approval_status=WriterApprovalStatusEnum.PENDING_APPROVAL,
+                experience_years=request.experience_years,
+                profile_status="INCOMPLETE"
             )
-            saved_writer_profile = UserRepository.save_writer_profile(db, new_writer_profile)
+            UserRepository.save_writer_profile(db, new_writer_profile)
             
-            # 4. Assign Expertise (Specialization)
-            writer_fields = [
-                WriterFieldEntity(writer_user_id=saved_user.id, field_id=request.specialization_id)
-            ]
-            UserRepository.save_writer_fields(db, writer_fields)
-
             db.commit()
 
-            # 5. Send Verification Email
+            # 4. Send Verification Email
             EmailUtil.send_verification_email(request.email, verification_code)
 
-            return AuthService._build_user_response(saved_user, [writer_role.name])
+            return AuthService._build_user_response(saved_user, [writer_role.role_name])
 
         except Exception:
             db.rollback()
@@ -177,7 +166,7 @@ class AuthService:
         if not user:
             raise NotFoundException(detail="User not found")
 
-        if user.is_verified:
+        if user.is_email_verified:
             return True
 
         if not user.verification_code or user.verification_code != request.verification_code:
@@ -187,7 +176,8 @@ class AuthService:
             raise ValidationException(detail="Verification code has expired")
 
         try:
-            user.is_verified = True
+            user.is_email_verified = True
+            user.status = "ACTIVE"
             user.verification_code = None
             user.verification_code_expires_at = None
             db.commit()
@@ -202,8 +192,8 @@ class AuthService:
         if not user:
             raise NotFoundException(detail="Email not found")
 
-        if not user.is_active:
-            raise UnauthorizedException(detail="User account is inactive")
+        if user.status == "SUSPENDED":
+            raise UnauthorizedException(detail="User account is suspended")
 
         try:
             reset_code = ''.join(random.choices(string.digits, k=6))
@@ -225,7 +215,7 @@ class AuthService:
         if not user:
             raise NotFoundException(detail="User not found")
 
-        if not user.reset_password_code or user.reset_password_code != request.reset_code:
+        if user.reset_password_code or user.reset_password_code != request.reset_code:
             raise ValidationException(detail="Invalid reset code")
 
         if user.reset_password_expires_at < datetime.now():
@@ -247,14 +237,23 @@ class AuthService:
         if existing_user is None or not verify_password(request.password, existing_user.password_hash):
             raise UnauthorizedException(detail="Invalid email or password")
 
-        if not existing_user.is_active:
-            raise UnauthorizedException(detail="User account is inactive")
+        if existing_user.status == "SUSPENDED":
+            raise UnauthorizedException(detail="User account is suspended")
 
-        if not existing_user.is_verified:
+        if not existing_user.is_email_verified:
             raise UnauthorizedException(detail="Email not verified. Please verify your email first.")
 
+        if existing_user.is_delete:
+            raise UnauthorizedException(detail="User account has been deleted")
+
         # Get user roles
-        roles = [ur.role.name for ur in existing_user.user_roles]
+        roles = []
+        if existing_user.role:
+            roles.append(existing_user.role.role_name)
+        
+        # Also check bridge table
+        roles.extend([ur.role.role_name for ur in existing_user.user_roles if ur.role.role_name not in roles])
+        
         logger.info(f"Login roles for {existing_user.email}: {roles}")
         
         if not roles:
@@ -268,6 +267,9 @@ class AuthService:
                 "roles": roles,
             }
         )
+
+        existing_user.last_login_at = datetime.now()
+        db.commit()
 
         return TokenResponse(
             access_token=access_token,
@@ -285,30 +287,23 @@ class AuthService:
             raise UnauthorizedException(detail="Invalid token payload")
 
         existing_user = UserRepository.get_user_by_id(db, int(user_id))
-        if existing_user is None:
+        if existing_user is None or existing_user.is_delete:
             raise UnauthorizedException(detail="User not found")
 
-        roles = [ur.role.name for ur in existing_user.user_roles]
+        roles = []
+        if existing_user.role:
+            roles.append(existing_user.role.role_name)
+        roles.extend([ur.role.role_name for ur in existing_user.user_roles if ur.role.role_name not in roles])
+
         return AuthService._build_user_response(existing_user, roles)
 
     @staticmethod
-    def _validate_unique_user(db: Session, email: str, username: str):
-        if UserRepository.get_user_by_email(db, email):
-            raise ValidationException(detail="Email already exists")
-        if UserRepository.get_user_by_username(db, username):
-            raise ValidationException(detail="Username already exists")
-
-    @staticmethod
     def _build_user_response(user: UserEntity, roles: List[str]) -> CurrentUserResponse:
-        full_name = None
+        full_name = f"{user.first_name} {user.last_name}" if user.first_name else user.email
         profile_image_url = None
         
         if user.user_profile:
-            full_name = user.user_profile.full_name
             profile_image_url = user.user_profile.profile_image_url
-        elif user.writer_profile:
-            full_name = user.writer_profile.full_name
-            profile_image_url = user.writer_profile.profile_image_url
 
         return CurrentUserResponse(
             id=user.id,
@@ -317,7 +312,7 @@ class AuthService:
             email=user.email,
             full_name=full_name,
             role=roles,
-            is_active=user.is_active,
-            is_verified=user.is_verified,
+            is_active=(user.status == "ACTIVE"),
+            is_verified=user.is_email_verified,
             profile_image_url=profile_image_url
         )

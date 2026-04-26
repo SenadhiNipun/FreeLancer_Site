@@ -21,14 +21,14 @@ security = HTTPBearer()
 
 
 @router.post(
-    "/register/user",
+    "/register/customer",
     status_code=status.HTTP_201_CREATED,
     response_model=GenericResponse
 )
-def register_user(request: RegisterUserRequest, db: db_dependency):
+def register_customer(request: RegisterUserRequest, db: db_dependency):
     result = AuthService.register_user(db, request)
     return GenericResponse.success(
-        message="User registered successfully",
+        message="Customer registered successfully",
         results=result
     )
 
