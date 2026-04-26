@@ -12,25 +12,13 @@ import { authService } from "@/services/auth.service";
 import { AlertCircle, Loader2, CheckCircle2, ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const EDUCATION_LEVELS = [
-  "High School / A/L Completed",
-  "Certificate Program",
-  "Diploma",
-  "Higher National Diploma (HND)",
-  "Bachelor’s Degree",
-  "Postgraduate Diploma",
-  "Master’s Degree",
-  "MPhil",
-  "PhD / Doctorate",
-  "Professional Qualification",
-  "Other"
-];
 
 export function WriterRegistrationForm() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [educationLevels, setEducationLevels] = useState<{id: number, name: string}[]>([]);
   const [categories, setCategories] = useState<{id: number, name: string}[]>([]);
   const [specializations, setSpecializations] = useState<{id: number, name: string}[]>([]);
   const [isWhatsappSame, setIsWhatsappSame] = useState(false);
@@ -45,9 +33,9 @@ export function WriterRegistrationForm() {
     whatsapp_number: "",
     city: "",
     country: "",
-    education_level: "",
+    education_level_id: "",
     institution_name: "",
-    academic_status: "Completed",
+    academic_status: "COMPLETED",
     graduation_year: "",
     main_category_id: "",
     specialization_id: "",
@@ -56,9 +44,18 @@ export function WriterRegistrationForm() {
     bio: ""
   });
 
-  // Fetch categories on mount
+  // Fetch education levels and categories on mount
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/fields/categories`)
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    
+    fetch(`${baseUrl}/api/v1/education-levels`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.results) setEducationLevels(data.results);
+      })
+      .catch(err => console.error("Failed to fetch education levels:", err));
+
+    fetch(`${baseUrl}/api/v1/academic-categories`)
       .then(res => res.json())
       .then(data => {
         if (data.results) setCategories(data.results);
@@ -69,7 +66,8 @@ export function WriterRegistrationForm() {
   // Fetch specializations when category changes
   useEffect(() => {
     if (formData.main_category_id) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/fields/specializations/${formData.main_category_id}`)
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      fetch(`${baseUrl}/api/v1/academic-categories/${formData.main_category_id}/specializations`)
         .then(res => res.json())
         .then(data => {
           if (data.results) setSpecializations(data.results);
@@ -105,7 +103,7 @@ export function WriterRegistrationForm() {
       }
     }
     if (step === 2) {
-      if (!formData.education_level || !formData.institution_name) {
+      if (!formData.education_level_id || !formData.institution_name) {
         setError("Please fill all required fields");
         return;
       }
@@ -135,9 +133,11 @@ export function WriterRegistrationForm() {
       const payload = {
         ...formData,
         graduation_year: formData.graduation_year ? parseInt(formData.graduation_year.toString()) : null,
-        main_category_id: parseInt(formData.main_category_id),
+        education_level_id: parseInt(formData.education_level_id),
+        academic_category_id: parseInt(formData.main_category_id),
         specialization_id: parseInt(formData.specialization_id),
-        experience_years: Number(formData.experience_years || 0)
+        experience_years: Number(formData.experience_years || 0),
+        academic_status: formData.academic_status === "Currently Studying" ? "CURRENTLY_STUDYING" : "COMPLETED"
       };
 
       await authService.registerWriter(payload as any);
@@ -200,10 +200,10 @@ export function WriterRegistrationForm() {
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="space-y-2">
-              <Label htmlFor="education_level">Education Level</Label>
-              <Select id="education_level" name="education_level" value={formData.education_level} onChange={handleChange} required>
+              <Label htmlFor="education_level_id">Education Level</Label>
+              <Select id="education_level_id" name="education_level_id" value={formData.education_level_id} onChange={handleChange} required>
                 <option value="">Select Level</option>
-                {EDUCATION_LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
+                {educationLevels.map(level => <option key={level.id} value={level.id}>{level.name}</option>)}
               </Select>
             </div>
             <div className="space-y-2">
@@ -213,8 +213,8 @@ export function WriterRegistrationForm() {
             <div className="space-y-2">
               <Label htmlFor="academic_status">Academic Status</Label>
               <Select id="academic_status" name="academic_status" value={formData.academic_status} onChange={handleChange}>
-                <option value="Currently Studying">Currently Studying</option>
-                <option value="Completed">Completed</option>
+                <option value="CURRENTLY_STUDYING">Currently Studying</option>
+                <option value="COMPLETED">Completed</option>
               </Select>
             </div>
             <div className="space-y-2">

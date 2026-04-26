@@ -25,8 +25,7 @@ export default function ForgotPasswordPage() {
       await authService.forgotPassword({ email });
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || "Email not found or account inactive.");
-      console.error(err);
+      setError(err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

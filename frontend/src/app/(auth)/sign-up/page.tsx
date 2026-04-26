@@ -48,7 +48,6 @@ export default function SignUpPage() {
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err: any) {
       setError(err.message || "Failed to create account. Please try again.");
-      console.error(err);
     } finally {
       setLoading(false);
     }

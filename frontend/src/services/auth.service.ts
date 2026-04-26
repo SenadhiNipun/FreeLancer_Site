@@ -17,9 +17,16 @@ export const authService = {
   },
 
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
-    return apiClient('/api/v1/auth/register/user', {
+    // Map phone_number to mobile_number and whatsapp_number for backend compatibility
+    const payload = {
+      ...data,
+      mobile_number: data.phone_number,
+      whatsapp_number: data.phone_number,
+    };
+    
+    return apiClient('/api/v1/auth/register/customer', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   },
 
@@ -54,9 +61,16 @@ export const authService = {
   },
   
   registerWriter: async (data: any): Promise<AuthResponse> => {
+    // Ensure phone_number is mapped to mobile_number and whatsapp_number if needed
+    const payload = {
+      ...data,
+      mobile_number: data.mobile_number || data.phone_number,
+      whatsapp_number: data.whatsapp_number || data.phone_number,
+    };
+
     return apiClient('/api/v1/auth/register/writer', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   },
 

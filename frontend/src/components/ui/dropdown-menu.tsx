@@ -31,7 +31,7 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
 }
 
 const DropdownMenuTrigger = React.forwardRef<HTMLDivElement, { asChild?: boolean; children: React.ReactNode }>(
-  ({ children, ...props }, ref) => {
+  ({ children, asChild, ...props }, ref) => {
     const { isOpen, setIsOpen } = React.useContext(DropdownMenuContext)
     return (
       <div 

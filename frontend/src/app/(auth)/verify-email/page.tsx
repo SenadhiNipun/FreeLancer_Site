@@ -36,8 +36,7 @@ function VerifyEmailForm() {
       // Redirect to sign in after success
       router.push("/sign-in?verified=true");
     } catch (err: any) {
-      setError(err.message || "Invalid or expired verification code.");
-      console.error(err);
+      setError(err.message || "Invalid verification code.");
     } finally {
       setLoading(false);
     }

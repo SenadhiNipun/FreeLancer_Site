@@ -2,19 +2,22 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutGrid, Menu, X, LogOut, Layout } from "lucide-react";
+import { LayoutGrid, Menu, X, Layout, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authService } from "@/services/auth.service";
+import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [dashboardUrl, setDashboardUrl] = useState("/");
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const rolesStr = localStorage.getItem("user_roles");
-    
+
     if (token) {
       setIsLoggedIn(true);
       if (rolesStr) {
@@ -27,124 +30,140 @@ export function Navbar() {
           } else {
             setDashboardUrl("/customer/dashboard");
           }
-        } catch (e) {
+        } catch {
           setDashboardUrl("/customer/dashboard");
         }
       }
     }
+
+    const handleScroll = () => setScrolled(window.scrollY > 16);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleLogout = () => {
-    authService.logout();
-  };
+  const navLinks = [
+    { label: "Features", href: "/#features" },
+    { label: "For Writers", href: "/sign-up/writer" },
+  ];
 
   return (
-    <nav className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/70 backdrop-blur-xl transition-all duration-300">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight hover:opacity-90 transition-opacity">
-            <div className="rounded-xl bg-primary p-2 shadow-lg shadow-primary/20">
-              <LayoutGrid className="size-5 text-white" />
-            </div>
-            <span className="bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-              Project Hub
-            </span>
-          </Link>
-        </div>
-
-        {/* Desktop Menu */}
-        <div className="hidden items-center gap-8 md:flex">
-          <Link href="/#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-            Features
-          </Link>
-          {!isLoggedIn && (
-            <Link href="/sign-up/writer" className="relative group text-sm font-medium text-muted-foreground hover:text-accent transition-colors">
-              Join as Writer
-              <span className="absolute -top-1 -right-4 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
-              </span>
-            </Link>
-          )}
-
-          <div className="flex items-center gap-4 ml-2">
-            {!isLoggedIn ? (
-              <>
-                <Link href="/sign-in">
-                  <Button variant="ghost" size="sm" className="font-semibold">Sign In</Button>
-                </Link>
-                <Link href="/sign-up">
-                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/10 px-6">
-                    Get Started
-                  </Button>
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link href={dashboardUrl}>
-                  <Button variant="ghost" size="sm" className="font-semibold gap-2">
-                    <Layout className="size-4" /> Dashboard
-                  </Button>
-                </Link>
-                <Button 
-                  onClick={handleLogout}
-                  variant="outline" 
-                  size="sm" 
-                  className="border-primary/20 hover:bg-destructive/5 hover:text-destructive hover:border-destructive/30 transition-all gap-2"
-                >
-                  <LogOut className="size-4" /> Sign Out
-                </Button>
-              </>
-            )}
+    <nav
+      className={cn(
+        "fixed top-0 z-50 w-full transition-all duration-300",
+        scrolled
+          ? "border-b border-border/50 bg-white/90 backdrop-blur-xl shadow-sm"
+          : "bg-transparent"
+      )}
+    >
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
+        {/* Logo */}
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 group"
+        >
+          <div className="size-8 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-105 transition-transform duration-200">
+            <LayoutGrid className="size-4 text-white" strokeWidth={2.5} />
           </div>
+          <span className="text-[15px] font-bold text-foreground tracking-tight">
+            Project<span className="text-primary">Hub</span>
+          </span>
+        </Link>
+
+        {/* Desktop nav */}
+        <div className="hidden items-center gap-1 md:flex">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/60 transition-all duration-150"
+            >
+              {link.label}
+            </Link>
+          ))}
         </div>
 
-        {/* Mobile menu button */}
-        <div className="md:hidden">
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="inline-flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-muted/50 transition-colors"
-          >
-            {isOpen ? <X className="size-6" /> : <Menu className="size-6" />}
-          </button>
+        {/* Desktop CTAs */}
+        <div className="hidden items-center gap-4 md:flex">
+          {!isLoggedIn ? (
+            <div className="flex items-center gap-2">
+              <Link href="/sign-in">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-4 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg"
+                >
+                  Sign in
+                </Button>
+              </Link>
+              <Link href="/sign-up">
+                <Button
+                  size="sm"
+                  className="h-9 px-5 text-sm font-semibold bg-primary hover:bg-primary/90 text-white rounded-lg shadow-md shadow-primary/20 transition-all hover:shadow-lg hover:shadow-primary/25"
+                >
+                  Get started
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <NotificationBell />
+              <Link href={dashboardUrl}>
+                <Button
+                  size="sm"
+                  className="h-9 px-5 text-sm font-semibold bg-primary hover:bg-primary/90 text-white rounded-lg gap-2 shadow-md shadow-primary/20"
+                >
+                  <Layout className="size-4" />
+                  Dashboard
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
+
+        {/* Mobile toggle */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="md:hidden rounded-lg p-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+          aria-label="Toggle menu"
+        >
+          {isOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+        </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile menu */}
       {isOpen && (
-        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-lg p-6 space-y-6 animate-in slide-in-from-top-4 duration-300">
-          <div className="space-y-4">
-            <Link href="/#features" className="block text-lg font-medium py-2 text-muted-foreground hover:text-primary" onClick={() => setIsOpen(false)}>
-              Features
+        <div className="md:hidden border-t border-border bg-white/95 backdrop-blur-xl px-5 py-6 space-y-1 animate-in slide-in-from-top-2 duration-200">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setIsOpen(false)}
+              className="block rounded-lg px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              {link.label}
             </Link>
-            {!isLoggedIn && (
-              <Link href="/sign-up/writer" className="block text-lg font-medium py-2 text-accent" onClick={() => setIsOpen(false)}>
-                Join as Writer
-              </Link>
-            )}
-          </div>
-          <div className="flex flex-col gap-3 pt-4 border-t border-border">
+          ))}
+          <div className="pt-4 mt-4 border-t border-border space-y-2">
             {!isLoggedIn ? (
               <>
-                <Link href="/sign-in" className="w-full" onClick={() => setIsOpen(false)}>
-                  <Button variant="outline" className="w-full h-12">Sign In</Button>
+                <Link href="/sign-in" onClick={() => setIsOpen(false)}>
+                  <Button variant="outline" className="w-full h-11 font-medium">
+                    Sign in
+                  </Button>
                 </Link>
-                <Link href="/sign-up" className="w-full" onClick={() => setIsOpen(false)}>
-                  <Button className="w-full h-12 bg-primary shadow-lg shadow-primary/20">Get Started</Button>
+                <Link href="/sign-up" onClick={() => setIsOpen(false)}>
+                  <Button className="w-full h-11 font-semibold bg-primary shadow-md shadow-primary/20">
+                    Get started
+                  </Button>
                 </Link>
               </>
             ) : (
-              <>
-                <Link href={dashboardUrl} className="w-full" onClick={() => setIsOpen(false)}>
-                  <Button variant="outline" className="w-full h-12 gap-2"><Layout className="size-5" /> My Dashboard</Button>
-                </Link>
-                <Button 
-                  onClick={handleLogout}
-                  className="w-full h-12 bg-destructive/10 text-destructive hover:bg-destructive/20 gap-2 border-none"
-                >
-                  <LogOut className="size-5" /> Sign Out
+              <Link href={dashboardUrl} onClick={() => setIsOpen(false)}>
+                <Button className="w-full h-11 font-semibold gap-2 bg-primary">
+                  <Layout className="size-4" />
+                  Go to Dashboard
                 </Button>
-              </>
+              </Link>
             )}
           </div>
         </div>
