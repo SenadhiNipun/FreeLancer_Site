@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { 
   Send, 
   Search, 
@@ -13,6 +14,7 @@ import {
   ChevronLeft
 } from "lucide-react";
 import { chatService } from "@/services/chat.service";
+import { authService } from "@/services/auth.service";
 import { ChatSession, ChatMessage } from "@/types/chat";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -28,13 +30,61 @@ export default function ChatInterface() {
   const [searchQuery, setSearchQuery] = useState("");
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const currentUserId = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}').id : null;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const searchParams = useSearchParams();
+  const sessionIdParam = searchParams.get("session");
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      let userId = null;
+      const userStr = localStorage.getItem('user');
+      
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          userId = user.id;
+        } catch (e) {
+          console.error("Failed to parse user from local storage");
+        }
+      }
+
+      if (!userId) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          try {
+            const meRes = await authService.me(token);
+            if (meRes.results) {
+              const u = meRes.results as any;
+              userId = u.id;
+              localStorage.setItem('user', JSON.stringify({ id: u.id, email: u.email }));
+            }
+          } catch (e) {
+            console.error("Failed to fetch current user");
+          }
+        }
+      }
+      
+      setCurrentUserId(userId);
+    };
+
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     fetchSessions();
     const interval = setInterval(fetchSessions, 10000); // Poll sessions every 10s
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (sessionIdParam && sessions.length > 0) {
+      const session = sessions.find(s => s.id === parseInt(sessionIdParam));
+      if (session) {
+        setActiveSession(session);
+      }
+    }
+  }, [sessionIdParam, sessions]);
 
   useEffect(() => {
     if (activeSession) {
@@ -78,10 +128,19 @@ export default function ChatInterface() {
       setMessages(prev => [...prev, sentMsg]);
       setNewMessage("");
       scrollToBottom();
+
+      // Update session locally to move it to the top
+      setSessions(prev => prev.map(s => 
+        s.id === activeSession.id 
+          ? { ...s, updated_at: new Date().toISOString() } 
+          : s
+      ));
     } catch (error) {
       console.error("Failed to send message:", error);
     } finally {
       setIsSending(false);
+      // Re-focus the input after sending
+      setTimeout(() => inputRef.current?.focus(), 0);
     }
   };
 
@@ -89,10 +148,12 @@ export default function ChatInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const filteredSessions = sessions.filter(s => 
-    s.other_party_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.task_title?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSessions = [...sessions]
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .filter(s => 
+      s.other_party_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.task_title?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   if (isLoading && sessions.length === 0) {
     return (
@@ -143,12 +204,12 @@ export default function ChatInterface() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-[#1a1033] truncate">{session.other_party_name}</span>
+                    <span className="font-bold text-[#1a1033] truncate">{session.task_title}</span>
                     <span className="text-[10px] text-[#9490a8] font-medium">
                       {formatDistanceToNow(new Date(session.updated_at), { addSuffix: false })}
                     </span>
                   </div>
-                  <p className="text-xs font-semibold text-[#7C5CFC] truncate mb-1">{session.task_title}</p>
+                  <p className="text-xs font-semibold text-[#7C5CFC] truncate mb-1">{session.other_party_name}</p>
                   <p className="text-xs text-[#9490a8] truncate">Click to start chatting</p>
                 </div>
               </button>
@@ -184,8 +245,8 @@ export default function ChatInterface() {
                   <User className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[#1a1033] leading-tight">{activeSession.other_party_name}</h3>
-                  <p className="text-[10px] font-bold text-[#7C5CFC] uppercase tracking-wider">{activeSession.task_title}</p>
+                  <h3 className="font-bold text-[#1a1033] leading-tight">{activeSession.task_title}</h3>
+                  <p className="text-[10px] font-bold text-[#7C5CFC] uppercase tracking-wider">{activeSession.other_party_name}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -199,7 +260,7 @@ export default function ChatInterface() {
             <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-[url('/grid-light.svg')] bg-center">
               {messages.length > 0 ? (
                 messages.map((msg, idx) => {
-                  const isMine = msg.sender_id === currentUserId;
+                  const isMine = msg.sender_id == currentUserId;
                   const showDate = idx === 0 || 
                     new Date(msg.created_at).getDate() !== new Date(messages[idx-1].created_at).getDate();
 
@@ -253,6 +314,7 @@ export default function ChatInterface() {
               <form onSubmit={handleSendMessage} className="flex items-center gap-3">
                 <div className="flex-1 relative group">
                   <input 
+                    ref={inputRef}
                     type="text" 
                     placeholder="Type your message here..." 
                     value={newMessage}

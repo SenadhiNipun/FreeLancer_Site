@@ -12,7 +12,8 @@ import {
   Gavel,
   Zap,
   ChevronRight,
-  AlertCircle
+  AlertCircle,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -175,8 +176,8 @@ export default function WriterDashboard() {
                        <h3 className="font-bold text-[#1a1033] text-sm truncate">{bid.task?.title || "Project Proposal"}</h3>
                        <p className="text-[11px] text-[#9490a8] font-medium mt-0.5 italic line-clamp-1">"{bid.message || "No pitch provided"}"</p>
                     </div>
-                    <div className="flex items-center gap-6">
-                       <div className="text-right">
+                    <div className="flex items-center gap-3">
+                       <div className="text-right mr-2">
                           <p className="font-bold text-sm text-[#1a1033]">${parseFloat(bid.bid_amount).toFixed(2)}</p>
                           <Badge variant="outline" className={cn(
                             "text-[9px] uppercase font-black px-2 py-0.5 rounded-md mt-1",
@@ -185,6 +186,11 @@ export default function WriterDashboard() {
                              {bid.bid_status}
                           </Badge>
                        </div>
+                       <Link href="/writer/messages">
+                          <Button size="icon" variant="outline" className="size-9 rounded-xl border-border/50 text-[#9490a8] hover:text-[#7C5CFC] hover:bg-violet-50 transition-all">
+                             <MessageSquare className="size-4" />
+                          </Button>
+                       </Link>
                     </div>
                   </div>
                 ))}

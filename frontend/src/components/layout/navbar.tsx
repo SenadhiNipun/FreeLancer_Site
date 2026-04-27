@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { authService } from "@/services/auth.service";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { MessageNotificationBell } from "@/components/notifications/message-notification-bell";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -106,6 +107,7 @@ export function Navbar() {
             </div>
           ) : (
             <div className="flex items-center gap-3">
+              <MessageNotificationBell />
               <NotificationBell />
               <Link href={dashboardUrl}>
                 <Button

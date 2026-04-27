@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { Bell, Check, Clock, Info, MessageSquare, Zap } from "lucide-react";
+import { MessageSquare, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { notificationService } from "@/services/notification.service";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
-export function NotificationBell() {
+export function MessageNotificationBell() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -18,21 +18,20 @@ export function NotificationBell() {
     try {
       const response = await notificationService.getNotifications();
       if (!response.is_error) {
-        // Filter OUT message notifications
-        const generalNotifications = response.results.filter(
-          (n: any) => n.notification_type !== "NEW_MESSAGE"
+        // Filter ONLY message notifications
+        const messageNotifications = response.results.filter(
+          (n: any) => n.notification_type === "NEW_MESSAGE"
         );
-        setNotifications(generalNotifications);
-        setUnreadCount(generalNotifications.filter((n: any) => !n.is_read).length);
+        setNotifications(messageNotifications);
+        setUnreadCount(messageNotifications.filter((n: any) => !n.is_read).length);
       }
     } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+      console.error("Failed to fetch message notifications:", error);
     }
   };
 
   useEffect(() => {
     fetchNotifications();
-    // Refresh notifications every minute
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -57,19 +56,6 @@ export function NotificationBell() {
     }
   };
 
-  const getTypeStyles = (type: string) => {
-    switch (type) {
-      case "TASK_AVAILABLE":
-        return { icon: Zap, color: "text-amber-500", bg: "bg-amber-50" };
-      case "BID_ACCEPTED":
-        return { icon: Check, color: "text-green-500", bg: "bg-green-50" };
-      case "NEW_MESSAGE":
-        return { icon: MessageSquare, color: "text-[#7C5CFC]", bg: "bg-violet-50" };
-      default:
-        return { icon: Info, color: "text-blue-500", bg: "bg-blue-50" };
-    }
-  };
-
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -79,9 +65,9 @@ export function NotificationBell() {
           isOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
         )}
       >
-        <Bell className="size-[18px]" />
+        <MessageSquare className="size-[18px]" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 size-4 rounded-full bg-red-500 border-2 border-white text-[9px] font-bold text-white flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 size-4 rounded-full bg-[#7C5CFC] border-2 border-white text-[9px] font-bold text-white flex items-center justify-center">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -90,7 +76,7 @@ export function NotificationBell() {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white border border-border shadow-2xl shadow-black/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="p-4 border-b border-border flex items-center justify-between bg-white">
-            <h3 className="text-sm font-bold text-foreground">Notifications</h3>
+            <h3 className="text-sm font-bold text-foreground">Messages</h3>
             {unreadCount > 0 && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider">
                 {unreadCount} New
@@ -102,14 +88,12 @@ export function NotificationBell() {
             {notifications.length === 0 ? (
               <div className="p-10 flex flex-col items-center text-center">
                 <div className="size-12 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
-                  <Bell className="size-6 text-muted-foreground/40" />
+                  <MessageSquare className="size-6 text-muted-foreground/40" />
                 </div>
-                <p className="text-sm text-muted-foreground">No notifications yet</p>
+                <p className="text-sm text-muted-foreground">No new messages</p>
               </div>
             ) : (
               notifications.map((n) => {
-                const styles = getTypeStyles(n.notification_type);
-                const Icon = styles.icon;
                 return (
                   <div
                     key={n.id}
@@ -117,7 +101,7 @@ export function NotificationBell() {
                       if (!n.is_read) await handleMarkAsRead(n.id);
                       setIsOpen(false);
                       
-                      if (n.notification_type === "NEW_MESSAGE" && n.related_id) {
+                      if (n.related_id) {
                         const rolesStr = localStorage.getItem("user_roles");
                         const roles = rolesStr ? JSON.parse(rolesStr) : [];
                         const basePath = roles.includes("WRITER") ? "/writer" : "/customer";
@@ -129,8 +113,8 @@ export function NotificationBell() {
                       n.is_read ? "opacity-60 grayscale-[0.5]" : "hover:bg-muted/30"
                     )}
                   >
-                    <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0", styles.bg)}>
-                      <Icon className={cn("size-5", styles.color)} />
+                    <div className="size-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                      <MessageSquare className="size-5 text-[#7C5CFC]" />
                     </div>
                     <div className="space-y-1 min-w-0">
                       <p className="text-[13px] font-bold text-foreground leading-tight">{n.title}</p>
@@ -149,13 +133,20 @@ export function NotificationBell() {
             )}
           </div>
 
-          {notifications.length > 0 && (
-            <div className="p-3 bg-muted/20 border-t border-border text-center">
-              <button className="text-[11px] font-bold text-primary hover:underline">
-                View all notifications
-              </button>
-            </div>
-          )}
+          <div className="p-3 bg-muted/20 border-t border-border text-center">
+            <button 
+              onClick={() => {
+                setIsOpen(false);
+                const rolesStr = localStorage.getItem("user_roles");
+                const roles = rolesStr ? JSON.parse(rolesStr) : [];
+                const basePath = roles.includes("WRITER") ? "/writer" : "/customer";
+                router.push(`${basePath}/messages`);
+              }}
+              className="text-[11px] font-bold text-primary hover:underline"
+            >
+              View all messages
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -32,6 +32,7 @@ export default function SignInPage() {
         localStorage.setItem("token", results.access_token);
         const roles = results.roles || [];
         localStorage.setItem("user_roles", JSON.stringify(roles));
+        localStorage.setItem("user", JSON.stringify({ id: results.user_id, email: results.email }));
 
         if (roles.includes("SUPER_ADMIN") || roles.includes("ADMIN")) {
           router.push("/admin/dashboard");

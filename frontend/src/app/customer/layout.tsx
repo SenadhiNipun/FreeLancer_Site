@@ -6,6 +6,8 @@ import { Bell, Search, Menu, X, LayoutGrid } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { MessageNotificationBell } from "@/components/notifications/message-notification-bell";
 
 export default function CustomerLayout({
   children,
@@ -91,10 +93,10 @@ export default function CustomerLayout({
             </div>
 
             {/* Notifications */}
-            <button className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
-              <Bell className="size-5" />
-              <span className="absolute top-2 right-2 size-2 rounded-full bg-primary border-2 border-card" />
-            </button>
+            <div className="flex items-center gap-2">
+              <MessageNotificationBell />
+              <NotificationBell />
+            </div>
 
             {/* Avatar */}
             <div className="flex items-center gap-2.5 pl-3 border-l border-border/60 ml-1">

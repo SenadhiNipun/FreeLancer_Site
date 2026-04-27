@@ -1,4 +1,3 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 function formatValidationError(detail: any): string {
   if (!Array.isArray(detail)) return String(detail);
@@ -35,6 +34,8 @@ function formatValidationError(detail: any): string {
   }).join(', ');
 }
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
 export async function apiClient(endpoint: string, options: RequestInit = {}) {
   const isClient = typeof window !== 'undefined';
   const token = isClient ? localStorage.getItem('token') : null;
@@ -48,24 +49,39 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const url = `${BASE_URL}${endpoint}`;
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (!response.ok) {
-    let errorMessage = 'Something went wrong';
-    
-    if (data.message) {
-      errorMessage = data.message;
-    } else if (data.detail) {
-      errorMessage = formatValidationError(data.detail);
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        if (isClient) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
+      }
+
+      let errorMessage = 'Something went wrong';
+      
+      if (data.message) {
+        errorMessage = data.message;
+      } else if (data.detail) {
+        errorMessage = formatValidationError(data.detail);
+      }
+      
+      throw new Error(errorMessage);
     }
-    
-    throw new Error(errorMessage);
-  }
 
-  return data;
+    return data;
+  } catch (error: any) {
+    console.error(`API Request Failed: ${options.method || 'GET'} ${url}`, error);
+    throw error;
+  }
 }

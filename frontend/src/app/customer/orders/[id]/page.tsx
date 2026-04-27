@@ -191,18 +191,29 @@ export default function OrderDetails() {
                             <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest mb-1">Proposed Fee</p>
                             <p className="text-2xl font-black text-[#1a1033]">${parseFloat(bid.bid_amount).toFixed(2)}</p>
                           </div>
-                          <Button 
-                            onClick={() => handleAcceptBid(bid.id)}
-                            disabled={isAccepting !== null}
-                            className="w-full bg-[#7C5CFC] hover:bg-[#6d4ef0] text-white rounded-xl h-10 shadow-lg shadow-violet-400/20 font-bold gap-2 text-xs"
-                          >
-                            {isAccepting === bid.id ? (
-                              <Clock className="size-3.5 animate-spin" />
-                            ) : (
-                              <Check className="size-3.5" />
-                            )}
-                            Accept Bid
-                          </Button>
+                          <div className="flex flex-col sm:flex-row w-full gap-2">
+                            <Link href="/customer/messages" className="flex-1">
+                              <Button 
+                                variant="outline"
+                                className="w-full border-border/50 hover:bg-violet-50 hover:text-[#7C5CFC] rounded-xl h-10 font-bold gap-2 text-xs transition-colors"
+                              >
+                                <MessageSquare className="size-3.5" />
+                                Chat
+                              </Button>
+                            </Link>
+                            <Button 
+                              onClick={() => handleAcceptBid(bid.id)}
+                              disabled={isAccepting !== null}
+                              className="flex-[2] bg-[#7C5CFC] hover:bg-[#6d4ef0] text-white rounded-xl h-10 shadow-lg shadow-violet-400/20 font-bold gap-2 text-xs"
+                            >
+                              {isAccepting === bid.id ? (
+                                <Clock className="size-3.5 animate-spin" />
+                              ) : (
+                                <Check className="size-3.5" />
+                              )}
+                              Accept Bid
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </Card>

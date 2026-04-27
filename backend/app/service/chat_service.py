@@ -35,7 +35,22 @@ class ChatService:
             sender_id=sender_id,
             message_text=request.message_text
         )
-        return ChatRepository.create_message(db, message)
+        
+        created_message = ChatRepository.create_message(db, message)
+        
+        recipient_id = session.writer_id if sender_id == session.customer_id else session.customer_id
+        from app.service.notification_service import NotificationService
+        
+        NotificationService.create_notification(
+            db=db,
+            user_id=recipient_id,
+            title="New Message",
+            message=f"You received a new message regarding task: '{session.task.title}'" if getattr(session, 'task', None) else "You received a new message",
+            notification_type="NEW_MESSAGE",
+            related_id=session_id
+        )
+        
+        return created_message
 
     @staticmethod
     def get_messages(db: Session, session_id: int, user_id: int):

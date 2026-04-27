@@ -4,6 +4,8 @@ import React from "react";
 import { WriterSidebar } from "@/components/layout/writer-sidebar";
 import { Bell, Search, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { MessageNotificationBell } from "@/components/notifications/message-notification-bell";
 
 export default function WriterLayout({
   children,
@@ -25,14 +27,9 @@ export default function WriterLayout({
             />
           </div>
 
-          <div className="flex items-center gap-6">
-            <button className="relative rounded-xl p-2 text-muted-foreground hover:bg-muted transition-colors">
-              <Bell className="size-5" />
-              <span className="absolute top-2 right-2 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-              </span>
-            </button>
+          <div className="flex items-center gap-4">
+            <MessageNotificationBell />
+            <NotificationBell />
             <div className="flex items-center gap-3 pl-6 border-l border-border/50">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-foreground">Senadhi Rajarathna</p>

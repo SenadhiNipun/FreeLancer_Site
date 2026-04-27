@@ -244,6 +244,14 @@ class TaskService:
         db.add(bid)
         db.commit()
         db.refresh(bid)
+
+        # Initialize chat between customer and writer so they can discuss before acceptance
+        try:
+            from app.service.chat_service import ChatService
+            ChatService.initialize_chat(db, task_id, task.customer_id, writer_id)
+        except Exception as e:
+            print(f"Failed to initialize chat on bid: {e}")
+
         return BidResponse.model_validate(bid)
 
     # ──────────────────────────────────────────────
