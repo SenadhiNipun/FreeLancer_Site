@@ -30,18 +30,29 @@ import { getFileUrl } from "@/lib/api-client";
 
 export default function WriterTaskDetails() {
   const params = useParams();
-  const id = params.id as string;
+  const taskIdParam = params.taskId as string;
 
   const [task, setTask] = React.useState<any>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [submissionNote, setSubmissionNote] = React.useState("");
+  const [bidAmount, setBidAmount] = React.useState("");
+  const [bidMessage, setBidMessage] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     const fetchTask = async () => {
       try {
-        const response = await taskService.getWriterTaskDetails(parseInt(id));
-        setTask(response.results);
+        if (!taskIdParam) return;
+        const taskId = parseInt(taskIdParam);
+        const response = await taskService.getWriterTaskDetails(taskId);
+        const taskData = response.results;
+        setTask(taskData);
+        
+        // If there's an existing bid, pre-fill the form
+        if (taskData.my_bid) {
+          setBidAmount(taskData.my_bid.bid_amount.toString());
+          setBidMessage(taskData.my_bid.message || "");
+        }
       } catch (error) {
         console.error("Failed to fetch task details:", error);
       } finally {
@@ -49,23 +60,53 @@ export default function WriterTaskDetails() {
       }
     };
 
-    if (id) fetchTask();
-  }, [id]);
+    if (taskIdParam) fetchTask();
+  }, [taskIdParam]);
 
   const handleSubmitWork = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!taskIdParam) return;
     setIsSubmitting(true);
     try {
-      await taskService.submitTask(parseInt(id), {
+      const taskId = parseInt(taskIdParam);
+      await taskService.submitTask(taskId, {
         submission_note: submissionNote,
         files: [] // Mock for now, file upload would go here
       });
       alert("Work submitted successfully!");
       // Refresh task
-      const response = await taskService.getTaskDetails(parseInt(id));
+      const response = await taskService.getWriterTaskDetails(taskId);
       setTask(response.results);
     } catch (error: any) {
       alert(error.message || "Failed to submit work");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitBid = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!taskIdParam) return;
+    
+    const amount = parseFloat(bidAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid bid amount.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const taskId = parseInt(taskIdParam);
+      await taskService.placeBid(taskId, {
+        bid_amount: amount,
+        message: bidMessage
+      });
+      alert("Bid placed successfully!");
+      // Refresh task
+      const response = await taskService.getWriterTaskDetails(taskId);
+      setTask(response.results);
+    } catch (error: any) {
+      alert(error.message || "Failed to place bid");
     } finally {
       setIsSubmitting(false);
     }
@@ -99,9 +140,14 @@ export default function WriterTaskDetails() {
               <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
                 {task.academic_category?.name || "Academic Project"}
               </Badge>
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/10 text-[10px] font-bold uppercase tracking-widest">
+              <div className={cn(
+                "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest",
+                task.task_status === "OPEN" 
+                  ? "bg-violet-500/10 text-violet-600 border border-violet-500/10" 
+                  : "bg-amber-500/10 text-amber-600 border border-amber-500/10"
+              )}>
                 <Clock className="size-3" />
-                In Progress
+                {task.task_status === "OPEN" ? "Bidding Open" : "In Progress"}
               </div>
             </div>
             <h1 className="text-3xl font-black tracking-tight text-foreground leading-tight">
@@ -120,8 +166,12 @@ export default function WriterTaskDetails() {
           </div>
           <div className="h-12 w-px bg-white/10 hidden sm:block mx-2" />
           <div className="p-4 glass bg-primary/5 rounded-2xl border-primary/10 min-w-[140px] text-center">
-             <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Total Payout</p>
-             <p className="text-2xl font-black text-foreground">${parseFloat(task.budget || 0).toFixed(2)}</p>
+             <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">
+               {task.task_status === "OPEN" ? "Initial Budget" : "Total Payout"}
+             </p>
+             <p className="text-2xl font-black text-foreground">
+               {task.budget ? `$${parseFloat(task.budget).toFixed(2)}` : "Awaiting Bids"}
+             </p>
           </div>
         </div>
       </div>
@@ -202,10 +252,76 @@ export default function WriterTaskDetails() {
             </div>
           </div>
 
-          {/* Work Submission Panel */}
+          {/* Work Submission Panel or Bidding Panel */}
           {task.task_status !== "COMPLETED" && (
-            <div className="glass rounded-[2.5rem] overflow-hidden border-primary/20 shadow-2xl shadow-primary/5 bg-primary/[0.01]">
-               <div className="p-8 border-b border-white/5 bg-primary/5 flex items-center gap-4">
+            task.task_status === "OPEN" ? (
+              <div className="glass rounded-[2.5rem] overflow-hidden border-primary/20 shadow-2xl shadow-primary/5 bg-primary/[0.01]">
+                <div className="p-8 border-b border-white/5 bg-primary/5 flex items-center gap-4">
+                  <div className="size-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
+                    <DollarSign className="size-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">Place Your Proposal</h3>
+                    <p className="text-[11px] text-muted-foreground font-medium">Pitch your expertise and set your professional fee</p>
+                  </div>
+                </div>
+                <div className="p-8">
+                  <form onSubmit={handleSubmitBid} className="space-y-6">
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-foreground uppercase tracking-widest ml-1">Your Proposed Fee ($)</label>
+                        <div className="relative">
+                          <span className="absolute left-6 top-1/2 -translate-y-1/2 text-foreground/50 font-bold">$</span>
+                          <input 
+                            type="number" 
+                            step="0.01"
+                            required
+                            value={bidAmount}
+                            onChange={(e) => setBidAmount(e.target.value)}
+                            placeholder="0.00" 
+                            className="w-full h-14 glass bg-white/[0.02] border-white/10 rounded-2xl pl-10 pr-6 text-lg font-black focus:ring-primary/20 text-foreground"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-end">
+                        <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 w-full">
+                          <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Platform Note</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">Clients prefer detailed pitches with specific timelines.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-foreground uppercase tracking-widest ml-1">Professional Pitch</label>
+                      <Textarea 
+                        placeholder="Explain why you are the best fit for this project..."
+                        className="min-h-[140px] glass bg-white/[0.02] border-white/10 rounded-[2rem] p-6 text-[14px] focus-visible:ring-primary/20 text-foreground"
+                        value={bidMessage}
+                        onChange={(e) => setBidMessage(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmitting}
+                      className="w-full h-14 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-base shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3"
+                    >
+                      {isSubmitting ? (
+                        <Activity className="size-5 animate-spin" />
+                      ) : (
+                        <>
+                          {task.my_bid ? "Update My Proposal" : "Submit Proposal"}
+                          <ArrowRight className="size-5" />
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </div>
+              </div>
+            ) : (
+              <div className="glass rounded-[2.5rem] overflow-hidden border-primary/20 shadow-2xl shadow-primary/5 bg-primary/[0.01]">
+                <div className="p-8 border-b border-white/5 bg-primary/5 flex items-center gap-4">
                   <div className="size-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
                     <Upload className="size-6" />
                   </div>
@@ -213,20 +329,20 @@ export default function WriterTaskDetails() {
                     <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">Deliver Final Work</h3>
                     <p className="text-[11px] text-muted-foreground font-medium">Upload completed documents for client review</p>
                   </div>
-               </div>
-               <div className="p-8">
+                </div>
+                <div className="p-8">
                   <form onSubmit={handleSubmitWork} className="space-y-6">
-                     <Textarea 
+                    <Textarea 
                         placeholder="Add a professional message for the client..."
                         className="min-h-[160px] glass bg-white/[0.02] border-white/10 rounded-[2rem] p-6 text-[14px] focus-visible:ring-primary/20 text-foreground"
                         value={submissionNote}
                         onChange={(e) => setSubmissionNote(e.target.value)}
                         required
-                     />
-                     <div className="flex flex-col md:flex-row items-center gap-4">
+                    />
+                    <div className="flex flex-col md:flex-row items-center gap-4">
                         <button type="button" className="w-full md:w-auto h-14 rounded-2xl px-8 glass border-white/10 hover:bg-white/10 text-[13px] font-bold transition-all flex items-center justify-center gap-3">
-                           <Upload className="size-5 text-primary" />
-                           Attach Final Files
+                          <Upload className="size-5 text-primary" />
+                          Attach Final Files
                         </button>
                         <Button 
                           type="submit" 
@@ -242,10 +358,11 @@ export default function WriterTaskDetails() {
                             </>
                           )}
                         </Button>
-                     </div>
+                    </div>
                   </form>
-               </div>
-            </div>
+                </div>
+              </div>
+            )
           )}
         </div>
 

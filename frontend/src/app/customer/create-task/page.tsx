@@ -154,6 +154,21 @@ export default function CreateTask() {
       const response = await taskService.createTask(payload);
       console.log("Task created successfully:", response);
       
+      const createdTask = response.results;
+      
+      // If there are files, upload them
+      if (files.length > 0 && createdTask?.id) {
+        console.log("Uploading files for task:", createdTask.id);
+        try {
+          await taskService.addFilesToTask(createdTask.id, files);
+          console.log("Files uploaded successfully");
+        } catch (fileErr) {
+          console.error("Failed to upload files:", fileErr);
+          // We still created the task, so maybe just alert?
+          alert("Task created, but files failed to upload. You can add them later in project details.");
+        }
+      }
+      
       router.push("/customer/orders");
     } catch (err: any) {
       console.error("Submission error:", err);

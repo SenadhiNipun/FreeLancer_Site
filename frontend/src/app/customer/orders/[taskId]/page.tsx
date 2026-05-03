@@ -29,7 +29,7 @@ import { getFileUrl } from "@/lib/api-client";
 export default function OrderDetails() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
+  const taskIdParam = params.taskId as string;
 
   const [task, setTask] = React.useState<any>(null);
   const [bids, setBids] = React.useState<any[]>([]);
@@ -39,7 +39,8 @@ export default function OrderDetails() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const taskId = parseInt(id);
+        if (!taskIdParam) return;
+        const taskId = parseInt(taskIdParam);
         const [taskRes, bidsRes] = await Promise.all([
           taskService.getTaskDetails(taskId),
           taskService.getTaskBids(taskId)
@@ -53,16 +54,17 @@ export default function OrderDetails() {
       }
     };
 
-    if (id) fetchData();
-  }, [id]);
+    if (taskIdParam) fetchData();
+  }, [taskIdParam]);
 
   const handleAcceptBid = async (bidId: number) => {
+    if (!taskIdParam) return;
     setIsAccepting(bidId);
     try {
-      await taskService.acceptBid(parseInt(id), bidId);
+      const taskId = parseInt(taskIdParam);
+      await taskService.acceptBid(taskId, bidId);
       router.refresh();
       // Refetch data
-      const taskId = parseInt(id);
       const taskRes = await taskService.getTaskDetails(taskId);
       setTask(taskRes.results);
       setBids([]); // Bids are closed
@@ -159,15 +161,16 @@ export default function OrderDetails() {
                     className="hidden"
                     onChange={async (e) => {
                       const files = e.target.files;
-                      if (!files || files.length === 0) return;
+                      if (!files || files.length === 0 || !taskIdParam) return;
                       
                       setIsLoading(true);
                       try {
+                        const taskId = parseInt(taskIdParam);
                         const fileList = Array.from(files);
-                        await taskService.addFilesToTask(parseInt(id), fileList);
+                        await taskService.addFilesToTask(taskId, fileList);
                         
                         // Refetch data
-                        const taskRes = await taskService.getTaskDetails(parseInt(id));
+                        const taskRes = await taskService.getTaskDetails(taskId);
                         setTask(taskRes.results);
                         alert("Files uploaded successfully!");
                       } catch (err: any) {

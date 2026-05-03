@@ -54,7 +54,7 @@ def get_task_details(
     auth: HTTPAuthorizationCredentials = Depends(security),
 ):
     writer_id = get_current_user_id(db, auth)
-    result = TaskService.get_task_details(db, task_id)
+    result = TaskService.get_task_details(db, task_id, writer_id=writer_id)
     # Optional: check if writer has permission (is assigned or has an accepted bid)
     return GenericResponse.success(message="Task details fetched successfully", results=result)
 

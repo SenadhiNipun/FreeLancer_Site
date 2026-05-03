@@ -112,7 +112,13 @@ export default function ActiveTasks() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-bold text-[#1a1033] text-xs">{task.customer?.first_name} {task.customer?.last_name}</span>
-                        <span className="text-[10px] text-[#9490a8] font-bold uppercase">Client</span>
+                        <div className="flex items-center gap-2">
+                           <span className="text-[10px] text-[#9490a8] font-bold uppercase">Client</span>
+                           <div className="size-1 rounded-full bg-border" />
+                           <span className="text-[10px] text-[#7C5CFC] font-bold uppercase flex items-center gap-1">
+                              <FileText className="size-2.5" /> {task.files?.length || 0} Files
+                           </span>
+                        </div>
                       </div>
                     </div>
                     <CountdownTimer deadline={task.deadline} />

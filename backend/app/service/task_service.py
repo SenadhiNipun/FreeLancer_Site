@@ -445,11 +445,24 @@ class TaskService:
     # Shared — get task details
     # ──────────────────────────────────────────────
     @staticmethod
-    def get_task_details(db: Session, task_id: int):
+    def get_task_details(db: Session, task_id: int, writer_id: Optional[int] = None):
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task:
             raise NotFoundException(detail="Task not found")
-        return TaskResponse.model_validate(task)
+        
+        resp = TaskResponse.model_validate(task)
+        if writer_id:
+            from app.entity.task_bid_entity import TaskBidEntity
+            from app.model.bid_response import BidResponse
+            my_bid = db.query(TaskBidEntity).filter(
+                TaskBidEntity.task_id == task_id,
+                TaskBidEntity.writer_id == writer_id,
+                TaskBidEntity.bid_status == "PENDING"
+            ).first()
+            if my_bid:
+                resp.my_bid = BidResponse.model_validate(my_bid)
+                
+        return resp
 
     # ──────────────────────────────────────────────
     # WRITER — submit completed work
