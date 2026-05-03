@@ -30,6 +30,7 @@ export default function SignInPage() {
       if (response.results) {
         const results = response.results as any;
         localStorage.setItem("token", results.access_token);
+        localStorage.setItem("refresh_token", results.refresh_token);
         const roles = results.roles || [];
         localStorage.setItem("user_roles", JSON.stringify(roles));
         localStorage.setItem("user", JSON.stringify({ id: results.user_id, email: results.email }));
@@ -50,116 +51,123 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="space-y-1.5">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">
-          Welcome back
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Sign in to your account to continue.
-        </p>
-      </div>
-
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Error */}
-        {error && (
-          <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <AlertCircle className="size-4 mt-0.5 flex-shrink-0" />
-            <span>{error}</span>
+    <div className="min-h-[85vh] flex items-center justify-center p-4">
+      <div className="glass w-full max-w-md p-8 sm:p-12 rounded-[2.5rem] animate-reveal relative overflow-hidden">
+        {/* Decorative background element */}
+        <div className="absolute -top-24 -right-24 size-48 bg-primary/10 rounded-full blur-3xl" />
+        
+        <div className="space-y-8 relative z-10">
+          {/* Header */}
+          <div className="space-y-1.5">
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">
+              Welcome back
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Sign in to your account to continue.
+            </p>
           </div>
-        )}
 
-        <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-sm font-medium text-foreground">
-            Email address
-          </Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="name@example.com"
-            required
-            disabled={loading}
-            className="h-11 rounded-lg border-border/80 bg-white px-3.5 text-sm placeholder:text-muted-foreground/50 focus-visible:ring-primary/30 focus-visible:border-primary/50 shadow-none input-shadow transition-colors"
-          />
-        </div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Error */}
+            {error && (
+              <div className="flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive animate-in fade-in zoom-in-95 duration-200">
+                <AlertCircle className="size-4 mt-0.5 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-medium text-foreground">
-              Password
-            </Label>
-            <Link
-              href="/forgot-password"
-              className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              Forgot password?
-            </Link>
-          </div>
-          <div className="relative">
-            <Input
-              id="password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              required
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-semibold text-foreground/80">
+                Email address
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="name@example.com"
+                required
+                disabled={loading}
+                className="h-12 rounded-xl border-border/40 bg-white/50 backdrop-blur-sm px-4 text-sm focus-visible:ring-primary/30 focus-visible:border-primary/50 shadow-none transition-all duration-200"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-semibold text-foreground/80">
+                  Password
+                </Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-bold text-primary hover:text-primary/80 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  disabled={loading}
+                  className="h-12 rounded-xl border-border/40 bg-white/50 backdrop-blur-sm pr-11 px-4 text-sm focus-visible:ring-primary/30 focus-visible:border-primary/50 shadow-none transition-all duration-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
               disabled={loading}
-              className="h-11 rounded-lg border-border/80 bg-white pr-11 px-3.5 text-sm focus-visible:ring-primary/30 focus-visible:border-primary/50 shadow-none input-shadow transition-colors"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              tabIndex={-1}
+              className="w-full h-12 rounded-xl font-bold bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {showPassword ? (
-                <EyeOff className="size-4" />
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Signing in...
+                </>
               ) : (
-                <Eye className="size-4" />
+                "Sign in"
               )}
-            </button>
+            </Button>
+          </form>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border/40" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-transparent px-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                OR
+              </span>
+            </div>
           </div>
-        </div>
 
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full h-11 rounded-lg font-semibold bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
-              Signing in...
-            </>
-          ) : (
-            "Sign in"
-          )}
-        </Button>
-      </form>
-
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border/60" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-background px-3 text-xs text-muted-foreground">
-            OR
-          </span>
+          {/* Footer */}
+          <p className="text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/sign-up"
+              className="font-bold text-primary hover:text-primary/80 transition-colors"
+            >
+              Create one free
+            </Link>
+          </p>
         </div>
       </div>
-
-      {/* Footer */}
-      <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
-        <Link
-          href="/sign-up"
-          className="font-semibold text-primary hover:text-primary/80 transition-colors"
-        >
-          Create one free
-        </Link>
-      </p>
     </div>
   );
 }

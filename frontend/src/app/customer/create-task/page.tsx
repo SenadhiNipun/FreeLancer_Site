@@ -126,6 +126,11 @@ export default function CreateTask() {
     setError(null);
     
     // Client-side validation
+    if (formData.title.length < 5) {
+      setError("Project title must be at least 5 characters long.");
+      return;
+    }
+
     if (formData.description.length < 10) {
       setError("Description must be at least 10 characters long.");
       return;

@@ -8,6 +8,7 @@ import { authService } from "@/services/auth.service";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { MessageNotificationBell } from "@/components/notifications/message-notification-bell";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -50,10 +51,10 @@ export function Navbar() {
   return (
     <nav
       className={cn(
-        "fixed top-0 z-50 w-full transition-all duration-300",
+        "fixed top-0 z-50 w-full transition-all duration-500",
         scrolled
-          ? "border-b border-border/50 bg-white/90 backdrop-blur-xl shadow-sm"
-          : "bg-transparent"
+          ? "glass border-b border-white/20 py-3"
+          : "bg-transparent py-5"
       )}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
@@ -84,7 +85,8 @@ export function Navbar() {
         </div>
 
         {/* Desktop CTAs */}
-        <div className="hidden items-center gap-4 md:flex">
+        <div className="hidden items-center gap-6 md:flex">
+          <ThemeToggle />
           {!isLoggedIn ? (
             <div className="flex items-center gap-2">
               <Link href="/sign-in">
@@ -134,7 +136,10 @@ export function Navbar() {
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className="md:hidden border-t border-border bg-white/95 backdrop-blur-xl px-5 py-6 space-y-1 animate-in slide-in-from-top-2 duration-200">
+        <div className="md:hidden border-t border-border bg-card/95 backdrop-blur-xl px-5 py-6 space-y-1 animate-in slide-in-from-top-2 duration-200">
+          <div className="flex justify-center mb-6">
+            <ThemeToggle />
+          </div>
           {navLinks.map((link) => (
             <Link
               key={link.href}

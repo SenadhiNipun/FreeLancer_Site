@@ -13,39 +13,44 @@ export default function WriterLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen relative">
       <WriterSidebar />
       
-      <div className="pl-72">
+      <div className="lg:pl-72 flex flex-col min-h-screen relative z-10">
         {/* Dashboard Header */}
-        <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-border/50 bg-background/70 px-8 backdrop-blur-xl">
-          <div className="relative w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input 
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between glass border-b border-white/10 px-6 lg:px-10 transition-all">
+          <div className="relative w-full max-w-sm group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+            <input 
               placeholder="Search tasks, payments, messages..." 
-              className="pl-10 h-10 bg-muted/50 border-none rounded-xl focus-visible:ring-primary/20"
+              className="w-full h-10 pl-10 pr-4 rounded-xl glass border-white/5 bg-white/10 text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all"
             />
           </div>
 
           <div className="flex items-center gap-4">
-            <MessageNotificationBell />
-            <NotificationBell />
-            <div className="flex items-center gap-3 pl-6 border-l border-border/50">
+            <div className="flex items-center gap-3">
+              <MessageNotificationBell />
+              <NotificationBell />
+            </div>
+            
+            <div className="flex items-center gap-3 pl-4 border-l border-white/10 ml-2">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-foreground">Senadhi Rajarathna</p>
-                <p className="text-xs text-muted-foreground">Specialist Writer</p>
+                <p className="text-[12px] font-bold text-foreground leading-none">Writer Profile</p>
+                <p className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-wider mt-1">Specialist</p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20">
-                SR
+              <div className="size-9 rounded-xl bg-gradient-to-br from-primary to-[#7C3AED] flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all">
+                W
               </div>
             </div>
           </div>
         </header>
 
         {/* Content Area */}
-        <div className="p-8">
-          {children}
-        </div>
+        <main className="flex-1 p-6 lg:p-10">
+          <div className="mx-auto max-w-[1360px]">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );

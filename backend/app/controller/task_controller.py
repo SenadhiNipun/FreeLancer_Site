@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, status
+from typing import List, Annotated
+from fastapi import APIRouter, Depends, status, File, UploadFile
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.config.database import db_dependency
@@ -7,6 +8,7 @@ from app.service.auth_service import AuthService
 from app.model.create_task_request import CreateTaskRequest
 from app.model.revision_request import RevisionRequest
 from app.model.generic_response import GenericResponse
+from app.model.add_task_file_request import AddTaskFilesRequest
 
 router = APIRouter(
     prefix="/api/v1/customer",
@@ -89,3 +91,14 @@ def request_revision(
     customer_id = get_current_user_id(db, auth)
     result = TaskService.request_revision(db, task_id, customer_id, request)
     return GenericResponse.success(message="Revision requested successfully", results=result)
+
+@router.post("/tasks/{task_id}/files")
+async def add_task_files(
+    task_id: int,
+    db: db_dependency,
+    files: Annotated[List[UploadFile], File(...)],
+    auth: Annotated[HTTPAuthorizationCredentials, Depends(security)]
+):
+    customer_id = get_current_user_id(db, auth)
+    result = await TaskService.save_task_files_locally(db, task_id, customer_id, files)
+    return GenericResponse.success(message="Files uploaded successfully", results=result)

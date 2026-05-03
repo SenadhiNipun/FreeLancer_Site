@@ -11,7 +11,11 @@ import {
   CheckCircle2,
   AlertCircle,
   ChevronRight,
-  Info
+  Info,
+  MoreHorizontal,
+  FileText,
+  Download,
+  Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,11 +24,13 @@ import { Dialog, Textarea } from "@/components/ui";
 import { taskService } from "@/services/task.service";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui";
 
 export default function AvailableTasks() {
   const [tasks, setTasks] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isBidding, setIsBidding] = React.useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
   const [selectedTask, setSelectedTask] = React.useState<any>(null);
   const [bidAmount, setBidAmount] = React.useState("");
   const [bidMessage, setBidMessage] = React.useState("");
@@ -48,18 +54,34 @@ export default function AvailableTasks() {
   const handleOpenBid = (task: any) => {
     setSelectedTask(task);
     setIsBidding(true);
-    setBidAmount("");
-    setBidMessage("");
+    if (task.my_bid) {
+      setBidAmount(task.my_bid.bid_amount.toString());
+      setBidMessage(task.my_bid.message || "");
+    } else {
+      setBidAmount("");
+      setBidMessage("");
+    }
   };
 
   const handleSubmitBid = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTask) return;
     
+    const amount = parseFloat(bidAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid bid amount greater than zero.");
+      return;
+    }
+
+    if (bidMessage.length > 1000) {
+      alert("Your pitch must be 1000 characters or less.");
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       await taskService.placeBid(selectedTask.id, {
-        bid_amount: parseFloat(bidAmount),
+        bid_amount: amount,
         message: bidMessage
       });
       setIsBidding(false);
@@ -123,11 +145,16 @@ export default function AvailableTasks() {
                     <span className="px-3 py-1 rounded-full bg-violet-100 text-[#7C5CFC] text-[10px] font-bold uppercase tracking-wider border border-violet-200">
                       {task.academic_category?.name || "Academic"}
                     </span>
-                    <span className="flex items-center gap-1 text-emerald-600 text-xs font-bold bg-emerald-50 px-2.5 py-1 rounded-full">
-                      <CheckCircle2 className="size-3" /> Verified Client
-                    </span>
                   </div>
-                  <h3 className="text-xl font-bold text-[#1a1033] group-hover:text-[#7C5CFC] transition-colors">{task.title}</h3>
+                  <h3 
+                    onClick={() => {
+                      setSelectedTask(task);
+                      setIsDetailsOpen(true);
+                    }}
+                    className="text-xl font-bold text-[#1a1033] group-hover:text-[#7C5CFC] transition-colors cursor-pointer"
+                  >
+                    {task.title}
+                  </h3>
                   <p className="text-sm text-[#6b6880] line-clamp-2 leading-relaxed">
                     {task.description}
                   </p>
@@ -148,9 +175,18 @@ export default function AvailableTasks() {
                   </div>
                   <Button 
                     onClick={() => handleOpenBid(task)}
-                    className="w-full h-11 rounded-xl bg-[#7C5CFC] shadow-lg shadow-violet-400/20 font-bold hover:bg-[#6d4ef0] transition-all group/btn"
+                    className={cn(
+                      "w-full h-11 rounded-xl shadow-lg font-bold transition-all group/btn",
+                      task.my_bid 
+                        ? "bg-amber-500 hover:bg-amber-600 shadow-amber-400/20" 
+                        : "bg-[#7C5CFC] hover:bg-[#6d4ef0] shadow-violet-400/20"
+                    )}
                   >
-                    Place Bid <ChevronRight className="size-4 ml-1 group-hover/btn:translate-x-1 transition-transform" />
+                    {task.my_bid ? (
+                      <>Change Bid <MoreHorizontal className="size-4 ml-1" /></>
+                    ) : (
+                      <>Place Bid <ChevronRight className="size-4 ml-1 group-hover/btn:translate-x-1 transition-transform" /></>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -221,6 +257,104 @@ export default function AvailableTasks() {
             </button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Task Details Modal */}
+      <Dialog 
+        isOpen={isDetailsOpen} 
+        onClose={() => setIsDetailsOpen(false)} 
+        title="Project Specifications"
+      >
+        {selectedTask && (
+          <div className="space-y-8 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="bg-violet-50 text-[#7C5CFC] border-violet-100 hover:bg-violet-50 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg">
+                  {selectedTask.academic_category?.name || "Academic"}
+                </Badge>
+                {selectedTask.is_urgent && (
+                  <Badge className="bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-50 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg flex items-center gap-1">
+                    <Zap className="size-3 fill-rose-600" /> Urgent
+                  </Badge>
+                )}
+              </div>
+              <h2 className="text-2xl font-black text-[#1a1033] leading-tight">{selectedTask.title}</h2>
+              <div className="flex items-center gap-6 text-[11px] font-bold text-[#9490a8] uppercase tracking-widest pt-1">
+                <span className="flex items-center gap-1.5">
+                  <Clock className="size-3.5" /> Created {format(new Date(selectedTask.created_at), "dd MMM yyyy")}
+                </span>
+                <span className="flex items-center gap-1.5 text-indigo-600">
+                  <Info className="size-3.5" /> ID: {selectedTask.id.toString().padStart(6, '0')}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-black text-[#1a1033] uppercase tracking-[0.2em] flex items-center gap-2">
+                <FileText className="size-4 text-[#7C5CFC]" /> 
+                Detailed Description
+              </h4>
+              <div className="bg-[#F8F9FF] p-6 rounded-2xl border border-[#F0EBFF]">
+                <p className="text-sm text-[#4a4559] leading-relaxed whitespace-pre-wrap font-medium">
+                  {selectedTask.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Reference Materials */}
+            <div className="space-y-3 pt-4 border-t border-[#F0EBFF]">
+              <h4 className="text-xs font-black text-[#1a1033] uppercase tracking-[0.2em] flex items-center gap-2">
+                <Download className="size-4 text-[#7C5CFC]" /> 
+                Client Attachments ({selectedTask.files?.length || 0})
+              </h4>
+              {selectedTask.files && selectedTask.files.length > 0 ? (
+                <div className="grid gap-3">
+                  {selectedTask.files.map((file: any) => (
+                    <div key={file.id} className="group/file flex items-center justify-between p-4 rounded-2xl border border-dashed border-[#E0D9FF] bg-white hover:border-[#7C5CFC]/40 hover:bg-violet-50/30 transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="size-10 rounded-xl bg-violet-100 flex items-center justify-center text-[#7C5CFC] group-hover/file:bg-[#7C5CFC] group-hover/file:text-white transition-colors">
+                          <FileText className="size-5" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-[#1a1033] group-hover/file:text-[#7C5CFC] transition-colors">{file.file_name}</span>
+                          <span className="text-[10px] text-[#9490a8] font-bold uppercase">{file.file_type.replace('_', ' ')} • {(file.file_size / 1024).toFixed(1)} KB</span>
+                        </div>
+                      </div>
+                      <a href={file.file_url} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="ghost" className="rounded-lg h-9 w-9 p-0 hover:bg-[#7C5CFC] hover:text-white transition-colors">
+                           <ChevronRight className="size-4" />
+                        </Button>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-[#F8F9FF] p-6 rounded-2xl border border-dashed border-[#F0EBFF] text-center">
+                  <p className="text-xs font-bold text-[#9490a8] uppercase tracking-widest">No attachments provided by client</p>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-[#F0EBFF] flex gap-4">
+              <Button 
+                onClick={() => {
+                  setIsDetailsOpen(false);
+                  handleOpenBid(selectedTask);
+                }}
+                className="flex-1 rounded-xl bg-[#7C5CFC] hover:bg-[#6d4ef0] font-bold h-12 shadow-lg shadow-violet-400/20"
+              >
+                Place Bid Now
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setIsDetailsOpen(false)}
+                className="flex-1 rounded-xl border-[#F0EBFF] hover:bg-violet-50 font-bold h-12"
+              >
+                Close View
+              </Button>
+            </div>
+          </div>
+        )}
       </Dialog>
     </div>
   );

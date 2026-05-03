@@ -10,6 +10,7 @@ from app.model.register_user_request import RegisterUserRequest
 from app.model.register_writer_request import RegisterWriterRequest
 from app.model.reset_password_request import ResetPasswordRequest
 from app.model.verify_email_request import VerifyEmailRequest
+from app.model.refresh_token_request import RefreshTokenRequest
 from app.service.auth_service import AuthService
 
 router = APIRouter(
@@ -91,5 +92,18 @@ def get_current_user(
 
     return GenericResponse.success(
         message="Current user fetched successfully",
+        results=result
+    )
+
+
+@router.post(
+    "/refresh",
+    status_code=status.HTTP_200_OK,
+    response_model=GenericResponse
+)
+def refresh_token(request: RefreshTokenRequest, db: db_dependency):
+    result = AuthService.refresh_token(db, request.refresh_token)
+    return GenericResponse.success(
+        message="Token refreshed successfully",
         results=result
     )

@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { authService } from "@/services/auth.service";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export function WriterSidebar() {
   const pathname = usePathname();
@@ -38,18 +39,29 @@ export function WriterSidebar() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-72 border-r border-border/50 bg-card/50 backdrop-blur-xl">
-      <div className="flex h-full flex-col px-6 py-8">
-        <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight mb-12">
-          <div className="rounded-xl bg-primary p-2 shadow-lg shadow-primary/20">
-            <LayoutGrid className="size-5 text-white" />
+    <aside className="fixed left-0 top-0 z-40 h-screen w-72 glass border-r border-white/20 flex flex-col hidden lg:flex overflow-hidden">
+      {/* Decorative Blur */}
+      <div className="absolute -top-10 -left-10 size-40 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="flex h-full flex-col px-6 py-8 relative z-10">
+        <Link href="/" className="flex items-center gap-3 mb-10 group">
+          <div className="size-10 rounded-2xl bg-primary flex items-center justify-center shadow-xl shadow-primary/30 group-hover:scale-105 transition-transform duration-300">
+            <LayoutGrid className="size-6 text-white" strokeWidth={2.5} />
           </div>
-          <span className="bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-            Project Hub
-          </span>
+          <div>
+            <span className="block text-[16px] font-bold text-foreground tracking-tight leading-none">
+              Project<span className="text-primary">Hub</span>
+            </span>
+            <span className="block text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1.5 leading-none">
+              Writer Portal
+            </span>
+          </div>
         </Link>
 
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-1.5 custom-scrollbar overflow-y-auto pr-2">
+          <p className="px-3 pb-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
+            Manage Portal
+          </p>
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -57,28 +69,43 @@ export function WriterSidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 group",
+                  "flex items-center gap-3 rounded-2xl px-4 py-3.5 text-[13.5px] font-bold transition-all duration-300 group",
                   isActive 
-                    ? "bg-primary text-white shadow-lg shadow-primary/20" 
-                    : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
+                    ? "bg-primary text-white shadow-lg shadow-primary/30" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 )}
               >
-                <item.icon className={cn("size-5", isActive ? "text-white" : "group-hover:text-primary")} />
+                <item.icon className={cn(
+                  "size-5 transition-all duration-300", 
+                  isActive 
+                    ? "text-white scale-110" 
+                    : "text-muted-foreground/50 group-hover:text-primary group-hover:scale-110"
+                )} />
                 {item.label}
+                {isActive && (
+                  <div className="ml-auto size-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="mt-auto pt-8 border-t border-border/50">
-          <Button 
+        {/* Theme Switcher */}
+        <div className="mt-4 px-2 mb-6">
+          <p className="px-3 pb-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
+            Appearance
+          </p>
+          <ThemeToggle />
+        </div>
+
+        <div className="mt-auto pt-6 border-t border-white/10">
+          <button
             onClick={() => authService.logout()}
-            variant="ghost" 
-            className="w-full justify-start gap-3 rounded-xl px-4 py-6 text-sm font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="flex items-center gap-3 w-full rounded-2xl px-4 py-4 text-[13px] font-bold text-muted-foreground/60 hover:text-rose-500 hover:bg-rose-500/10 transition-all duration-200 group"
           >
-            <LogOut className="size-5" />
+            <LogOut className="size-5 flex-shrink-0 group-hover:translate-x-1 transition-transform" strokeWidth={2.5} />
             Sign Out
-          </Button>
+          </button>
         </div>
       </div>
     </aside>

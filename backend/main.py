@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+import os
 
 from app.config.database import init_db, db_dependency
 from app.config.cors_config import setup_cors
@@ -21,6 +23,14 @@ app = FastAPI(
 init_db()
 setup_cors(app)
 register_exception_handlers(app)
+
+# Ensure uploads directory exists
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
+
+# Mount static files
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 app.include_router(auth_router)
 app.include_router(academic_router)
 app.include_router(task_router)

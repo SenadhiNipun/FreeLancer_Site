@@ -38,9 +38,26 @@ export const taskService = {
     });
   },
 
+  addFilesToTask: async (taskId: number, files: File[]) => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    return apiClient(`/api/v1/customer/tasks/${taskId}/files`, {
+      method: 'POST',
+      body: formData,
+      // Note: apiClient should handle removing Content-Type for FormData
+    });
+  },
+
   // ── Writer Endpoints ──
   getWriterTasks: async () => {
     return apiClient('/api/v1/writer/tasks');
+  },
+
+  getWriterTaskDetails: async (taskId: number) => {
+    return apiClient(`/api/v1/writer/tasks/${taskId}`);
   },
 
   getOpenTasksForWriter: async () => {

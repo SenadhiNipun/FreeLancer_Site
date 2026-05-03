@@ -30,7 +30,7 @@ from app.model.reset_password_request import ResetPasswordRequest
 from app.model.token_response import TokenResponse
 from app.repository.role_repository import RoleRepository
 from app.repository.user_repository import UserRepository
-from app.util.jwt_util import create_access_token, decode_access_token
+from app.util.jwt_util import create_access_token, decode_access_token, create_refresh_token, decode_refresh_token
 from app.util.password_util import hash_password, verify_password
 from app.config.logging_config import get_logger
 
@@ -268,11 +268,65 @@ class AuthService:
             }
         )
 
+        refresh_token = create_refresh_token(
+            {
+                "sub": existing_user.email,
+                "user_id": existing_user.id,
+                "uuid": existing_user.uuid,
+            }
+        )
+
         existing_user.last_login_at = datetime.now()
         db.commit()
 
         return TokenResponse(
             access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            roles=roles,
+            user_id=existing_user.id,
+            email=existing_user.email
+        )
+
+    @staticmethod
+    def refresh_token(db: Session, refresh_token: str) -> TokenResponse:
+        payload = decode_refresh_token(refresh_token)
+        user_id = payload.get("user_id")
+        if user_id is None:
+            raise UnauthorizedException(detail="Invalid refresh token payload")
+
+        existing_user = UserRepository.get_user_by_id(db, int(user_id))
+        if existing_user is None or existing_user.is_delete:
+            raise UnauthorizedException(detail="User not found")
+
+        if existing_user.status == "SUSPENDED":
+            raise UnauthorizedException(detail="User account is suspended")
+
+        roles = []
+        if existing_user.role:
+            roles.append(existing_user.role.role_name)
+        roles.extend([ur.role.role_name for ur in existing_user.user_roles if ur.role.role_name not in roles])
+
+        new_access_token = create_access_token(
+            {
+                "sub": existing_user.email,
+                "user_id": existing_user.id,
+                "uuid": existing_user.uuid,
+                "roles": roles,
+            }
+        )
+
+        new_refresh_token = create_refresh_token(
+            {
+                "sub": existing_user.email,
+                "user_id": existing_user.id,
+                "uuid": existing_user.uuid,
+            }
+        )
+
+        return TokenResponse(
+            access_token=new_access_token,
+            refresh_token=new_refresh_token,
             token_type="bearer",
             roles=roles,
             user_id=existing_user.id,

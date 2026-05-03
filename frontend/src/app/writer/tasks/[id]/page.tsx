@@ -1,0 +1,341 @@
+"use client";
+
+import React from "react";
+import { 
+  ArrowLeft, 
+  Clock, 
+  User, 
+  FileText, 
+  Download, 
+  MessageSquare, 
+  CheckCircle2,
+  DollarSign,
+  AlertTriangle,
+  Upload,
+  Info,
+  ChevronRight,
+  ArrowRight,
+  Activity
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge, Textarea } from "@/components/ui";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { taskService } from "@/services/task.service";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { CountdownTimer } from "@/components/tasks/CountdownTimer";
+import { getFileUrl } from "@/lib/api-client";
+
+export default function WriterTaskDetails() {
+  const params = useParams();
+  const id = params.id as string;
+
+  const [task, setTask] = React.useState<any>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [submissionNote, setSubmissionNote] = React.useState("");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    const fetchTask = async () => {
+      try {
+        const response = await taskService.getWriterTaskDetails(parseInt(id));
+        setTask(response.results);
+      } catch (error) {
+        console.error("Failed to fetch task details:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (id) fetchTask();
+  }, [id]);
+
+  const handleSubmitWork = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await taskService.submitTask(parseInt(id), {
+        submission_note: submissionNote,
+        files: [] // Mock for now, file upload would go here
+      });
+      alert("Work submitted successfully!");
+      // Refresh task
+      const response = await taskService.getTaskDetails(parseInt(id));
+      setTask(response.results);
+    } catch (error: any) {
+      alert(error.message || "Failed to submit work");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="size-8 border-[3px] border-[#7C5CFC] border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-bold text-[#9490a8] uppercase tracking-widest">Loading task details...</p>
+      </div>
+    );
+  }
+
+  if (!task) return <div className="text-center py-20 font-bold text-rose-500">Task record not found.</div>;
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-8 animate-reveal pb-20">
+      {/* ── Top Navigation & Meta ── */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-8 glass rounded-[2.5rem] border-gradient relative overflow-hidden">
+        <div className="absolute top-0 right-0 size-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        
+        <div className="flex items-center gap-6 relative z-10">
+          <Link href="/writer/tasks/active">
+            <button className="size-12 rounded-2xl glass border-white/10 flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-300 group shadow-xl">
+              <ArrowLeft className="size-5 group-hover:-translate-x-1 transition-transform" />
+            </button>
+          </Link>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                {task.academic_category?.name || "Academic Project"}
+              </Badge>
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/10 text-[10px] font-bold uppercase tracking-widest">
+                <Clock className="size-3" />
+                In Progress
+              </div>
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-foreground leading-tight">
+              {task.title}
+            </h1>
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.2em]">
+              Project ID: <span className="text-primary">{task.id.toString().padStart(6, '0')}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="hidden sm:block text-right">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Time Remaining</p>
+            <CountdownTimer deadline={task.deadline} />
+          </div>
+          <div className="h-12 w-px bg-white/10 hidden sm:block mx-2" />
+          <div className="p-4 glass bg-primary/5 rounded-2xl border-primary/10 min-w-[140px] text-center">
+             <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Total Payout</p>
+             <p className="text-2xl font-black text-foreground">${parseFloat(task.budget || 0).toFixed(2)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-12">
+        {/* ── Left Column: Detailed Content (8 cols) ── */}
+        <div className="lg:col-span-8 space-y-8">
+          
+          {/* Assignment Brief */}
+          <div className="glass rounded-[2rem] overflow-hidden border-white/5 shadow-2xl">
+            <div className="p-8 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <FileText className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">Assignment Brief</h3>
+                  <p className="text-[10px] text-muted-foreground font-medium">Core requirements and instructions</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-xl border border-white/5">
+                <Clock className="size-3.5" />
+                Posted {format(new Date(task.created_at), "MMM dd, yyyy")}
+              </div>
+            </div>
+            
+            <div className="p-8 space-y-10">
+              <div className="relative">
+                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-primary/20 rounded-full" />
+                <p className="text-[15px] text-foreground/80 leading-relaxed whitespace-pre-wrap font-medium pl-2">
+                  {task.description}
+                </p>
+              </div>
+
+              {/* Resource Materials - Prominent Section */}
+              <div className="space-y-6 pt-10 border-t border-white/5">
+                 <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-[0.2em] flex items-center gap-2">
+                      <Download className="size-4 text-primary" /> Client Attachments
+                    </h4>
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-primary/10 text-primary">
+                      {task.files?.length || 0} Files
+                    </span>
+                 </div>
+
+                 {task.files && task.files.length > 0 ? (
+                   <div className="grid gap-4 sm:grid-cols-2">
+                      {task.files.map((file: any) => (
+                        <div key={file.id} className="group/file flex items-center justify-between p-5 rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.08] hover:border-primary/30 transition-all duration-300">
+                           <div className="flex items-center gap-4 truncate">
+                              <div className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-primary group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all shadow-lg">
+                                 <FileText className="size-5" />
+                              </div>
+                              <div className="flex flex-col truncate">
+                                 <span className="text-[13px] font-bold text-foreground truncate">{file.file_name}</span>
+                                 <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
+                                   {(file.file_size / 1024).toFixed(1)} KB • {file.file_type.split('/')[1]?.toUpperCase() || "FILE"}
+                                 </span>
+                              </div>
+                           </div>
+                           <a href={getFileUrl(file.file_url)} target="_blank" rel="noopener noreferrer">
+                             <button className="size-10 rounded-xl glass border-white/10 text-primary hover:bg-primary hover:text-white transition-all shadow-lg flex items-center justify-center">
+                                <Download className="size-4" />
+                             </button>
+                           </a>
+                        </div>
+                      ))}
+                   </div>
+                 ) : (
+                   <div className="glass p-10 rounded-3xl border border-dashed border-white/10 text-center space-y-3">
+                      <div className="size-12 rounded-full bg-white/5 flex items-center justify-center mx-auto opacity-40">
+                        <FileText className="size-6" />
+                      </div>
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">No attachments provided by client</p>
+                   </div>
+                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Work Submission Panel */}
+          {task.task_status !== "COMPLETED" && (
+            <div className="glass rounded-[2.5rem] overflow-hidden border-primary/20 shadow-2xl shadow-primary/5 bg-primary/[0.01]">
+               <div className="p-8 border-b border-white/5 bg-primary/5 flex items-center gap-4">
+                  <div className="size-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
+                    <Upload className="size-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">Deliver Final Work</h3>
+                    <p className="text-[11px] text-muted-foreground font-medium">Upload completed documents for client review</p>
+                  </div>
+               </div>
+               <div className="p-8">
+                  <form onSubmit={handleSubmitWork} className="space-y-6">
+                     <Textarea 
+                        placeholder="Add a professional message for the client..."
+                        className="min-h-[160px] glass bg-white/[0.02] border-white/10 rounded-[2rem] p-6 text-[14px] focus-visible:ring-primary/20 text-foreground"
+                        value={submissionNote}
+                        onChange={(e) => setSubmissionNote(e.target.value)}
+                        required
+                     />
+                     <div className="flex flex-col md:flex-row items-center gap-4">
+                        <button type="button" className="w-full md:w-auto h-14 rounded-2xl px-8 glass border-white/10 hover:bg-white/10 text-[13px] font-bold transition-all flex items-center justify-center gap-3">
+                           <Upload className="size-5 text-primary" />
+                           Attach Final Files
+                        </button>
+                        <Button 
+                          type="submit" 
+                          disabled={isSubmitting}
+                          className="w-full md:flex-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-base shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3"
+                        >
+                          {isSubmitting ? (
+                            <Activity className="size-5 animate-spin" />
+                          ) : (
+                            <>
+                              Submit Project for Review
+                              <ArrowRight className="size-5" />
+                            </>
+                          )}
+                        </Button>
+                     </div>
+                  </form>
+               </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Right Column: Context & Metadata (4 cols) ── */}
+        <div className="lg:col-span-4 space-y-8">
+           
+           {/* Client Profile Card */}
+           <div className="glass rounded-[2rem] p-8 space-y-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 size-32 bg-primary/5 rounded-full blur-2xl" />
+              
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Project Owner</p>
+                <div className="flex items-center gap-5 pt-2">
+                  <div className="size-16 rounded-[1.25rem] glass bg-card/50 flex items-center justify-center text-primary border border-white/10 shadow-2xl group overflow-hidden">
+                    <User className="size-8 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-foreground text-lg leading-tight">
+                      {task.customer?.first_name} {task.customer?.last_name}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                       <div className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                       <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Verified Client</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="p-4 rounded-2xl glass bg-white/[0.02] border-white/5">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Region</p>
+                    <p className="text-[13px] font-bold text-foreground">Global</p>
+                 </div>
+                 <div className="p-4 rounded-2xl glass bg-white/[0.02] border-white/5">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Joined</p>
+                    <p className="text-[13px] font-bold text-foreground">May 2023</p>
+                 </div>
+              </div>
+
+              <Link href={`/writer/messages?session=${task.id}`} className="block">
+                <button className="w-full h-12 rounded-2xl glass border-primary/20 text-primary hover:bg-primary hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg">
+                   <MessageSquare className="size-4" /> Message Principal
+                </button>
+              </Link>
+           </div>
+
+           {/* Financial Breakdown */}
+           <div className="glass rounded-[2rem] p-8 bg-gradient-to-br from-primary/5 to-transparent border-primary/10">
+              <div className="flex items-center justify-between mb-8">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Agreed Budget</p>
+                  <p className="text-3xl font-black text-foreground tracking-tight">${parseFloat(task.budget || 0).toFixed(2)}</p>
+                </div>
+                <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                  <DollarSign className="size-6" />
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-6 border-t border-white/5">
+                 <div className="flex items-center justify-between text-[13px] font-medium">
+                    <span className="text-muted-foreground">Escrow Status</span>
+                    <span className="text-emerald-500 font-bold flex items-center gap-1.5">
+                       <CheckCircle2 className="size-3.5" /> Secured
+                    </span>
+                 </div>
+                 <div className="flex items-center justify-between text-[13px] font-medium">
+                    <span className="text-muted-foreground">Platform Fee</span>
+                    <span className="text-foreground font-bold">$0.00</span>
+                 </div>
+                 <div className="h-px bg-white/5 my-2" />
+                 <div className="flex items-center justify-between pt-1">
+                    <span className="text-foreground text-[15px] font-bold">Net Earnings</span>
+                    <span className="text-primary text-[18px] font-black">${parseFloat(task.budget || 0).toFixed(2)}</span>
+                 </div>
+              </div>
+           </div>
+
+           {/* Safety Protocol */}
+           <div className="bg-amber-500/10 rounded-[2rem] p-8 border border-amber-500/20 flex gap-4 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 size-24 bg-amber-500/10 rounded-full blur-2xl" />
+              <AlertTriangle className="size-6 text-amber-600 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+              <div className="space-y-2 relative z-10">
+                 <p className="text-[11px] font-bold text-amber-600 uppercase tracking-widest">Integrity Protocol</p>
+                 <p className="text-[12px] text-amber-900/80 leading-relaxed font-semibold">
+                    Always maintain academic integrity. Avoid external payments and keep all project communication within the platform for your protection.
+                 </p>
+              </div>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -16,7 +16,12 @@ import {
   ChevronRight,
   CalendarDays,
   AlertCircle,
-  Gavel
+  Gavel,
+  Search,
+  Bell,
+  Activity,
+  Zap,
+  Target
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -24,31 +29,79 @@ import { cn } from "@/lib/utils";
 import { taskService } from "@/services/task.service";
 import { formatDistanceToNow } from "date-fns";
 
-/* ─── tiny helpers ──────────────────────────────── */
-function Card({ className, children }: { className?: string; children: React.ReactNode }) {
+/* ─── Advanced UI Components ────────────────────── */
+
+function PremiumCard({ className, children, title, subtitle, action }: { 
+  className?: string; 
+  children: React.ReactNode;
+  title?: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
   return (
-    <div className={cn("rounded-[20px] bg-white/80 backdrop-blur-sm shadow-[0_2px_16px_rgba(120,80,220,0.06)] border border-white/60", className)}>
-      {children}
+    <div className={cn("glass rounded-[2rem] p-8 relative group transition-all duration-300 hover:shadow-2xl hover:shadow-primary/5 border border-white/10", className)}>
+      {(title || action) && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 relative z-20">
+          <div>
+            {title && <h3 className="text-lg font-bold text-foreground tracking-tight">{title}</h3>}
+            {subtitle && <p className="text-[12px] text-muted-foreground font-medium mt-1">{subtitle}</p>}
+          </div>
+          {action && <div className="relative z-30">{action}</div>}
+        </div>
+      )}
+      <div className="relative z-10">{children}</div>
+      {/* Subtle inner glow */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none rounded-[2rem]" />
     </div>
   );
 }
 
-function StatBadge({ value, positive }: { value: string; positive: boolean }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
-        positive
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-red-100 text-red-600"
-      )}
-    >
-      {value}
-    </span>
+function StatCard({ label, value, icon: Icon, trend, color, href }: { 
+  label: string; 
+  value: string; 
+  icon: any; 
+  trend?: { val: string; pos: boolean };
+  color: string;
+  href?: string;
+}) {
+  const CardContent = (
+    <PremiumCard className="p-6 cursor-pointer hover:bg-white/[0.02] h-full flex flex-col justify-between">
+      <div className="flex items-start justify-between mb-6">
+        <div className={cn("size-12 rounded-2xl flex items-center justify-center shadow-lg shadow-black/5", color)}>
+          <Icon className="size-6 text-white" strokeWidth={2.5} />
+        </div>
+        <div className="text-muted-foreground/40 hover:text-foreground transition-colors pt-1">
+          <ArrowUpRight className="size-5" />
+        </div>
+      </div>
+      <div>
+        <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em] mb-2">{label}</p>
+        <div className="flex items-center justify-between">
+          <span className="text-2xl font-bold text-foreground tracking-tight leading-none">
+            {value}
+          </span>
+          {trend && (
+            <span className={cn(
+              "text-[10px] font-bold px-2 py-1 rounded-lg",
+              trend.pos ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+            )}>
+              {trend.val}
+            </span>
+          )}
+        </div>
+      </div>
+    </PremiumCard>
   );
+
+  if (href) {
+    return <Link href={href} className="h-full">{CardContent}</Link>;
+  }
+
+  return <div className="h-full">{CardContent}</div>;
 }
 
 /* ─── main component ─────────────────────────────── */
+
 export default function CustomerDashboard() {
   const [statsData, setStatsData] = React.useState<any>(null);
   const [userName, setUserName] = React.useState("Academic");
@@ -74,321 +127,344 @@ export default function CustomerDashboard() {
     fetchData();
   }, []);
 
-  const stats = [
-    {
-      label: "Your account balance",
-      value: statsData ? `$${statsData.balance.toFixed(2)}` : "$0.00",
-      icon: Wallet,
-      badge: null,
-    },
-    {
-      label: "Active projects",
-      value: statsData ? statsData.active_projects_count.toString().padStart(2, '0') : "00",
-      icon: ShoppingBag,
-      badge: null,
-    },
-    {
-      label: "Completed tasks",
-      value: statsData ? statsData.completed_tasks_count.toString().padStart(2, '0') : "00",
-      icon: CheckCircle2,
-      badge: null,
-    },
-    {
-      label: "This week's spending",
-      value: statsData ? `$${statsData.spending_this_week.toFixed(2)}` : "$0.00",
-      icon: TrendingUp,
-      badge: <StatBadge value="+0%" positive />,
-    },
-  ];
-
-  const barData = [
-    { month: "Jan", offline: 35, online: 55 },
-    { month: "Feb", offline: 58, online: 75 },
-    { month: "Mar", offline: 42, online: 48 },
-    { month: "Apr", offline: 70, online: 90 },
-    { month: "May", offline: 78, online: 100 },
-    { month: "Jun", offline: 55, online: 68 },
-    { month: "Jul", offline: 40, online: 50 },
-    { month: "Aug", offline: 48, online: 60 },
-    { month: "Sep", offline: 30, online: 42 },
-  ];
-
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <div className="size-8 border-[3px] border-[#7C5CFC] border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-[#9490a8] uppercase tracking-widest">Compiling Dashboard...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-reveal">
+        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-primary/20 animate-pulse" />
+          <Activity className="size-6 text-primary animate-bounce" />
+        </div>
+        <div className="space-y-2 text-center">
+          <p className="text-sm font-bold text-foreground tracking-tight uppercase tracking-[0.2em]">Synchronizing Portal</p>
+          <div className="w-48 h-1 bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-primary animate-progress" style={{ width: '40%' }} />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-12 animate-reveal pt-10 pb-10 px-2 lg:px-0">
+      
+      {/* Page content starts here */}
 
-      {/* ── Greeting ─────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[22px] font-bold text-[#1a1033] tracking-tight">
-            Good morning, {userName}! 👋
-          </h1>
-          <p className="text-sm text-[#9490a8] mt-0.5">
-            Here's what's happening with your academic projects today.
-          </p>
-        </div>
-        <Link href="/customer/create-task">
-          <Button className="h-10 px-5 rounded-full text-sm font-semibold bg-[#7C5CFC] hover:bg-[#6d4ef0] text-white shadow-md shadow-violet-400/20 gap-2 border-none transition-all">
-            <PlusCircle className="size-4" />
-            New Project
-          </Button>
-        </Link>
-      </div>
-
-      {/* ── Two-column layout ─────────────────────── */}
-      <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
-
-        {/* ── LEFT COLUMN ── */}
-        <div className="space-y-5">
-
-          {/* ── Stat cards ── */}
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-            {stats.map((s, i) => (
-              <Card key={i} className="p-5 group hover:shadow-[0_4px_24px_rgba(120,80,220,0.12)] transition-shadow duration-200">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="size-9 rounded-xl bg-[#F2EEFF] flex items-center justify-center">
-                    <s.icon className="size-4 text-[#7C5CFC]" strokeWidth={1.8} />
-                  </div>
-                  <button className="text-[#c4bfd8] hover:text-[#9490a8] transition-colors">
-                    <MoreHorizontal className="size-4" />
-                  </button>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-end gap-2">
-                    <span className="text-2xl font-bold text-[#1a1033] tracking-tight leading-none">
-                      {s.value}
-                    </span>
-                    {s.badge}
-                  </div>
-                  <p className="text-xs text-[#9490a8] leading-snug">{s.label}</p>
-                </div>
-              </Card>
-            ))}
+      {/* ── Greeting & Welcome Hero ── */}
+      <div className="glass rounded-[2rem] p-8 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 border-gradient">
+        <div className="absolute -bottom-24 -left-24 size-64 bg-primary/10 rounded-full blur-3xl" />
+        
+        <div className="relative z-10 space-y-4">
+          <div className="size-14 rounded-2xl glass bg-white/50 flex items-center justify-center animate-float">
+            <span className="text-3xl">👋</span>
           </div>
-
-          {/* ── Chart card ── */}
-          <Card className="p-6">
-            <div className="flex items-start justify-between mb-1">
-              <div>
-                <h2 className="text-base font-bold text-[#1a1033]">Project Activity</h2>
-                <p className="text-xs text-[#9490a8] mt-0.5">Monthly overview of academic expenditure</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="flex items-center gap-1.5 text-xs text-[#6b7280] bg-[#F5F3FF] border border-[#ebe5ff] rounded-full px-3 py-1.5 hover:bg-[#ede9ff] transition-colors">
-                  <CalendarDays className="size-3 text-[#7C5CFC]" />
-                  Current Month
-                  <svg className="size-3" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-                <button className="size-8 rounded-xl bg-[#F5F3FF] border border-[#ebe5ff] flex items-center justify-center text-[#7C5CFC] hover:bg-[#ede9ff] transition-colors">
-                  <ArrowUpRight className="size-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Metric pills */}
-            <div className="flex items-center gap-6 my-5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold text-[#1a1033]">$1,200.00</span>
-                  <StatBadge value="-11%" positive={false} />
-                </div>
-                <p className="text-[11px] text-[#9490a8] mt-0.5">Escrow balance</p>
-              </div>
-              <div className="w-px h-10 bg-[#ede9ff]" />
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold text-[#1a1033]">$3,450.00</span>
-                  <StatBadge value="+6%" positive />
-                </div>
-                <p className="text-[11px] text-[#9490a8] mt-0.5">Total project value</p>
-              </div>
-            </div>
-
-            {/* Bar chart */}
-            <div className="flex items-end gap-2 h-36">
-              <div className="flex flex-col justify-between h-full pr-2 flex-shrink-0">
-                {["$1.2k", "$1k", "$800", "$600", "$400", "$200", "0"].map((v) => (
-                  <span key={v} className="text-[9px] text-[#c4bfd8] font-medium leading-none">{v}</span>
-                ))}
-              </div>
-              {barData.map((d, i) => {
-                const isHighlight = i === 4;
-                return (
-                  <div key={d.month} className="flex-1 flex flex-col items-center gap-1 group/bar">
-                    <div className="w-full flex items-end justify-center gap-0.5 h-28">
-                      <div
-                        className={cn("w-[45%] rounded-t-md transition-all duration-500", isHighlight ? "bg-[#7C5CFC]" : "bg-[#DDD6FE] group-hover/bar:bg-[#c4b5fd]")}
-                        style={{ height: `${d.offline}%` }}
-                      />
-                      <div
-                        className={cn("w-[45%] rounded-t-md transition-all duration-500", isHighlight ? "bg-[#A78BFA]" : "bg-[#EDE9FE] group-hover/bar:bg-[#ddd6fe]")}
-                        style={{ height: `${d.online}%` }}
-                      />
-                    </div>
-                    <span className={cn("text-[9px] font-medium", isHighlight ? "text-[#7C5CFC]" : "text-[#c4bfd8]")}>
-                      {d.month}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-
-          {/* ── Recent activity ── */}
-          <Card>
-            <div className="flex items-center justify-between px-6 pt-5 pb-4">
-              <h2 className="text-base font-bold text-[#1a1033]">Recent Activity</h2>
-              <Link href="/customer/orders">
-                <button className="flex items-center gap-1 text-xs font-semibold text-[#7C5CFC] hover:text-[#6d4ef0] transition-colors">
-                  See all <ChevronRight className="size-3.5" />
-                </button>
-              </Link>
-            </div>
-            <div className="divide-y divide-[#f5f3ff]">
-              {statsData?.recent_activity?.length > 0 ? (
-                statsData.recent_activity.map((a: any) => (
-                  <div key={a.id} className="px-6 py-3.5 flex items-center gap-4 hover:bg-[#faf9ff] transition-colors">
-                    <div className={cn(
-                      "size-9 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br",
-                      a.status === "OPEN" ? "from-violet-500 to-indigo-600" :
-                      a.status === "SUBMITTED" ? "from-emerald-400 to-teal-600" :
-                      "from-[#7C5CFC] to-[#A78BFA]"
-                    )}>
-                      {a.status === "OPEN" ? <Gavel className="size-4 text-white" /> : <FileText className="size-4 text-white" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-[#1a1033] truncate">{a.title}</p>
-                      <p className="text-[11px] text-[#9490a8] mt-0.5">{formatDistanceToNow(new Date(a.updated_at), { addSuffix: true })}</p>
-                    </div>
-                    <span className={cn(
-                      "text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap",
-                      a.status === "OPEN" ? "bg-violet-100 text-violet-700" :
-                      a.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700" :
-                      "bg-indigo-50 text-indigo-700"
-                    )}>
-                      {a.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="p-10 text-center text-[#9490a8] text-xs font-medium italic">
-                  No recent activity found. Start a new project to get started!
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-
-        {/* ── RIGHT COLUMN ── */}
-        <div className="space-y-4">
-
-          {/* Account Card */}
-          <Card className="p-5">
-            <div className="flex items-start justify-between mb-1">
-              <div>
-                <h3 className="text-sm font-bold text-[#1a1033]">Project Flow</h3>
-                <p className="text-[11px] text-[#7C5CFC] font-semibold mt-0.5">Bidding active</p>
-              </div>
-              <button className="size-7 rounded-lg bg-[#F5F3FF] flex items-center justify-center text-[#7C5CFC] hover:bg-[#ede9ff] transition-colors">
-                <ArrowUpRight className="size-3.5" />
-              </button>
-            </div>
-            <div className="mt-4 h-2.5 rounded-full bg-[#EDE9FE] overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-[#7C5CFC] to-[#A78BFA]"
-                style={{ width: "65%" }}
-              />
-            </div>
-            <div className="mt-4 space-y-1">
-              <p className="text-[11px] text-[#9490a8]">Awaiting Expert Bids</p>
-              <p className="text-xs font-semibold text-[#1a1033]">Check your active tasks</p>
-            </div>
+          <div className="space-y-1.5">
+            <h1 className="text-3xl font-bold text-foreground tracking-tight leading-tight">
+              Good morning, <span className="text-primary">{userName}!</span>
+            </h1>
+            <p className="text-sm text-muted-foreground font-medium max-w-md leading-relaxed">
+              You have <span className="text-foreground font-bold">{statsData?.active_projects_count ?? statsData?.active_accepted_count ?? 0} active projects</span> and several new expert bids awaiting your review.
+            </p>
+          </div>
+          <div className="pt-2 flex items-center gap-4">
+            <Link href="/customer/create-task">
+              <Button className="h-11 px-6 rounded-xl font-bold bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all gap-2">
+                <PlusCircle className="size-4.5" />
+                New Project
+              </Button>
+            </Link>
             <Link href="/customer/orders">
-              <button className="mt-4 w-full h-9 rounded-xl border border-[#e5e0f5] text-[12px] font-semibold text-[#1a1033] hover:bg-[#faf9ff] transition-colors">
-                Review Bids
+              <button className="text-[13px] font-bold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
+                View All Deadlines <ChevronRight className="size-4" />
               </button>
             </Link>
-          </Card>
+          </div>
+        </div>
+
+        <div className="relative z-10 w-full md:w-auto">
+          <div className="glass bg-white/40 p-6 rounded-3xl border-white/50 shadow-2xl shadow-black/5 max-w-xs ml-auto">
+            <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.1em] mb-4">Most Active Project</p>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="size-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
+                <Activity className="size-6 text-indigo-500" />
+              </div>
+              <div>
+                <p className="text-[13px] font-bold text-foreground truncate max-w-[120px]">AI Healthcare System</p>
+                <p className="text-[10px] text-muted-foreground font-semibold">Machine Learning</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-[11px] font-bold">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="text-primary">75%</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full bg-primary" style={{ width: '75%' }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stats Grid ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          label="Posted Tasks" 
+          value={statsData ? (statsData.total_posted_count || 0).toString().padStart(2, '0') : "00"} 
+          icon={FileText} 
+          color="bg-[#7C5CFC]" 
+          trend={{ val: "Total", pos: true }}
+          href="/customer/orders"
+        />
+        <StatCard 
+          label="Active Tasks" 
+          value={statsData ? (statsData.active_accepted_count || 0).toString().padStart(2, '0') : "00"} 
+          icon={Activity} 
+          color="bg-[#4F46E5]" 
+          trend={{ val: "Accepted", pos: true }}
+          href="/customer/orders?status=active"
+        />
+        <StatCard 
+          label="Completed Tasks" 
+          value={statsData ? (statsData.completed_tasks_count || 0).toString().padStart(2, '0') : "00"} 
+          icon={CheckCircle2} 
+          color="bg-emerald-500" 
+          trend={{ val: "+20.0%", pos: true }}
+          href="/customer/orders"
+        />
+        <StatCard 
+          label="Weekly Spending" 
+          value={statsData ? `$${statsData.spending_this_week.toFixed(2)}` : "$0.00"} 
+          icon={TrendingUp} 
+          color="bg-amber-500" 
+          trend={{ val: "-6.2%", pos: false }}
+          href="/customer/payments"
+        />
+      </div>
+
+      {/* ── Main Dashboard Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left 2 Columns */}
+        <div className="lg:col-span-2 space-y-12">
+          
+          {/* Performance Overview (Chart placeholder style) */}
+          <PremiumCard 
+            title="Performance Overview" 
+            subtitle="Monthly breakdown of project investments"
+            action={
+              <select className="glass px-4 py-2 rounded-xl text-[11px] font-bold outline-none border-white/5 cursor-pointer">
+                <option>This Month</option>
+                <option>Last Month</option>
+              </select>
+            }
+          >
+            <div className="h-[350px] flex items-end justify-between gap-4 pt-12 pb-4 relative">
+              {(() => {
+                const data = statsData?.monthly_data || [
+                  {month: 'Jan', value: 0}, {month: 'Feb', value: 0}, {month: 'Mar', value: 0},
+                  {month: 'Apr', value: 0}, {month: 'May', value: 0}, {month: 'Jun', value: 0},
+                  {month: 'Jul', value: 0}, {month: 'Aug', value: 0}, {month: 'Sep', value: 0},
+                  {month: 'Oct', value: 0}, {month: 'Nov', value: 0}, {month: 'Dec', value: 0}
+                ];
+                const maxVal = Math.max(...data.map((m: any) => m.value), 5);
+                
+                return data.map((item: any, i: number) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-4 group h-full">
+                    <div className="relative w-full flex-1 flex items-end justify-center min-h-[150px]">
+                      <div className="w-2 bg-primary/10 rounded-t-full absolute inset-y-0 mx-auto" />
+                      <div 
+                        className="w-2 bg-primary rounded-t-full shadow-[0_0_15px_rgba(var(--primary),0.3)] transition-all duration-700 relative z-10" 
+                        style={{ height: `${(item.value / maxVal) * 100}%` }}
+                      />
+                      {item.value > 0 && (
+                        <div className="absolute -top-8 bg-foreground text-background text-[9px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                          ${item.value.toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-muted-foreground/40 group-hover:text-primary transition-colors">
+                      {item.month}
+                    </span>
+                  </div>
+                ));
+              })()}
+            </div>
+          </PremiumCard>
+
+          {/* Active Projects Table-like List */}
+          <PremiumCard 
+            title="Active Projects" 
+            subtitle="Real-time status of your ongoing tasks"
+            action={
+              <button className="text-[12px] font-bold text-primary hover:underline">View All</button>
+            }
+            className="min-h-[400px]"
+          >
+            <div className="overflow-x-auto pt-4">
+              <table className="w-full text-left">
+                <thead className="bg-white/5 border-y border-white/5">
+                  <tr className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.15em]">
+                    <th className="px-6 py-4">Project Name</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Budget</th>
+                    <th className="px-6 py-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {statsData?.recent_activity?.filter((p: any) => p.status !== 'OPEN' && p.status !== 'COMPLETED' && p.status !== 'CANCELLED' && p.status !== 'SUBMITTED').slice(0, 4).map((proj: any) => (
+                    <tr key={proj.id} className="group hover:bg-white/[0.02] transition-colors">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="size-9 rounded-xl glass flex items-center justify-center text-primary">
+                            <FileText className="size-4.5" />
+                          </div>
+                          <div>
+                            <p className="text-[13px] font-bold text-foreground">{proj.title}</p>
+                            <p className="text-[10px] text-muted-foreground font-semibold">Academic Writing</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("size-1.5 rounded-full", proj.status === 'OPEN' ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500')} />
+                            <span className={cn("text-[11px] font-bold", proj.status === 'OPEN' ? 'text-amber-500' : 'text-emerald-500')}>{proj.status}</span>
+                          </div>
+                          <div className="w-24 h-1 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-primary" style={{ width: proj.status === 'OPEN' ? '20%' : '100%' }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-right font-bold text-[13px] text-foreground">
+                        $500.00
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <Link href={`/customer/orders`}>
+                          <Button variant="ghost" size="sm" className="h-8 px-4 rounded-xl text-[11px] font-bold border border-white/10 hover:bg-white/10">
+                            View
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </PremiumCard>
+        </div>
+
+        {/* Right Sidebar Column */}
+        <div className="space-y-12">
+          
+          {/* Project Pipeline */}
+          <PremiumCard title="Project Pipeline">
+            <div className="space-y-5">
+              {[
+                { label: 'Posted', count: statsData?.total_posted_count ?? 0, color: 'bg-indigo-500' },
+                { 
+                  label: 'Bidding', 
+                  count: statsData?.pipeline_bidding ?? statsData?.pipeline?.bidding ?? (statsData?.recent_activity?.filter((a: any) => a.status === 'OPEN').length || 0), 
+                  color: 'bg-amber-500' 
+                },
+                { 
+                  label: 'In Progress', 
+                  count: statsData?.pipeline_in_progress ?? statsData?.pipeline?.in_progress ?? (statsData?.recent_activity?.filter((a: any) => ['ASSIGNED', 'IN_PROGRESS', 'REVISION_REQUESTED', 'SUBMITTED', 'PENDING_PAYMENT'].includes(a.status)).length || 0), 
+                  color: 'bg-primary' 
+                },
+                { label: 'Completed', count: statsData?.completed_tasks_count ?? 0, color: 'bg-emerald-500' },
+              ].map((item, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex justify-between text-[11px] font-bold">
+                    <span className="text-muted-foreground">{item.label}</span>
+                    <span className="text-foreground">{item.count}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div 
+                      className={cn("h-full rounded-full transition-all duration-1000", item.color)} 
+                      style={{ width: `${((statsData?.total_posted_count ?? 0) > 0) ? (item.count / (statsData?.total_posted_count ?? 1)) * 100 : 0}%` }} 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </PremiumCard>
 
           {/* Success Rate */}
-          <Card className="p-5">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-[#1a1033]">Success Rate</h3>
-                <p className="text-[11px] text-[#9490a8] mt-0.5">Projects completed on time</p>
-              </div>
-              <button className="size-7 rounded-lg bg-[#F5F3FF] flex items-center justify-center text-[#7C5CFC] hover:bg-[#ede9ff] transition-colors">
-                <ArrowUpRight className="size-3.5" />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-center my-2">
-              <div className="relative size-28">
+          <PremiumCard title="Success Rate">
+            <div className="flex items-center justify-center py-4">
+              <div className="relative size-36">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#EDE9FE" strokeWidth="9" strokeLinecap="round"/>
-                  <circle
-                    cx="50" cy="50" r="38" fill="none"
-                    stroke="#7C5CFC"
-                    strokeWidth="9"
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
+                  <circle 
+                    cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="8" 
+                    className="text-primary drop-shadow-[0_0_8px_rgba(var(--primary),0.5)] transition-all duration-1000" 
+                    strokeDasharray="251.2"
+                    strokeDashoffset={251.2 * (1 - (statsData?.total_posted_count > 0 ? (statsData?.completed_tasks_count / statsData?.total_posted_count) : 0))}
                     strokeLinecap="round"
-                    strokeDasharray={`${2 * Math.PI * 38 * 0.512} ${2 * Math.PI * 38}`}
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xl font-bold text-[#1a1033]">51.2%</span>
-                  <span className="text-[10px] text-emerald-500 font-bold">+5%</span>
+                  <span className="text-3xl font-bold text-foreground">
+                    {statsData?.total_posted_count > 0 
+                      ? Math.round((statsData?.completed_tasks_count / statsData?.total_posted_count) * 100) 
+                      : 0}%
+                  </span>
+                  <div className="flex items-center gap-1 text-[10px] text-emerald-500 font-bold">
+                    <TrendingUp className="size-3" />
+                    +{(statsData?.completed_tasks_count || 0) > 0 ? "5.2%" : "0%"}
+                  </div>
                 </div>
               </div>
             </div>
-
-            <p className="text-[11px] text-[#9490a8] text-center leading-relaxed mb-5">
-              Your academic trajectory is looking great!
+            <p className="text-[11px] text-muted-foreground text-center leading-relaxed font-medium">
+              Your project success rate is calculated based on <span className="text-foreground font-bold">completed</span> tasks vs total posted.
             </p>
-
-            <div className="flex divide-x divide-[#f0ebff]">
-              <div className="flex-1 text-center pr-3">
-                <p className="text-xs text-[#9490a8] mb-1">Active</p>
-                <p className="text-lg font-bold text-[#1a1033]">{statsData?.active_projects_count || 0}</p>
-              </div>
-              <div className="flex-1 text-center pl-3">
-                <p className="text-xs text-[#9490a8] mb-1">Done</p>
-                <p className="text-lg font-bold text-[#1a1033]">{statsData?.completed_tasks_count || 0}</p>
-              </div>
-            </div>
-          </Card>
+          </PremiumCard>
 
           {/* Quick Actions */}
-          <Card className="p-5">
-            <h3 className="text-sm font-bold text-[#1a1033] mb-3">Quick Actions</h3>
-            <div className="space-y-2">
+          <PremiumCard title="Quick Actions">
+            <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "New Project", desc: "Post a task for bidding", icon: FileText, href: "/customer/create-task" },
-                { label: "Messages", desc: "Chat with experts", icon: MessageSquare, href: "/customer/messages" },
-                { label: "My Projects", desc: "Review bids & status", icon: RotateCcw, href: "/customer/orders" },
-              ].map((a, i) => (
-                <Link key={i} href={a.href}>
-                  <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#faf9ff] transition-colors group">
-                    <div className="size-8 rounded-lg bg-[#F2EEFF] flex items-center justify-center flex-shrink-0 group-hover:bg-[#e9e0fd] transition-colors">
-                      <a.icon className="size-4 text-[#7C5CFC]" strokeWidth={1.8} />
+                { label: 'New Project', icon: PlusCircle, color: 'text-primary', bg: 'bg-primary/10', href: '/customer/create-task' },
+                { label: 'Messages', icon: MessageSquare, color: 'text-indigo-500', bg: 'bg-indigo-500/10', href: '/customer/messages' },
+                { label: 'Add Funds', icon: Wallet, color: 'text-emerald-500', bg: 'bg-emerald-500/10', href: '/customer/payments' },
+                { label: 'Reports', icon: TrendingUp, color: 'text-amber-500', bg: 'bg-amber-500/10', href: '/customer/dashboard' },
+              ].map((action, i) => (
+                <Link key={i} href={action.href}>
+                  <div className="glass bg-white/5 border-white/5 p-4 rounded-2xl flex flex-col items-center gap-3 group hover:bg-white/10 transition-all text-center">
+                    <div className={cn("size-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform", action.bg)}>
+                      <action.icon className={cn("size-5", action.color)} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-[#1a1033]">{a.label}</p>
-                      <p className="text-[10px] text-[#9490a8]">{a.desc}</p>
-                    </div>
-                    <ChevronRight className="size-3.5 text-[#c4bfd8] group-hover:text-[#7C5CFC] transition-colors" />
+                    <span className="text-[11px] font-bold text-foreground">{action.label}</span>
                   </div>
                 </Link>
               ))}
             </div>
-          </Card>
+          </PremiumCard>
+
+          {/* Recent Activity Mini List */}
+          <PremiumCard title="Recent Activity" action={<button className="text-[11px] font-bold text-primary hover:underline">View All</button>}>
+            <div className="space-y-6">
+              {statsData?.recent_activity?.slice(0, 3).map((act: any) => (
+                <Link key={act.id} href={`/customer/orders`} className="block">
+                  <div className="flex gap-4 relative group cursor-pointer">
+                    <div className="absolute left-[15px] top-8 bottom-[-24px] w-0.5 bg-white/5 last:hidden" />
+                    <div className="size-8 rounded-full glass border-white/10 flex items-center justify-center flex-shrink-0 z-10 group-hover:scale-110 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
+                      <Zap className="size-3.5 text-primary group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[12px] font-bold text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-1">
+                        {act.title}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-medium">
+                        {formatDistanceToNow(new Date(act.updated_at), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </PremiumCard>
         </div>
       </div>
     </div>

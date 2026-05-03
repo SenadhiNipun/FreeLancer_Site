@@ -32,8 +32,8 @@ export function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications();
-    // Refresh notifications every minute
-    const interval = setInterval(fetchNotifications, 60000);
+    // Refresh notifications every 10 seconds for a more responsive feel
+    const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -65,6 +65,8 @@ export function NotificationBell() {
         return { icon: Check, color: "text-green-500", bg: "bg-green-50" };
       case "NEW_MESSAGE":
         return { icon: MessageSquare, color: "text-[#7C5CFC]", bg: "bg-violet-50" };
+      case "BID_RECEIVED":
+        return { icon: Info, color: "text-indigo-500", bg: "bg-indigo-50" };
       default:
         return { icon: Info, color: "text-blue-500", bg: "bg-blue-50" };
     }
@@ -88,8 +90,8 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white border border-border shadow-2xl shadow-black/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="p-4 border-b border-border flex items-center justify-between bg-white">
+        <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-3xl glass overflow-hidden z-50 animate-reveal">
+          <div className="p-5 border-b border-white/10 flex items-center justify-between">
             <h3 className="text-sm font-bold text-foreground">Notifications</h3>
             {unreadCount > 0 && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider">
@@ -117,31 +119,39 @@ export function NotificationBell() {
                       if (!n.is_read) await handleMarkAsRead(n.id);
                       setIsOpen(false);
                       
+                      const rolesStr = localStorage.getItem("user_roles");
+                      const roles = rolesStr ? JSON.parse(rolesStr) : [];
+                      const isWriter = roles.includes("WRITER");
+
                       if (n.notification_type === "NEW_MESSAGE" && n.related_id) {
-                        const rolesStr = localStorage.getItem("user_roles");
-                        const roles = rolesStr ? JSON.parse(rolesStr) : [];
-                        const basePath = roles.includes("WRITER") ? "/writer" : "/customer";
+                        const basePath = isWriter ? "/writer" : "/customer";
                         router.push(`${basePath}/messages?session=${n.related_id}`);
+                      } else if (n.notification_type === "BID_RECEIVED" && n.related_id) {
+                        router.push(`/customer/orders/${n.related_id}`);
+                      } else if (n.notification_type === "BID_ACCEPTED" && n.related_id) {
+                        router.push(`/writer/tasks/${n.related_id}`);
+                      } else if (n.notification_type === "TASK_AVAILABLE" && n.related_id) {
+                        router.push(`/writer/tasks/available`);
                       }
                     }}
                     className={cn(
-                      "p-4 flex gap-4 cursor-pointer transition-colors border-b border-border/50 last:border-0",
-                      n.is_read ? "opacity-60 grayscale-[0.5]" : "hover:bg-muted/30"
+                      "p-5 flex gap-4 cursor-pointer transition-all border-b border-white/5 last:border-0 hover:bg-white/5",
+                      n.is_read ? "opacity-50" : "bg-white/[0.02]"
                     )}
                   >
-                    <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0", styles.bg)}>
-                      <Icon className={cn("size-5", styles.color)} />
+                    <div className={cn("size-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-black/5", styles.bg)}>
+                      <Icon className={cn("size-6", styles.color)} />
                     </div>
-                    <div className="space-y-1 min-w-0">
-                      <p className="text-[13px] font-bold text-foreground leading-tight">{n.title}</p>
-                      <p className="text-[12px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</p>
-                      <div className="flex items-center gap-1.5 pt-1 text-[10px] text-muted-foreground/60 font-medium">
-                        <Clock className="size-3" />
+                    <div className="space-y-1.5 min-w-0">
+                      <p className="text-[14px] font-bold text-foreground leading-tight">{n.title}</p>
+                      <p className="text-[13px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</p>
+                      <div className="flex items-center gap-2 pt-1.5 text-[11px] text-muted-foreground/60 font-bold uppercase tracking-wider">
+                        <Clock className="size-3.5" />
                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                       </div>
                     </div>
                     {!n.is_read && (
-                      <div className="size-2 rounded-full bg-primary shrink-0 mt-2" />
+                      <div className="size-2.5 rounded-full bg-primary shrink-0 mt-2 shadow-[0_0_12px_rgba(var(--primary),0.5)]" />
                     )}
                   </div>
                 );

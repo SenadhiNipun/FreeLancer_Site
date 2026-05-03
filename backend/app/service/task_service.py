@@ -1,3 +1,4 @@
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.entity.task_entity import TaskEntity
 from app.entity.task_bid_entity import TaskBidEntity
@@ -9,7 +10,7 @@ from app.model.create_task_request import CreateTaskRequest
 from app.model.submit_task_request import SubmitTaskRequest
 from app.model.revision_request import RevisionRequest
 from app.model.bid_request import BidRequest
-from app.model.task_response import TaskResponse
+from app.model.task_response import TaskResponse, TaskFileResponse
 from app.model.bid_response import BidResponse
 from app.model.task_workflow_response import SubmissionResponse, RevisionResponse
 from app.exceptions.exception import NotFoundException, ValidationException
@@ -128,6 +129,18 @@ class TaskService:
             TaskBidEntity.bid_status == "PENDING",
         ).update({"bid_status": "REJECTED"})
 
+        # Create task assignment for the writer
+        from app.entity.task_assignment_entity import TaskAssignmentEntity
+        from datetime import datetime
+        
+        assignment = TaskAssignmentEntity(
+            task_id=task_id,
+            writer_id=bid.writer_id,
+            assignment_status="ACCEPTED",
+            accepted_at=datetime.now()
+        )
+        db.add(assignment)
+
         db.commit()
         db.refresh(task)
         db.refresh(bid)
@@ -161,12 +174,74 @@ class TaskService:
     # ──────────────────────────────────────────────
     @staticmethod
     def get_customer_dashboard_stats(db: Session, customer_id: int):
-        tasks = db.query(TaskEntity).filter(TaskEntity.customer_id == customer_id).all()
+        tasks = db.query(TaskEntity).filter(TaskEntity.customer_id == customer_id, TaskEntity.is_delete == False).all()
         
-        active_projects = [t for t in tasks if t.task_status not in ["COMPLETED", "CANCELLED"]]
+        # Total posted tasks (all statuses)
+        total_posted = len(tasks)
+        
+        # Active projects with accepted bids (status is not OPEN and not terminal)
+        # Note: SUBMITTED is technically still active until COMPLETED (payment released/approved)
+        active_accepted = [t for t in tasks if t.task_status in ["PENDING_PAYMENT", "ASSIGNED", "IN_PROGRESS", "REVISION_REQUESTED", "SUBMITTED"]]
+        
         completed_tasks = [t for t in tasks if t.task_status == "COMPLETED"]
         
-        # Mock recent activity for now, but derived from real tasks
+        # Pipeline stats
+        bidding_tasks = [t for t in tasks if t.task_status == "OPEN"]
+        in_progress_tasks = [t for t in tasks if t.task_status in ["ASSIGNED", "IN_PROGRESS", "REVISION_REQUESTED", "SUBMITTED"]]
+        
+        # Success Rate (completed / total posted)
+        success_rate = 0
+        if total_posted > 0:
+            success_rate = int((len(completed_tasks) / total_posted) * 100)
+
+        # Real spending this week
+        from datetime import datetime, timedelta
+        from app.entity.payment_entity import PaymentEntity
+        from sqlalchemy import func
+        
+        one_week_ago = datetime.now() - timedelta(days=7)
+        weekly_spending_result = db.query(func.sum(PaymentEntity.amount)).filter(
+            PaymentEntity.customer_id == customer_id,
+            PaymentEntity.payment_status == "PAID",
+            PaymentEntity.created_at >= one_week_ago
+        ).scalar()
+        
+        spending_this_week = float(weekly_spending_result) if weekly_spending_result else 0.0
+
+        # Real monthly data (aggregated across years to ensure data visibility)
+        from sqlalchemy import extract
+        monthly_stats = db.query(
+            extract('month', TaskEntity.created_at).label('month'),
+            func.sum(TaskEntity.budget).label('total_budget')
+        ).filter(
+            TaskEntity.customer_id == customer_id,
+            TaskEntity.is_delete == False
+        ).group_by(extract('month', TaskEntity.created_at)).all()
+
+        month_map = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 
+                     7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
+        
+        # Initialize all months with zero
+        real_monthly_data = [{"month": month_map[m], "value": 0} for m in range(1, 13)]
+        for m_stat in monthly_stats:
+            if m_stat.month:
+                month_idx = int(m_stat.month)
+                if 1 <= month_idx <= 12:
+                    real_monthly_data[month_idx - 1]["value"] = float(m_stat.total_budget or 0)
+
+        monthly_data = real_monthly_data
+        
+        # Fallback manual aggregation if SQL grouping didn't return results
+        if sum(m["value"] for m in monthly_data) == 0 and tasks:
+            for t in tasks:
+                if t.created_at:
+                    try:
+                        m_idx = t.created_at.month
+                        monthly_data[m_idx - 1]["value"] += float(t.budget or 0)
+                    except:
+                        continue
+
+        # Mock recent activity
         recent_activity = []
         for t in sorted(tasks, key=lambda x: x.updated_at or x.created_at, reverse=True)[:5]:
             recent_activity.append({
@@ -177,10 +252,18 @@ class TaskService:
             })
 
         return {
-            "balance": 150.00, # Mock balance for now
-            "active_projects_count": len(active_projects),
+            "balance": 0.00,
+            "total_posted_count": total_posted,
+            "active_accepted_count": len(active_accepted),
+            "active_projects_count": len(active_accepted),
             "completed_tasks_count": len(completed_tasks),
-            "spending_this_week": 48.00, # Mock spending
+            "spending_this_week": spending_this_week,
+            "pipeline_posted": total_posted,
+            "pipeline_bidding": len(bidding_tasks),
+            "pipeline_in_progress": len(in_progress_tasks),
+            "pipeline_completed": len(completed_tasks),
+            "success_rate": success_rate,
+            "monthly_data": monthly_data,
             "recent_activity": recent_activity
         }
 
@@ -195,7 +278,8 @@ class TaskService:
             .first()
         )
 
-        query = db.query(TaskEntity).filter(
+        from sqlalchemy.orm import joinedload
+        query = db.query(TaskEntity).options(joinedload(TaskEntity.files)).filter(
             TaskEntity.task_status == "OPEN",
             TaskEntity.is_delete == False,
         )
@@ -212,7 +296,23 @@ class TaskService:
                 query = query.filter(or_(*filters))
 
         tasks = query.order_by(TaskEntity.created_at.desc()).all()
-        return [TaskResponse.model_validate(t) for t in tasks]
+        
+        results = []
+        for t in tasks:
+            resp = TaskResponse.model_validate(t)
+            # Find if this writer has a pending bid
+            from app.entity.task_bid_entity import TaskBidEntity
+            my_bid = db.query(TaskBidEntity).filter(
+                TaskBidEntity.task_id == t.id,
+                TaskBidEntity.writer_id == writer_id,
+                TaskBidEntity.bid_status == "PENDING"
+            ).first()
+            if my_bid:
+                from app.model.bid_response import BidResponse
+                resp.my_bid = BidResponse.model_validate(my_bid)
+            results.append(resp)
+            
+        return results
 
     # ──────────────────────────────────────────────
     # WRITER — place a bid
@@ -225,23 +325,29 @@ class TaskService:
         if task.task_status != "OPEN":
             raise ValidationException(detail="Task is not open for bidding")
 
-        # Prevent duplicate active bids
+        # Handle existing active bids (update instead of error)
         existing = db.query(TaskBidEntity).filter(
             TaskBidEntity.task_id == task_id,
             TaskBidEntity.writer_id == writer_id,
             TaskBidEntity.bid_status == "PENDING",
         ).first()
+        
+        is_update = False
         if existing:
-            raise ValidationException(detail="You already have a pending bid on this task")
-
-        bid = TaskBidEntity(
-            task_id=task_id,
-            writer_id=writer_id,
-            bid_amount=request.bid_amount,
-            message=request.message,
-            bid_status="PENDING",
-        )
-        db.add(bid)
+            existing.bid_amount = request.bid_amount
+            existing.message = request.message
+            bid = existing
+            is_update = True
+        else:
+            bid = TaskBidEntity(
+                task_id=task_id,
+                writer_id=writer_id,
+                bid_amount=request.bid_amount,
+                message=request.message,
+                bid_status="PENDING",
+            )
+            db.add(bid)
+        
         db.commit()
         db.refresh(bid)
 
@@ -249,8 +355,31 @@ class TaskService:
         try:
             from app.service.chat_service import ChatService
             ChatService.initialize_chat(db, task_id, task.customer_id, writer_id)
+            
+            # ── Notification for Customer ──
+            from app.entity.user_entity import UserEntity
+            writer = db.query(UserEntity).filter(UserEntity.id == writer_id).first()
+            writer_name = f"{writer.first_name} {writer.last_name}" if writer else "An expert writer"
+            
+            action_text = "updated their bid to" if is_update else "placed a new bid of"
+            title_text = "Bid Updated!" if is_update else "New Bid Received!"
+            
+            from app.service.notification_service import NotificationService
+            print(f"DEBUG: Triggering notification for customer {task.customer_id} regarding task {task_id}")
+            
+            NotificationService.create_notification(
+                db,
+                user_id=task.customer_id,
+                title=title_text,
+                message=f"{writer_name} has {action_text} ${request.bid_amount} on your project '{task.title}'.",
+                notification_type="BID_RECEIVED",
+                related_id=task_id
+            )
+            print(f"DEBUG: Notification created successfully for {title_text}")
         except Exception as e:
-            print(f"Failed to initialize chat on bid: {e}")
+            print(f"Post-bid processing error (Notification/Chat): {e}")
+            import traceback
+            traceback.print_exc()
 
         return BidResponse.model_validate(bid)
 
@@ -273,13 +402,24 @@ class TaskService:
     @staticmethod
     def get_writer_tasks(db: Session, writer_id: int):
         from app.entity.task_assignment_entity import TaskAssignmentEntity
+        from app.entity.task_bid_entity import TaskBidEntity
+        from sqlalchemy import or_
+        from sqlalchemy.orm import joinedload
+        
         tasks = (
             db.query(TaskEntity)
-            .join(TaskAssignmentEntity)
+            .outerjoin(TaskAssignmentEntity)
+            .outerjoin(TaskBidEntity)
+            .options(joinedload(TaskEntity.files))
             .filter(
-                TaskAssignmentEntity.writer_id == writer_id,
                 TaskEntity.is_delete == False,
+                or_(
+                    TaskAssignmentEntity.writer_id == writer_id,
+                    (TaskBidEntity.writer_id == writer_id) & (TaskBidEntity.bid_status == "ACCEPTED")
+                )
             )
+            .order_by(TaskEntity.created_at.desc())
+            .distinct()
             .all()
         )
         return [TaskResponse.model_validate(t) for t in tasks]
@@ -321,6 +461,8 @@ class TaskService:
             raise NotFoundException(detail="Task not found")
 
         from app.entity.task_assignment_entity import TaskAssignmentEntity
+        from app.entity.task_bid_entity import TaskBidEntity
+        
         assignment = db.query(TaskAssignmentEntity).filter(
             TaskAssignmentEntity.task_id == task_id,
             TaskAssignmentEntity.writer_id == writer_id,
@@ -328,7 +470,15 @@ class TaskService:
         ).first()
 
         if not assignment:
-            raise ValidationException(detail="Writer not assigned to this task")
+            # Fallback: check for accepted bid
+            bid = db.query(TaskBidEntity).filter(
+                TaskBidEntity.task_id == task_id,
+                TaskBidEntity.writer_id == writer_id,
+                TaskBidEntity.bid_status == "ACCEPTED"
+            ).first()
+            
+            if not bid:
+                raise ValidationException(detail="Writer not assigned to this task")
 
         submission = TaskSubmissionEntity(
             task_id=task_id,
@@ -372,3 +522,113 @@ class TaskService:
         db.commit()
         db.refresh(revision)
         return RevisionResponse.model_validate(revision)
+    @staticmethod
+    async def save_task_files_locally(db: Session, task_id: int, customer_id: int, files: List["UploadFile"]):
+        import os
+        import shutil
+        from app.entity.task_file_entity import TaskFileEntity
+        
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            raise NotFoundException(detail="Task not found")
+        
+        if task.customer_id != customer_id:
+            raise ValidationException(detail="You don't own this task")
+            
+        upload_dir = "uploads/tasks"
+        if not os.path.exists(upload_dir):
+            os.makedirs(upload_dir)
+            
+        new_files = []
+        for file in files:
+            # Create a unique filename to avoid collisions
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            safe_filename = file.filename.replace(" ", "_")
+            saved_name = f"{task_id}_{timestamp}_{safe_filename}"
+            file_path = os.path.join(upload_dir, saved_name)
+            
+            # Save file to disk
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            # Record in database
+            # Note: file_url is the path used to retrieve the file later
+            file_url = f"/uploads/tasks/{saved_name}"
+            
+            new_file = TaskFileEntity(
+                task_id=task_id,
+                uploaded_by_user_id=customer_id,
+                file_name=file.filename,
+                file_url=file_url,
+                file_type="REQUIREMENT_FILE",
+                mime_type=file.content_type,
+                file_size=getattr(file, 'size', 0)
+            )
+            db.add(new_file)
+            new_files.append(new_file)
+            
+        db.commit()
+        
+        # Notify the writer if one is assigned
+        writer = task.writer
+        if writer:
+            try:
+                from app.service.notification_service import NotificationService
+                NotificationService.create_notification(
+                    db=db,
+                    user_id=writer.id,
+                    title="New Files Added",
+                    message=f"The client added {len(new_files)} new file(s) to project '{task.title}'",
+                    notification_type="FILES_ADDED",
+                    related_id=task_id
+                )
+            except Exception as e:
+                print(f"Failed to send notification for files: {e}")
+            
+        return [TaskFileResponse.model_validate(f) for f in new_files]
+
+    # ──────────────────────────────────────────────
+    # CUSTOMER — add files to existing task (JSON Metadata version - Legacy)
+    # ──────────────────────────────────────────────
+    @staticmethod
+    def add_task_files(db: Session, task_id: int, customer_id: int, request: "AddTaskFilesRequest"):
+        from app.entity.task_file_entity import TaskFileEntity
+        
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            raise NotFoundException(detail="Task not found")
+        
+        if task.customer_id != customer_id:
+            raise ValidationException(detail="You don't own this task")
+            
+        new_files = []
+        for file_data in request.files:
+            new_file = TaskFileEntity(
+                task_id=task_id,
+                uploaded_by_user_id=customer_id,
+                file_name=file_data.file_name,
+                file_url=file_data.file_url,
+                file_type=file_data.file_type,
+                mime_type=file_data.mime_type,
+                file_size=file_data.file_size
+            )
+            db.add(new_file)
+            new_files.append(new_file)
+            
+        db.commit()
+        
+        # Notify the writer if one is assigned
+        writer = task.writer
+        if writer:
+            from app.service.notification_service import NotificationService
+            NotificationService.create_notification(
+                db=db,
+                user_id=writer.id,
+                title="New Files Added",
+                message=f"The client added {len(new_files)} new file(s) to project '{task.title}'",
+                notification_type="FILES_ADDED",
+                related_id=task_id
+            )
+            
+        return [TaskFileResponse.model_validate(f) for f in new_files]

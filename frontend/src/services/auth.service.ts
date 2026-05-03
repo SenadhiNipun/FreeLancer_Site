@@ -59,6 +59,13 @@ export const authService = {
       },
     });
   },
+
+  refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
+    return apiClient('/api/v1/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  },
   
   registerWriter: async (data: any): Promise<AuthResponse> => {
     // Ensure phone_number is mapped to mobile_number and whatsapp_number if needed
@@ -76,7 +83,9 @@ export const authService = {
 
   logout: () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("refresh_token");
     localStorage.removeItem("user_roles");
+    localStorage.removeItem("user");
     window.location.href = "/";
   },
 };

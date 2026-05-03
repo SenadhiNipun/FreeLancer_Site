@@ -24,6 +24,7 @@ import { useParams, useRouter } from "next/navigation";
 import { taskService } from "@/services/task.service";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getFileUrl } from "@/lib/api-client";
 
 export default function OrderDetails() {
   const params = useParams();
@@ -110,37 +111,116 @@ export default function OrderDetails() {
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Left Column: Details & Content */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Order Description */}
-          <Card className="border-border/50 shadow-sm overflow-hidden rounded-2xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="bg-muted/10 border-b border-border/50">
-              <CardTitle className="text-lg text-[#1a1033]">Project Description</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <p className="text-[#1a1033]/80 leading-relaxed text-sm whitespace-pre-wrap">
-                {task.description}
-              </p>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-6 border-t border-border/50">
-                <div className="space-y-1">
-                  <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest">Category</p>
-                  <p className="text-sm font-bold text-[#1a1033]">{task.academic_category?.name || "N/A"}</p>
+          {/* Order Description & Documents */}
+          <div className="space-y-6">
+            <Card className="border-border/50 shadow-sm overflow-hidden rounded-2xl bg-white/80 backdrop-blur-sm">
+              <CardHeader className="bg-muted/10 border-b border-border/50">
+                <CardTitle className="text-lg text-[#1a1033]">Project Description</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <p className="text-[#1a1033]/80 leading-relaxed text-sm whitespace-pre-wrap">
+                  {task.description}
+                </p>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-6 border-t border-border/50">
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest">Category</p>
+                    <p className="text-sm font-bold text-[#1a1033]">{task.academic_category?.name || "N/A"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest">Deadline</p>
+                    <p className="text-sm font-bold text-[#1a1033] flex items-center gap-2">
+                      <Clock className="size-3.5 text-orange-500" /> 
+                      {format(new Date(task.deadline), "dd MMM yyyy")}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest">Budget</p>
+                    <p className="text-sm font-bold text-[#7C5CFC]">
+                      {isBiddingPhase ? "Awaiting Bids" : `$${parseFloat(task.budget).toFixed(2)}`}
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest">Deadline</p>
-                  <p className="text-sm font-bold text-[#1a1033] flex items-center gap-2">
-                    <Clock className="size-3.5 text-orange-500" /> 
-                    {format(new Date(task.deadline), "dd MMM yyyy")}
-                  </p>
+              </CardContent>
+            </Card>
+
+            {/* Project Documents Section */}
+            <Card className="border-border/50 shadow-sm overflow-hidden rounded-2xl bg-white">
+              <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b border-border/50">
+                <div>
+                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-[#1a1033]">Project Documents</CardTitle>
+                  <CardDescription className="text-[10px]">Reference materials and guidelines</CardDescription>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest">Budget</p>
-                  <p className="text-sm font-bold text-[#7C5CFC]">
-                    {isBiddingPhase ? "Awaiting Bids" : `$${parseFloat(task.budget).toFixed(2)}`}
-                  </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    id="file-upload"
+                    multiple
+                    className="hidden"
+                    onChange={async (e) => {
+                      const files = e.target.files;
+                      if (!files || files.length === 0) return;
+                      
+                      setIsLoading(true);
+                      try {
+                        const fileList = Array.from(files);
+                        await taskService.addFilesToTask(parseInt(id), fileList);
+                        
+                        // Refetch data
+                        const taskRes = await taskService.getTaskDetails(parseInt(id));
+                        setTask(taskRes.results);
+                        alert("Files uploaded successfully!");
+                      } catch (err: any) {
+                        alert(err.message || "Failed to upload files");
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                  />
+                  <Button 
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                    size="sm" 
+                    className="h-9 px-4 rounded-xl bg-[#7C5CFC] hover:bg-[#6d4ef0] text-white font-bold text-xs gap-2"
+                  >
+                    <Download className="size-3.5 rotate-180" /> Add Files
+                  </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border/50">
+                  {task.files && task.files.length > 0 ? (
+                    task.files.map((file: any) => (
+                      <div key={file.id} className="p-4 flex items-center justify-between hover:bg-violet-50/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="size-9 rounded-xl bg-violet-100 flex items-center justify-center text-[#7C5CFC]">
+                            <FileText className="size-4.5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-[#1a1033]">{file.file_name}</p>
+                            <p className="text-[10px] text-[#9490a8] font-bold uppercase tracking-tighter">
+                              {(file.file_size / 1024).toFixed(1)} KB • {file.file_type.replace('_', ' ')}
+                            </p>
+                          </div>
+                        </div>
+                        <a href={getFileUrl(file.file_url)} target="_blank" rel="noopener noreferrer">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-[#9490a8] hover:text-[#7C5CFC]">
+                            <Download className="size-4" />
+                          </Button>
+                        </a>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-10 text-center space-y-2">
+                      <div className="size-12 rounded-full bg-muted/30 flex items-center justify-center mx-auto opacity-40">
+                        <FileText className="size-6" />
+                      </div>
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">No documents attached</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Bids Section (Only if in bidding phase) */}
           {isBiddingPhase && (

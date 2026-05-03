@@ -1,6 +1,7 @@
 import React from "react";
 import { LayoutGrid, CheckCircle2, Zap, Shield } from "lucide-react";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 const trust = [
   { icon: CheckCircle2, label: "99.9% uptime SLA" },
@@ -14,7 +15,11 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full relative">
+      {/* Theme Toggle - Fixed position */}
+      <div className="absolute top-6 right-6 z-50">
+         <ThemeToggle />
+      </div>
       {/* ── Brand panel ── */}
       <div className="hidden lg:flex w-[42%] flex-col bg-[#0F0F1A] relative overflow-hidden">
         {/* subtle grid */}

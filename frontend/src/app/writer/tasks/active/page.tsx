@@ -21,6 +21,8 @@ import { taskService } from "@/services/task.service";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { format } from "date-fns";
+import { CountdownTimer } from "@/components/tasks/CountdownTimer";
+import { Badge } from "@/components/ui";
 
 export default function ActiveTasks() {
   const [tasks, setTasks] = React.useState<any[]>([]);
@@ -70,7 +72,7 @@ export default function ActiveTasks() {
         </div>
       ) : (
         <div className="grid gap-8 lg:grid-cols-2">
-          {tasks.map((task) => (
+          {tasks.filter(t => t.task_status !== 'COMPLETED' && t.task_status !== 'CANCELLED').map((task) => (
             <Card key={task.id} className="border-border/50 shadow-sm hover:shadow-xl hover:shadow-violet-400/5 transition-all bg-white rounded-2xl overflow-hidden group">
               <CardHeader className="border-b border-border/50 p-6 flex flex-row items-center justify-between bg-violet-50/30">
                 <div className="flex items-center gap-2">
@@ -89,7 +91,11 @@ export default function ActiveTasks() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="p-6 space-y-6">
-                  <h3 className="text-xl font-bold leading-tight text-[#1a1033] group-hover:text-[#7C5CFC] transition-colors">{task.title}</h3>
+                  <Link href={`/writer/tasks/${task.id}`}>
+                    <h3 className="text-xl font-bold leading-tight text-[#1a1033] hover:text-[#7C5CFC] transition-colors cursor-pointer">
+                      {task.title}
+                    </h3>
+                  </Link>
                   
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-sm">
@@ -109,9 +115,7 @@ export default function ActiveTasks() {
                         <span className="text-[10px] text-[#9490a8] font-bold uppercase">Client</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-orange-600 font-bold bg-orange-50 px-3 py-1.5 rounded-xl border border-orange-100">
-                      <Clock className="size-3.5" /> Due {format(new Date(task.deadline), "dd MMM")}
-                    </div>
+                    <CountdownTimer deadline={task.deadline} />
                   </div>
                 </div>
 
@@ -122,9 +126,11 @@ export default function ActiveTasks() {
                        <MessageSquare className="size-4" /> Message
                     </Button>
                   </Link>
-                  <Button className="h-11 rounded-xl bg-[#7C5CFC] shadow-lg shadow-violet-400/20 font-bold hover:bg-[#6d4ef0] transition-all flex items-center gap-2 text-white">
-                     <Upload className="size-4" /> Submit
-                  </Button>
+                  <Link href={`/writer/tasks/${task.id}`} className="w-full">
+                    <Button className="h-11 w-full rounded-xl bg-[#7C5CFC] shadow-lg shadow-violet-400/20 font-bold hover:bg-[#6d4ef0] transition-all flex items-center gap-2 text-white">
+                       <Upload className="size-4" /> View & Submit
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>

@@ -46,6 +46,19 @@ def get_assigned_tasks(
     return GenericResponse.success(message="Assigned tasks fetched successfully", results=results)
 
 
+# ── View task details ──────────────────────────────────────────
+@router.get("/tasks/{task_id}")
+def get_task_details(
+    task_id: int,
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security),
+):
+    writer_id = get_current_user_id(db, auth)
+    result = TaskService.get_task_details(db, task_id)
+    # Optional: check if writer has permission (is assigned or has an accepted bid)
+    return GenericResponse.success(message="Task details fetched successfully", results=result)
+
+
 # ── Place a bid on an open task ────────────────────────────────
 @router.post("/tasks/{task_id}/bids", status_code=status.HTTP_201_CREATED)
 def place_bid(

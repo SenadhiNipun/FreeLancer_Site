@@ -157,33 +157,33 @@ export default function ChatInterface() {
 
   if (isLoading && sessions.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[600px] bg-white/50 backdrop-blur-sm rounded-[32px] border border-white/60">
+      <div className="flex items-center justify-center h-[600px] glass rounded-[32px] border-border/50">
         <div className="flex flex-col items-center gap-4">
-          <div className="size-10 border-4 border-[#7C5CFC] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-bold text-[#9490a8] uppercase tracking-widest">Loading Chats...</p>
+          <div className="size-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Loading Chats...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[750px] bg-white/40 backdrop-blur-md rounded-[32px] border border-white/80 shadow-[0_8px_40px_rgba(124,92,252,0.08)] overflow-hidden">
+    <div className="flex h-[750px] glass rounded-[32px] border-border/50 shadow-2xl overflow-hidden">
       
       {/* ── Sessions List (Sidebar) ──────────────── */}
       <div className={cn(
-        "w-full md:w-[350px] border-r border-violet-100 flex flex-col bg-white/60",
+        "w-full md:w-[350px] border-r border-border/50 flex flex-col bg-card/30",
         activeSession ? "hidden md:flex" : "flex"
       )}>
-        <div className="p-6 border-b border-violet-50">
-          <h2 className="text-xl font-bold text-[#1a1033] mb-4">Messages</h2>
+        <div className="p-6 border-b border-border/50">
+          <h2 className="text-xl font-bold text-foreground mb-4">Messages</h2>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#9490a8]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
             <input 
               type="text" 
               placeholder="Search conversations..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#F8F7FF] border-none rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-[#7C5CFC]/20 transition-all placeholder:text-[#c4bfd8]"
+              className="w-full bg-muted/20 border border-border/50 rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/30"
             />
           </div>
         </div>
@@ -195,8 +195,8 @@ export default function ChatInterface() {
                 key={session.id}
                 onClick={() => setActiveSession(session)}
                 className={cn(
-                  "w-full p-5 flex items-start gap-4 transition-all hover:bg-violet-50/50 text-left border-b border-violet-50/50",
-                  activeSession?.id === session.id && "bg-[#F2EEFF] border-l-[4px] border-l-[#7C5CFC] pl-4"
+                  "w-full p-5 flex items-start gap-4 transition-all hover:bg-primary/5 text-left border-b border-border/50",
+                  activeSession?.id === session.id && "bg-primary/10 border-l-[4px] border-l-primary pl-4"
                 )}
               >
                 <div className="size-12 rounded-2xl bg-gradient-to-br from-[#7C5CFC] to-[#A78BFA] flex items-center justify-center flex-shrink-0 shadow-sm text-white">
@@ -204,13 +204,13 @@ export default function ChatInterface() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-[#1a1033] truncate">{session.task_title}</span>
-                    <span className="text-[10px] text-[#9490a8] font-medium">
+                    <span className="font-bold text-foreground truncate">{session.task_title}</span>
+                    <span className="text-[10px] text-muted-foreground/60 font-medium">
                       {formatDistanceToNow(new Date(session.updated_at), { addSuffix: false })}
                     </span>
                   </div>
-                  <p className="text-xs font-semibold text-[#7C5CFC] truncate mb-1">{session.other_party_name}</p>
-                  <p className="text-xs text-[#9490a8] truncate">Click to start chatting</p>
+                  <p className="text-xs font-semibold text-primary truncate mb-1">{session.other_party_name}</p>
+                  <p className="text-xs text-muted-foreground truncate">Click to start chatting</p>
                 </div>
               </button>
             ))
@@ -225,32 +225,32 @@ export default function ChatInterface() {
 
       {/* ── Chat Window (Main Area) ──────────────── */}
       <div className={cn(
-        "flex-1 flex flex-col bg-white/20",
+        "flex-1 flex flex-col bg-card/20",
         !activeSession ? "hidden md:flex" : "flex"
       )}>
         {activeSession ? (
           <>
             {/* Header */}
-            <div className="p-5 border-b border-violet-100 bg-white/80 backdrop-blur-sm flex items-center justify-between">
+            <div className="p-5 border-b border-border/50 bg-card/80 backdrop-blur-sm flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="md:hidden size-8 text-[#7C5CFC]"
+                  className="md:hidden size-8 text-primary"
                   onClick={() => setActiveSession(null)}
                 >
                   <ChevronLeft className="size-5" />
                 </Button>
-                <div className="size-10 rounded-xl bg-[#F2EEFF] flex items-center justify-center text-[#7C5CFC]">
+                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                   <User className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[#1a1033] leading-tight">{activeSession.task_title}</h3>
-                  <p className="text-[10px] font-bold text-[#7C5CFC] uppercase tracking-wider">{activeSession.other_party_name}</p>
+                  <h3 className="font-bold text-foreground leading-tight">{activeSession.task_title}</h3>
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-wider">{activeSession.other_party_name}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button className="p-2 hover:bg-violet-50 rounded-lg transition-colors text-[#c4bfd8] hover:text-[#7C5CFC]">
+                <button className="p-2 hover:bg-primary/5 rounded-lg transition-colors text-muted-foreground/50 hover:text-primary">
                   <MoreVertical className="size-5" />
                 </button>
               </div>
@@ -280,8 +280,8 @@ export default function ChatInterface() {
                         <div className={cn(
                           "px-5 py-3 rounded-2xl shadow-sm relative",
                           isMine 
-                            ? "bg-[#7C5CFC] text-white rounded-tr-none shadow-violet-200/50" 
-                            : "bg-white text-[#1a1033] rounded-tl-none border border-violet-50"
+                            ? "bg-primary text-white rounded-tr-none shadow-primary/20" 
+                            : "bg-card text-foreground rounded-tl-none border border-border/50"
                         )}>
                           <p className="text-[13px] leading-relaxed font-medium">{msg.message_text}</p>
                         </div>
@@ -310,7 +310,7 @@ export default function ChatInterface() {
             </div>
 
             {/* Input Area */}
-            <div className="p-5 bg-white/80 backdrop-blur-md border-t border-violet-100">
+            <div className="p-5 bg-card/80 backdrop-blur-md border-t border-border/50">
               <form onSubmit={handleSendMessage} className="flex items-center gap-3">
                 <div className="flex-1 relative group">
                   <input 
@@ -320,13 +320,13 @@ export default function ChatInterface() {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     disabled={isSending}
-                    className="w-full bg-[#F8F7FF] border border-violet-50 rounded-[20px] py-3.5 px-5 text-sm focus:ring-4 focus:ring-[#7C5CFC]/10 focus:border-[#7C5CFC]/30 transition-all outline-none placeholder:text-[#c4bfd8]"
+                    className="w-full bg-muted/20 border border-border/50 rounded-[20px] py-3.5 px-5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary/30 transition-all outline-none placeholder:text-muted-foreground/30"
                   />
                 </div>
                 <Button 
                   type="submit" 
                   disabled={!newMessage.trim() || isSending}
-                  className="size-12 rounded-2xl bg-[#7C5CFC] hover:bg-[#6d4ef0] flex items-center justify-center flex-shrink-0 shadow-lg shadow-violet-200 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                  className="size-12 rounded-2xl bg-primary hover:bg-primary/90 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
                 >
                   <Send className={cn("size-5 text-white transition-transform", isSending ? "animate-pulse" : "group-hover:translate-x-0.5 group-hover:-translate-y-0.5")} />
                 </Button>
@@ -334,12 +334,12 @@ export default function ChatInterface() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-white/10 backdrop-blur-[2px]">
-            <div className="size-24 rounded-[32px] bg-gradient-to-br from-[#F2EEFF] to-white flex items-center justify-center mb-6 shadow-sm border border-white/60">
-              <MessageSquare className="size-10 text-[#7C5CFC]" strokeWidth={1.5} />
+          <div className="flex-1 flex flex-col items-center justify-center bg-card/10 backdrop-blur-[2px]">
+            <div className="size-24 rounded-[32px] glass bg-gradient-to-br from-primary/10 to-transparent flex items-center justify-center mb-6 shadow-sm border border-border/50">
+              <MessageSquare className="size-10 text-primary" strokeWidth={1.5} />
             </div>
-            <h3 className="text-xl font-bold text-[#1a1033]">Your Inbox</h3>
-            <p className="text-sm text-[#9490a8] mt-2 text-center max-w-[280px]">
+            <h3 className="text-xl font-bold text-foreground">Your Inbox</h3>
+            <p className="text-sm text-muted-foreground mt-2 text-center max-w-[280px]">
               Select a conversation from the list to start chatting with experts or customers.
             </p>
           </div>

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { MessageNotificationBell } from "@/components/notifications/message-notification-bell";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export default function CustomerLayout({
   children,
@@ -17,11 +18,11 @@ export default function CustomerLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #F8F6FF 0%, #FAF9FF 50%, #FFF8F5 100%)' }}>
+    <div className="min-h-screen relative">
       {/* Mobile sidebar overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-50 bg-foreground/10 backdrop-blur-md lg:hidden transition-all duration-300"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -34,13 +35,13 @@ export default function CustomerLayout({
       {/* Sidebar – mobile slide-in */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border/60 transition-transform duration-300 ease-in-out lg:hidden",
+          "fixed inset-y-0 left-0 z-50 w-64 glass border-r border-white/10 transition-transform duration-500 ease-in-out lg:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between px-5 py-5 border-b border-border/60">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
+        <div className="flex items-center justify-between px-6 py-6 border-b border-white/10 relative z-10">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="size-8 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
               <LayoutGrid className="size-4 text-white" strokeWidth={2.5} />
             </div>
             <span className="text-[14px] font-bold text-foreground">
@@ -49,7 +50,7 @@ export default function CustomerLayout({
           </Link>
           <button
             onClick={() => setMobileOpen(false)}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+            className="rounded-xl p-1.5 glass border-white/5 text-muted-foreground hover:text-foreground transition-all"
           >
             <X className="size-4" />
           </button>
@@ -58,24 +59,24 @@ export default function CustomerLayout({
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64 flex flex-col min-h-screen">
+      <div className="lg:pl-64 flex flex-col min-h-screen relative z-10">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 bg-white/90 backdrop-blur-xl border-b border-[#ede9ff]/60 shadow-[0_1px_8px_rgba(120,80,220,0.06)] px-5 lg:px-8">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 glass border-b border-white/10 px-5 lg:px-10 transition-all">
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen(true)}
-            className="lg:hidden rounded-lg p-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+            className="lg:hidden rounded-xl p-2 glass border-white/5 text-muted-foreground hover:text-foreground transition-all"
             aria-label="Open sidebar"
           >
             <Menu className="size-5" />
           </button>
 
           {/* Search */}
-          <div className="relative flex-1 max-w-sm hidden sm:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60" />
-            <Input
+          <div className="relative flex-1 max-w-sm hidden sm:block group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+            <input
               placeholder="Search projects, messages…"
-              className="h-9 pl-9 pr-4 rounded-lg border-border/60 bg-muted/40 text-sm placeholder:text-muted-foreground/50 focus-visible:ring-primary/20 focus-visible:border-primary/40 focus-visible:bg-white transition-all shadow-none"
+              className="w-full h-10 pl-10 pr-4 rounded-xl glass border-white/5 bg-white/10 text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all"
             />
           </div>
 
@@ -83,32 +84,34 @@ export default function CustomerLayout({
           <div className="flex-1" />
 
           {/* Right side */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             {/* Status pill */}
-            <div className="hidden md:flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-3 py-1.5">
-              <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[11px] font-medium text-muted-foreground">
-                All systems normal
+            <div className="hidden md:flex items-center gap-2 rounded-full glass border-white/5 px-4 py-2">
+              <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                Systems Optimal
               </span>
             </div>
 
-            {/* Notifications */}
-            <div className="flex items-center gap-2">
+            {/* Notifications & Theme */}
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
               <MessageNotificationBell />
               <NotificationBell />
             </div>
 
             {/* Avatar */}
-            <div className="flex items-center gap-2.5 pl-3 border-l border-border/60 ml-1">
+            <div className="flex items-center gap-3 pl-4 border-l border-white/10 ml-2">
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-semibold text-foreground leading-none">
+                <p className="text-[12px] font-bold text-foreground leading-none">
                   John Doe
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  Premium member
+                <p className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-wider mt-1">
+                  Premium
                 </p>
               </div>
-              <div className="size-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-xs font-bold cursor-pointer hover:bg-primary/15 transition-colors">
+              <div className="size-9 rounded-xl bg-gradient-to-br from-primary to-[#A78BFA] flex items-center justify-center text-white text-xs font-bold cursor-pointer shadow-lg shadow-primary/20 hover:scale-105 transition-all">
                 JD
               </div>
             </div>

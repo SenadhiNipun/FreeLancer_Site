@@ -38,3 +38,19 @@ class TaskEntity(Base, BaseEntity):
     submissions = relationship("TaskSubmissionEntity", back_populates="task", cascade="all, delete-orphan")
     revisions = relationship("TaskRevisionEntity", back_populates="task", cascade="all, delete-orphan")
     bids = relationship("TaskBidEntity", back_populates="task", cascade="all, delete-orphan")
+
+    @property
+    def writer(self):
+        # 1. Try assignments first
+        if self.assignments:
+            for a in self.assignments:
+                if a.assignment_status not in ["CANCELLED", "REJECTED"]:
+                    return a.writer
+        
+        # 2. Fallback to accepted bids (for backwards compatibility or pending assignments)
+        if self.bids:
+            for b in self.bids:
+                if b.bid_status == "ACCEPTED":
+                    return b.writer
+                    
+        return None

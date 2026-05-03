@@ -45,95 +45,56 @@
   --radius-xl: calc(var(--radius) * 1.5);
   --radius-2xl: calc(var(--radius) * 2);
   --radius-3xl: calc(var(--radius) * 2.5);
+  --animate-spin-slow: spin 8s linear infinite;
 }
 
-/* ── Design System: Clean Modern SaaS Palette ──────────────────────── */
+/* ── Design System: Advanced Modern SaaS ─────────────────────────── */
 :root {
-  /* Core brand: deep indigo/violet — Notion/Linear/Stripe feel */
-  --background:      oklch(0.990 0.002 250);   /* near-white, warm tint */
-  --foreground:      oklch(0.120 0.025 265);   /* very dark navy */
-  --card:            oklch(1.000 0.000   0);   /* pure white */
-  --card-foreground: oklch(0.120 0.025 265);
-  --popover:         oklch(1.000 0.000   0);
-  --popover-foreground: oklch(0.120 0.025 265);
+  /* Premium Palette - OKLCH for better color space */
+  --background:      oklch(0.99 0.01 260); 
+  --foreground:      oklch(0.15 0.05 260);
+  
+  --primary:           oklch(0.6 0.2 260);    /* Premium Violet-Blue */
+  --primary-foreground: oklch(0.98 0.01 260);
+  
+  --card:            oklch(1 0 0 / 0.8);      /* Semi-transparent for glass */
+  --card-foreground: oklch(0.15 0.05 260);
+  
+  --muted:           oklch(0.95 0.01 260);
+  --muted-foreground: oklch(0.45 0.05 260);
+  
+  --border:          oklch(0.9 0.02 260 / 0.5);
+  --ring:            oklch(0.6 0.2 260 / 0.3);
+  
+  --radius: 1rem;
 
-  /* Primary: rich indigo (#4F46E5 range) */
-  --primary:           oklch(0.545 0.240 264);
-  --primary-foreground: oklch(0.990 0.002 250);
+  /* Advanced Shadows & Effects */
+  --shadow-premium: 
+    0 1px 2px oklch(0 0 0 / 0.05),
+    0 4px 12px oklch(0 0 0 / 0.05),
+    0 12px 24px oklch(0 0 0 / 0.02);
 
-  /* Secondary: very light indigo tint */
-  --secondary:           oklch(0.960 0.010 264);
-  --secondary-foreground: oklch(0.545 0.240 264);
-
-  /* Muted: cool gray */
-  --muted:           oklch(0.962 0.004 250);
-  --muted-foreground: oklch(0.480 0.020 255);
-
-  /* Accent: violet */
-  --accent:           oklch(0.960 0.010 264);
-  --accent-foreground: oklch(0.545 0.240 264);
-
-  /* Destructive */
-  --destructive: oklch(0.580 0.240  27);
-
-  /* Borders, inputs */
-  --border: oklch(0.910 0.004 250);
-  --input:  oklch(0.910 0.004 250);
-  --ring:   oklch(0.545 0.240 264);
-
-  /* Charts */
-  --chart-1: oklch(0.545 0.240 264);
-  --chart-2: oklch(0.520 0.200 295);
-  --chart-3: oklch(0.490 0.170 330);
-  --chart-4: oklch(0.620 0.170  45);
-  --chart-5: oklch(0.580 0.160 160);
-
-  /* Radius: Notion/Linear uses slightly tighter radii */
-  --radius: 0.625rem;
-
-  /* Sidebar */
-  --sidebar:           oklch(0.985 0.000   0);
-  --sidebar-foreground: oklch(0.120 0.025 265);
-  --sidebar-primary:   oklch(0.545 0.240 264);
-  --sidebar-primary-foreground: oklch(0.990 0.000 0);
-  --sidebar-accent:    oklch(0.960 0.010 264);
-  --sidebar-accent-foreground: oklch(0.545 0.240 264);
-  --sidebar-border:    oklch(0.910 0.004 250);
-  --sidebar-ring:      oklch(0.545 0.240 264);
+  --glass-blur: 16px;
+  --glass-border: 1px solid oklch(1 0 0 / 0.1);
+  
+  /* Mesh Gradient Tokens */
+  --mesh-1: oklch(0.9 0.1 260);
+  --mesh-2: oklch(0.92 0.1 280);
+  --mesh-3: oklch(0.9 0.1 320);
 }
 
 .dark {
-  --background:       oklch(0.100 0.010 265);
-  --foreground:       oklch(0.980 0.000   0);
-  --card:             oklch(0.145 0.010 265);
-  --card-foreground:  oklch(0.980 0.000   0);
-  --popover:          oklch(0.145 0.010 265);
-  --popover-foreground: oklch(0.980 0.000 0);
-  --primary:          oklch(0.660 0.200 264);
-  --primary-foreground: oklch(0.100 0.010 265);
-  --secondary:        oklch(0.220 0.015 265);
-  --secondary-foreground: oklch(0.980 0.000 0);
-  --muted:            oklch(0.220 0.015 265);
-  --muted-foreground: oklch(0.580 0.020 255);
-  --accent:           oklch(0.220 0.015 265);
-  --accent-foreground: oklch(0.980 0.000 0);
-  --destructive:      oklch(0.700 0.190  22);
-  --border:           oklch(1.000 0.000 0 / 8%);
-  --input:            oklch(1.000 0.000 0 / 12%);
-  --ring:             oklch(0.580 0.020 255);
-  --chart-1:          oklch(0.660 0.200 264);
-  --chart-2:          oklch(0.580 0.020 255);
-  --chart-3:          oklch(0.460 0.015 265);
-  --chart-4:          oklch(0.380 0.012 265);
-  --chart-5:          oklch(0.270 0.010 265);
-  --sidebar:          oklch(0.130 0.010 265);
-  --sidebar-foreground: oklch(0.980 0.000 0);
-  --sidebar-primary:  oklch(0.660 0.200 264);
-  --sidebar-primary-foreground: oklch(0.980 0.000 0);
-  --sidebar-accent:   oklch(0.220 0.015 265);
-  --sidebar-accent-foreground: oklch(0.980 0.000 0);
-  --sidebar-border:   oklch(1.000 0.000 0 / 8%);
-  --sidebar-ring:     oklch(0.580 0.020 255);
+  --background:       oklch(0.1 0.02 260);
+  --foreground:       oklch(0.98 0.01 260);
+  --card:             oklch(0.15 0.02 260 / 0.8);
+  --primary:          oklch(0.7 0.15 260);
+  --border:           oklch(1 0 0 / 0.1);
+  --muted:            oklch(0.2 0.02 260);
+  --muted-foreground: oklch(0.6 0.02 260);
+  
+  --mesh-1: oklch(0.15 0.05 260);
+  --mesh-2: oklch(0.12 0.05 280);
+  --mesh-3: oklch(0.15 0.05 320);
 }
 
 /* ── Base Layer ──────────────────────────────────────────────────────── */
@@ -141,61 +102,102 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
   body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-foreground antialiased min-h-screen overflow-x-hidden;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    
+    /* Global Mesh Background */
+    background-image: 
+      radial-gradient(at 0% 0%, var(--mesh-1) 0, transparent 50%),
+      radial-gradient(at 100% 0%, var(--mesh-2) 0, transparent 50%),
+      radial-gradient(at 50% 100%, var(--mesh-3) 0, transparent 50%);
+    background-attachment: fixed;
   }
-  html {
-    @apply font-sans scroll-smooth;
+
+  /* Fluid Typography */
+  h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+  h2 { font-size: clamp(1.5rem, 4vw, 2.5rem); }
+  h3 { font-size: clamp(1.25rem, 3vw, 1.75rem); }
+}
+
+/* ── Advanced Components ────────────────────────────────────────────── */
+@layer components {
+  /* Improved Glassmorphism */
+  .glass {
+    @apply bg-card backdrop-blur-md border border-border/50;
+    box-shadow: var(--shadow-premium);
+    background-image: linear-gradient(
+      135deg, 
+      oklch(1 0 0 / 0.1) 0%, 
+      oklch(1 0 0 / 0.02) 100%
+    );
   }
-  /* Tighter letter-spacing for headings */
-  h1, h2, h3, h4, h5, h6 {
-    @apply tracking-tight;
+
+  /* Neumorphism utilities */
+  .neumorph-flat {
+    background: var(--background);
+    box-shadow: 
+      6px 6px 12px oklch(0 0 0 / 0.05),
+      -6px -6px 12px oklch(1 0 0 / 0.8);
+  }
+  
+  .neumorph-inset {
+    background: var(--background);
+    box-shadow: 
+      inset 4px 4px 8px oklch(0 0 0 / 0.05),
+      inset -4px -4px 8px oklch(1 0 0 / 0.8);
+  }
+
+  /* Animated Border Gradient */
+  .border-gradient {
+    position: relative;
+    border: 1px solid transparent;
+    background: linear-gradient(var(--card), var(--card)) padding-box,
+                linear-gradient(135deg, var(--primary), oklch(0.8 0.2 320)) border-box;
   }
 }
 
-/* ── Utilities ───────────────────────────────────────────────────────── */
+/* ── Animations ─────────────────────────────────────────────────────── */
 @layer utilities {
-  /* Glassmorphism surface */
-  .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/50 shadow-sm;
+  .animate-reveal {
+    animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
-  /* Subtle inner shadow for inputs */
-  .input-shadow {
-    box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.05);
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
   }
 
-  /* Gradient text */
-  .text-gradient {
-    @apply bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] bg-clip-text text-transparent;
+  @keyframes reveal {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Premium card */
-  .card-premium {
-    @apply rounded-xl border border-border/60 bg-card shadow-sm transition-all duration-200;
-  }
-  .card-premium:hover {
-    @apply shadow-md border-border;
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
   }
 
-  /* Focus ring */
-  .focus-ring {
-    @apply focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:outline-none;
+  /* Scroll-driven animations (modern browsers) */
+  @supports (animation-timeline: scroll()) {
+    .scroll-reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 30%;
+    }
   }
+}
 
-  /* Custom Scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: oklch(0.910 0.004 250);
-    border-radius: 10px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.850 0.010 250);
-  }
+/* Custom Scrollbar - Advanced styling */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full border-4 border-transparent bg-clip-padding transition-colors;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/40;
 }
