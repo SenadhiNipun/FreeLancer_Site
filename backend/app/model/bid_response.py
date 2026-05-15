@@ -1,6 +1,15 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+from pydantic import ConfigDict
+
+class TaskBriefResponse(BaseModel):
+    id: int
+    title: str
+    task_status: str
+    
+    class Config:
+        from_attributes = True
 
 class PublicWriterProfileResponse(BaseModel):
     id: int
@@ -25,6 +34,7 @@ class BidResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     writer: Optional[PublicWriterProfileResponse] = None
+    task: Optional[TaskBriefResponse] = None
 
     class Config:
         from_attributes = True

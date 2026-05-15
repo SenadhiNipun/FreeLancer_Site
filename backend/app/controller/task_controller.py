@@ -97,8 +97,9 @@ async def add_task_files(
     task_id: int,
     db: db_dependency,
     files: Annotated[List[UploadFile], File(...)],
-    auth: Annotated[HTTPAuthorizationCredentials, Depends(security)]
+    auth: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    file_type: str = "REQUIREMENT_FILE"
 ):
-    customer_id = get_current_user_id(db, auth)
-    result = await TaskService.save_task_files_locally(db, task_id, customer_id, files)
+    user_id = get_current_user_id(db, auth)
+    result = await TaskService.save_task_files_locally(db, task_id, user_id, files, file_type)
     return GenericResponse.success(message="Files uploaded successfully", results=result)

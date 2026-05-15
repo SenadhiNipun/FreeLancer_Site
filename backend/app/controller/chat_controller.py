@@ -49,3 +49,18 @@ def get_messages(
     user_id = get_current_user_id(db, auth)
     messages = ChatService.get_messages(db, session_id, user_id)
     return success_response(results=messages, message="Messages fetched successfully")
+
+@router.post("/sessions/initialize")
+def initialize_chat(
+    task_id: int,
+    writer_id: int,
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security)
+):
+    user_id = get_current_user_id(db, auth)
+    # user_id is the customer_id in this context
+    session = ChatService.initialize_chat(db, task_id, user_id, writer_id)
+    return success_response(
+        results={"id": session.id}, 
+        message="Chat session initialized successfully"
+    )

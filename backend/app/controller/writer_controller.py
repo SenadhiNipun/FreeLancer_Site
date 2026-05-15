@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, status
+from typing import List, Annotated
+from fastapi import APIRouter, Depends, status, File, UploadFile
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.config.database import db_dependency
@@ -99,10 +100,23 @@ def withdraw_bid(
 @router.post("/tasks/{task_id}/submit")
 def submit_task(
     task_id: int,
-    request: SubmitTaskRequest,
     db: db_dependency,
+    request: SubmitTaskRequest,
     auth: HTTPAuthorizationCredentials = Depends(security),
 ):
     writer_id = get_current_user_id(db, auth)
     result = TaskService.submit_task(db, task_id, writer_id, request)
     return GenericResponse.success(message="Task submitted successfully", results=result)
+
+
+# ── Upload submission files ────────────────────────────────────
+@router.post("/tasks/{task_id}/files")
+async def upload_task_files(
+    task_id: int,
+    db: db_dependency,
+    files: Annotated[List[UploadFile], File(...)],
+    auth: Annotated[HTTPAuthorizationCredentials, Depends(security)]
+):
+    writer_id = get_current_user_id(db, auth)
+    result = await TaskService.save_task_files_locally(db, task_id, writer_id, files, file_type="SUBMISSION_FILE")
+    return GenericResponse.success(message="Files uploaded successfully", results=result)

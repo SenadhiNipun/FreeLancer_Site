@@ -13,16 +13,18 @@ class TaskRepository:
 
     @staticmethod
     def get_task_by_id(db: Session, task_id: int) -> Optional[TaskEntity]:
-        from sqlalchemy.orm import joinedload
+        from sqlalchemy.orm import selectinload
         from app.entity.task_assignment_entity import TaskAssignmentEntity
         from app.entity.task_bid_entity import TaskBidEntity
         return (
             db.query(TaskEntity)
             .options(
-                joinedload(TaskEntity.assignments).joinedload(TaskAssignmentEntity.writer),
-                joinedload(TaskEntity.bids).joinedload(TaskBidEntity.writer),
-                joinedload(TaskEntity.customer),
-                joinedload(TaskEntity.files)
+                selectinload(TaskEntity.assignments).selectinload(TaskAssignmentEntity.writer),
+                selectinload(TaskEntity.bids).selectinload(TaskBidEntity.writer),
+                selectinload(TaskEntity.customer),
+                selectinload(TaskEntity.files),
+                selectinload(TaskEntity.submissions),
+                selectinload(TaskEntity.revisions)
             )
             .filter(TaskEntity.id == task_id, TaskEntity.is_delete == False)
             .first()
@@ -30,14 +32,15 @@ class TaskRepository:
 
     @staticmethod
     def get_tasks_by_customer(db: Session, customer_id: int) -> List[TaskEntity]:
-        from sqlalchemy.orm import joinedload
+        from sqlalchemy.orm import selectinload
         from app.entity.task_assignment_entity import TaskAssignmentEntity
         from app.entity.task_bid_entity import TaskBidEntity
         return (
             db.query(TaskEntity)
             .options(
-                joinedload(TaskEntity.assignments).joinedload(TaskAssignmentEntity.writer),
-                joinedload(TaskEntity.bids).joinedload(TaskBidEntity.writer)
+                selectinload(TaskEntity.assignments).selectinload(TaskAssignmentEntity.writer),
+                selectinload(TaskEntity.bids).selectinload(TaskBidEntity.writer),
+                selectinload(TaskEntity.files)
             )
             .filter(TaskEntity.customer_id == customer_id, TaskEntity.is_delete == False)
             .order_by(TaskEntity.created_at.desc())

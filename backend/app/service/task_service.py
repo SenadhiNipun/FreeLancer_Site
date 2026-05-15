@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.entity.task_entity import TaskEntity
 from app.entity.task_bid_entity import TaskBidEntity
 from app.entity.task_submission_entity import TaskSubmissionEntity
@@ -278,8 +278,7 @@ class TaskService:
             .first()
         )
 
-        from sqlalchemy.orm import joinedload
-        query = db.query(TaskEntity).options(joinedload(TaskEntity.files)).filter(
+        query = db.query(TaskEntity).options(selectinload(TaskEntity.files)).filter(
             TaskEntity.task_status == "OPEN",
             TaskEntity.is_delete == False,
         )
@@ -353,9 +352,6 @@ class TaskService:
 
         # Initialize chat between customer and writer so they can discuss before acceptance
         try:
-            from app.service.chat_service import ChatService
-            ChatService.initialize_chat(db, task_id, task.customer_id, writer_id)
-            
             # ── Notification for Customer ──
             from app.entity.user_entity import UserEntity
             writer = db.query(UserEntity).filter(UserEntity.id == writer_id).first()
@@ -388,13 +384,20 @@ class TaskService:
     # ──────────────────────────────────────────────
     @staticmethod
     def get_writer_bids(db: Session, writer_id: int):
+        from app.model.bid_response import TaskBriefResponse
         bids = (
             db.query(TaskBidEntity)
             .filter(TaskBidEntity.writer_id == writer_id)
             .order_by(TaskBidEntity.created_at.desc())
             .all()
         )
-        return [BidResponse.model_validate(b) for b in bids]
+        results = []
+        for b in bids:
+            resp = BidResponse.model_validate(b)
+            if b.task:
+                resp.task = TaskBriefResponse.model_validate(b.task)
+            results.append(resp)
+        return results
 
     # ──────────────────────────────────────────────
     # WRITER — get assigned tasks
@@ -410,7 +413,7 @@ class TaskService:
             db.query(TaskEntity)
             .outerjoin(TaskAssignmentEntity)
             .outerjoin(TaskBidEntity)
-            .options(joinedload(TaskEntity.files))
+            .options(selectinload(TaskEntity.files))
             .filter(
                 TaskEntity.is_delete == False,
                 or_(
@@ -536,7 +539,7 @@ class TaskService:
         db.refresh(revision)
         return RevisionResponse.model_validate(revision)
     @staticmethod
-    async def save_task_files_locally(db: Session, task_id: int, customer_id: int, files: List["UploadFile"]):
+    async def save_task_files_locally(db: Session, task_id: int, user_id: int, files: List["UploadFile"], file_type: str = "REQUIREMENT_FILE"):
         import os
         import shutil
         from app.entity.task_file_entity import TaskFileEntity
@@ -545,8 +548,16 @@ class TaskService:
         if not task:
             raise NotFoundException(detail="Task not found")
         
-        if task.customer_id != customer_id:
-            raise ValidationException(detail="You don't own this task")
+        # Check permissions: User must be either the customer or the assigned writer
+        from app.entity.task_assignment_entity import TaskAssignmentEntity
+        is_customer = task.customer_id == user_id
+        is_writer = db.query(TaskAssignmentEntity).filter(
+            TaskAssignmentEntity.task_id == task_id,
+            TaskAssignmentEntity.writer_id == user_id
+        ).first() is not None
+
+        if not is_customer and not is_writer:
+            raise ValidationException(detail="You don't have permission to add files to this task")
             
         upload_dir = "uploads/tasks"
         if not os.path.exists(upload_dir):
@@ -571,10 +582,10 @@ class TaskService:
             
             new_file = TaskFileEntity(
                 task_id=task_id,
-                uploaded_by_user_id=customer_id,
+                uploaded_by_user_id=user_id,
                 file_name=file.filename,
                 file_url=file_url,
-                file_type="REQUIREMENT_FILE",
+                file_type=file_type,
                 mime_type=file.content_type,
                 file_size=getattr(file, 'size', 0)
             )

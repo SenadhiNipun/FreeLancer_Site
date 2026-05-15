@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
 from app.model.bid_response import BidResponse
+from app.model.task_workflow_response import SubmissionResponse, RevisionResponse
 
 class UserResponse(BaseModel):
     id: int
@@ -56,6 +57,8 @@ class TaskResponse(BaseModel):
     payment_status: str
     is_urgent: bool
     files: List[TaskFileResponse] = []
+    submissions: List[SubmissionResponse] = []
+    revisions: List[RevisionResponse] = []
     created_at: datetime
     updated_at: datetime
 

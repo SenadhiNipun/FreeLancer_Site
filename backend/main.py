@@ -12,6 +12,7 @@ from app.controller.writer_controller import router as writer_router
 from app.controller.admin_controller import router as admin_router
 from app.controller.notification_controller import router as notification_router
 from app.controller.chat_controller import router as chat_router
+from app.controller.user_controller import router as user_router
 from app.exceptions.exception_handler import register_exception_handlers
 from app.util.response_util import success_response
 
@@ -38,6 +39,7 @@ app.include_router(writer_router)
 app.include_router(admin_router)
 app.include_router(notification_router)
 app.include_router(chat_router)
+app.include_router(user_router)
 
 
 @app.get("/")
