@@ -11,15 +11,126 @@ import {
   Bell, 
   ShieldCheck,
   CreditCard,
-  ChevronRight
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui";
+import { userService } from "@/services/user.service";
+import { getFileUrl } from "@/lib/api-client";
 
 export default function Profile() {
+  const [profile, setProfile] = React.useState<any>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  // States for editable fields
+  const [firstName, setFirstName] = React.useState("");
+  const [lastName, setLastName] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [location, setLocation] = React.useState("");
+  const [profileImageUrl, setProfileImageUrl] = React.useState("");
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const fetchProfile = async () => {
+    try {
+      const res = await userService.getMyProfile();
+      const data = res.results;
+      setProfile(data);
+      setFirstName(data.first_name || "");
+      setLastName(data.last_name || "");
+      setPhone(data.phone || "");
+      setProfileImageUrl(data.profile_image_url || "");
+      
+      // Location is constructed from city and country
+      if (data.city && data.country) {
+        setLocation(`${data.city}, ${data.country}`);
+      } else if (data.city) {
+        setLocation(data.city);
+      } else if (data.country) {
+        setLocation(data.country);
+      } else {
+        setLocation("");
+      }
+    } catch (error) {
+      console.error("Failed to load profile:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const handleSaveChanges = async () => {
+    setIsSaving(true);
+    try {
+      // Split location into city and country
+      let city = "";
+      let country = "";
+      if (location) {
+        const parts = location.split(",");
+        if (parts.length >= 2) {
+          city = parts[0].trim();
+          country = parts[1].trim();
+        } else {
+          city = location.trim();
+        }
+      }
+
+      const payload = {
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone,
+        city: city,
+        country: country
+      };
+
+      await userService.updateMyProfile(payload);
+      alert("Profile updated successfully!");
+      fetchProfile();
+    } catch (error: any) {
+      alert(error.message || "Failed to update profile changes");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const res = await userService.uploadProfilePicture(file);
+      const newUrl = res.results.profile_image_url;
+      setProfileImageUrl(newUrl);
+      alert("Profile picture uploaded successfully!");
+      fetchProfile();
+    } catch (error: any) {
+      alert(error.message || "Failed to upload profile picture");
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="size-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Loading profile data...</p>
+      </div>
+    );
+  }
+
+  // Generate initials for avatar fallback
+  const initials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "JD";
+
   return (
     <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col gap-1">
@@ -55,19 +166,36 @@ export default function Profile() {
             <div className="h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent" />
             <CardContent className="relative pt-0">
                <div className="flex flex-col sm:flex-row items-end gap-6 -mt-10 px-4">
-                  <div className="relative group">
-                    <div className="h-24 w-24 rounded-2xl bg-white p-1 shadow-xl border border-border/50">
-                      <div className="h-full w-full rounded-xl bg-primary/10 flex items-center justify-center text-3xl font-bold text-primary">
-                        JD
-                      </div>
+                  <div className="relative group cursor-pointer" onClick={triggerFileInput}>
+                    <div className="h-24 w-24 rounded-2xl bg-white p-1 shadow-xl border border-border/50 overflow-hidden">
+                      {profileImageUrl ? (
+                        <img 
+                          src={getFileUrl(profileImageUrl)} 
+                          alt="Avatar" 
+                          className="h-full w-full object-cover rounded-xl"
+                        />
+                      ) : (
+                        <div className="h-full w-full rounded-xl bg-primary/10 flex items-center justify-center text-3xl font-bold text-primary">
+                          {initials}
+                        </div>
+                      )}
                     </div>
                     <button className="absolute -bottom-2 -right-2 h-8 w-8 bg-primary text-white rounded-lg flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
                       <Camera className="size-4" />
                     </button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleImageUpload} 
+                      className="hidden" 
+                      accept="image/*"
+                    />
                   </div>
                   <div className="pb-2 space-y-1">
-                    <h2 className="text-xl font-bold">John Doe</h2>
-                    <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="size-3" /> john.doe@example.com</p>
+                    <h2 className="text-xl font-bold">{firstName} {lastName}</h2>
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Mail className="size-3" /> {profile?.email}
+                    </p>
                   </div>
                </div>
             </CardContent>
@@ -83,17 +211,32 @@ export default function Profile() {
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" defaultValue="John" className="rounded-xl h-11 bg-muted/30 border-none" />
+                  <Input 
+                    id="firstName" 
+                    value={firstName} 
+                    onChange={(e) => setFirstName(e.target.value)} 
+                    className="rounded-xl h-11 bg-muted/30 border-none" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" defaultValue="Doe" className="rounded-xl h-11 bg-muted/30 border-none" />
+                  <Input 
+                    id="lastName" 
+                    value={lastName} 
+                    onChange={(e) => setLastName(e.target.value)} 
+                    className="rounded-xl h-11 bg-muted/30 border-none" 
+                  />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
-                <Input id="email" defaultValue="john.doe@example.com" disabled className="rounded-xl h-11 bg-muted/50 border-none" />
+                <Input 
+                  id="email" 
+                  value={profile?.email || ""} 
+                  disabled 
+                  className="rounded-xl h-11 bg-muted/50 border-none" 
+                />
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2">
@@ -101,14 +244,25 @@ export default function Profile() {
                   <Label htmlFor="phone">Phone Number</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                    <Input id="phone" defaultValue="+1 234 567 890" className="pl-10 rounded-xl h-11 bg-muted/30 border-none" />
+                    <Input 
+                      id="phone" 
+                      value={phone} 
+                      onChange={(e) => setPhone(e.target.value)} 
+                      className="pl-10 rounded-xl h-11 bg-muted/30 border-none" 
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                    <Input id="location" defaultValue="New York, USA" className="pl-10 rounded-xl h-11 bg-muted/30 border-none" />
+                    <Input 
+                      id="location" 
+                      value={location} 
+                      onChange={(e) => setLocation(e.target.value)} 
+                      placeholder="e.g. New York, USA"
+                      className="pl-10 rounded-xl h-11 bg-muted/30 border-none" 
+                    />
                   </div>
                 </div>
               </div>
@@ -140,8 +294,22 @@ export default function Profile() {
           </Card>
 
           <div className="flex justify-end gap-4">
-            <Button variant="ghost" className="rounded-xl px-6">Discard Changes</Button>
-            <Button className="rounded-xl px-8 shadow-lg shadow-primary/20">Save Profile</Button>
+            <Button 
+              variant="ghost" 
+              onClick={fetchProfile} 
+              disabled={isSaving} 
+              className="rounded-xl px-6"
+            >
+              Discard Changes
+            </Button>
+            <Button 
+              onClick={handleSaveChanges} 
+              disabled={isSaving} 
+              className="rounded-xl px-8 shadow-lg shadow-primary/20 flex items-center gap-2"
+            >
+              {isSaving && <Loader2 className="size-4 animate-spin" />}
+              Save Profile
+            </Button>
           </div>
         </div>
       </div>

@@ -716,11 +716,25 @@ export default function OrderDetails() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-violet-100 flex items-center justify-center text-xl font-bold text-[#7C5CFC] border border-[#7C5CFC]/20">
-                    {task.writer?.first_name?.[0] || "W"}
+                  <div className="h-14 w-14 rounded-2xl bg-violet-100 flex items-center justify-center text-xl font-bold text-[#7C5CFC] border border-[#7C5CFC]/20 uppercase overflow-hidden">
+                    {task.writer?.profile_image_url ? (
+                      <img 
+                        src={getFileUrl(task.writer.profile_image_url)} 
+                        alt="Avatar" 
+                        className="w-full h-full object-cover rounded-2xl" 
+                      />
+                    ) : (
+                      task.writer && task.writer.first_name ? task.writer.first_name[0] : (task.writer?.email ? task.writer.email[0] : "W")
+                    )}
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-bold text-base text-[#1a1033]">{task.writer?.first_name} {task.writer?.last_name}</h3>
+                    <h3 className="font-bold text-base text-[#1a1033]">
+                      {task.writer 
+                        ? ((task.writer.first_name || task.writer.last_name) 
+                            ? `${task.writer.first_name || ""} ${task.writer.last_name || ""}`.trim() 
+                            : task.writer.email.split("@")[0]) 
+                        : "Unallocated"}
+                    </h3>
                     <div className="flex items-center gap-2 text-xs">
                       <span className="flex items-center gap-0.5 text-amber-500 font-bold">★ 4.9</span>
                       <span className="text-[#9490a8]">• Expert Writer</span>

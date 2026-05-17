@@ -5,6 +5,7 @@ export interface ChatMessage {
   message_text: string;
   is_read: boolean;
   created_at: string;
+  sender_profile_image_url?: string;
 }
 
 export interface ChatSession {
@@ -17,6 +18,7 @@ export interface ChatSession {
   updated_at: string;
   task_title?: string;
   other_party_name?: string;
+  other_party_profile_image_url?: string;
 }
 
 export interface SendMessageRequest {

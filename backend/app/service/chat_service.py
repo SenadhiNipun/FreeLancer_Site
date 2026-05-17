@@ -66,7 +66,12 @@ class ChatService:
         # Mark as read
         ChatRepository.mark_messages_as_read(db, session_id, user_id)
         
-        return [ChatMessageResponse.model_validate(m) for m in messages]
+        results = []
+        for m in messages:
+            resp = ChatMessageResponse.model_validate(m)
+            resp.sender_profile_image_url = m.sender.profile_image_url if m.sender else None
+            results.append(resp)
+        return results
 
     @staticmethod
     def get_user_chat_sessions(db: Session, user_id: int):
@@ -80,8 +85,10 @@ class ChatService:
             # Name of the other person
             if user_id == s.customer_id:
                 resp.other_party_name = f"{s.writer.first_name} {s.writer.last_name}" if s.writer else "Writer"
+                resp.other_party_profile_image_url = s.writer.profile_image_url if s.writer else None
             else:
                 resp.other_party_name = f"{s.customer.first_name} {s.customer.last_name}" if s.customer else "Customer"
+                resp.other_party_profile_image_url = s.customer.profile_image_url if s.customer else None
                 
             results.append(resp)
         return results

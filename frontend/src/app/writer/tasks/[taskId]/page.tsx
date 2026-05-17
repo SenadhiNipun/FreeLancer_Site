@@ -49,6 +49,10 @@ export default function WriterTaskDetails() {
       try {
         if (!taskIdParam) return;
         const taskId = parseInt(taskIdParam);
+        if (isNaN(taskId)) {
+          setIsLoading(false);
+          return;
+        }
         const response = await taskService.getWriterTaskDetails(taskId);
         const taskData = response.results;
         setTask(taskData);
@@ -529,7 +533,15 @@ export default function WriterTaskDetails() {
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Project Owner</p>
                 <div className="flex items-center gap-5 pt-2">
                   <div className="size-16 rounded-[1.25rem] glass bg-card/50 flex items-center justify-center text-primary border border-white/10 shadow-2xl group overflow-hidden">
-                    <User className="size-8 group-hover:scale-110 transition-transform" />
+                    {task.customer?.profile_image_url ? (
+                      <img 
+                        src={getFileUrl(task.customer.profile_image_url)} 
+                        alt="Client Avatar" 
+                        className="h-full w-full object-cover group-hover:scale-110 transition-transform"
+                      />
+                    ) : (
+                      <User className="size-8 group-hover:scale-110 transition-transform" />
+                    )}
                   </div>
                   <div className="space-y-1">
                     <h3 className="font-bold text-foreground text-lg leading-tight">

@@ -25,7 +25,13 @@ class ChatRepository:
 
     @staticmethod
     def get_user_sessions(db: Session, user_id: int) -> List[ChatSessionEntity]:
-        return db.query(ChatSessionEntity).filter(
+        from sqlalchemy.orm import selectinload
+        from app.entity.user_entity import UserEntity
+        return db.query(ChatSessionEntity).options(
+            selectinload(ChatSessionEntity.task),
+            selectinload(ChatSessionEntity.writer).selectinload(UserEntity.user_profile),
+            selectinload(ChatSessionEntity.customer).selectinload(UserEntity.user_profile)
+        ).filter(
             (ChatSessionEntity.customer_id == user_id) | (ChatSessionEntity.writer_id == user_id)
         ).all()
 
@@ -38,7 +44,11 @@ class ChatRepository:
 
     @staticmethod
     def get_messages_by_session(db: Session, session_id: int) -> List[ChatMessageEntity]:
-        return db.query(ChatMessageEntity).filter(
+        from sqlalchemy.orm import selectinload
+        from app.entity.user_entity import UserEntity
+        return db.query(ChatMessageEntity).options(
+            selectinload(ChatMessageEntity.sender).selectinload(UserEntity.user_profile)
+        ).filter(
             ChatMessageEntity.session_id == session_id
         ).order_by(ChatMessageEntity.created_at.asc()).all()
 

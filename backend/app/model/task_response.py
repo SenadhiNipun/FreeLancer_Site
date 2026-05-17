@@ -7,9 +7,10 @@ from app.model.review_model import ReviewResponse
 
 class UserResponse(BaseModel):
     id: int
-    first_name: str
-    last_name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     email: str
+    profile_image_url: Optional[str] = None
 
     class Config:
         from_attributes = True

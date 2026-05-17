@@ -18,12 +18,13 @@ class TaskRepository:
         from app.entity.task_bid_entity import TaskBidEntity
         from app.entity.task_revision_entity import TaskRevisionEntity
         from app.entity.task_submission_entity import TaskSubmissionEntity
+        from app.entity.user_entity import UserEntity
         return (
             db.query(TaskEntity)
             .options(
-                selectinload(TaskEntity.assignments).selectinload(TaskAssignmentEntity.writer),
-                selectinload(TaskEntity.bids).selectinload(TaskBidEntity.writer),
-                selectinload(TaskEntity.customer),
+                selectinload(TaskEntity.assignments).selectinload(TaskAssignmentEntity.writer).selectinload(UserEntity.user_profile),
+                selectinload(TaskEntity.bids).selectinload(TaskBidEntity.writer).selectinload(UserEntity.user_profile),
+                selectinload(TaskEntity.customer).selectinload(UserEntity.user_profile),
                 selectinload(TaskEntity.files),
                 selectinload(TaskEntity.submissions).selectinload(TaskSubmissionEntity.files),
                 selectinload(TaskEntity.revisions).selectinload(TaskRevisionEntity.files)
@@ -37,11 +38,12 @@ class TaskRepository:
         from sqlalchemy.orm import selectinload
         from app.entity.task_assignment_entity import TaskAssignmentEntity
         from app.entity.task_bid_entity import TaskBidEntity
+        from app.entity.user_entity import UserEntity
         return (
             db.query(TaskEntity)
             .options(
-                selectinload(TaskEntity.assignments).selectinload(TaskAssignmentEntity.writer),
-                selectinload(TaskEntity.bids).selectinload(TaskBidEntity.writer),
+                selectinload(TaskEntity.assignments).selectinload(TaskAssignmentEntity.writer).selectinload(UserEntity.user_profile),
+                selectinload(TaskEntity.bids).selectinload(TaskBidEntity.writer).selectinload(UserEntity.user_profile),
                 selectinload(TaskEntity.files)
             )
             .filter(TaskEntity.customer_id == customer_id, TaskEntity.is_delete == False)

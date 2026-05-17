@@ -25,6 +25,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { getFileUrl } from "@/lib/api-client";
 
 import { taskService } from "@/services/task.service";
 import { format } from "date-fns";
@@ -158,11 +159,23 @@ export default function MyOrders() {
                   </td>
                   <td className="px-8 py-8">
                     <div className="flex items-center gap-3">
-                      <div className="size-8 rounded-lg glass bg-muted flex items-center justify-center text-[10px] font-black text-foreground border border-border/50 shadow-sm">
-                        {task.writer ? task.writer.first_name[0] : "!"}
+                      <div className="size-8 rounded-lg glass bg-muted flex items-center justify-center text-[10px] font-black text-foreground border border-border/50 shadow-sm uppercase overflow-hidden">
+                        {task.writer?.profile_image_url ? (
+                          <img 
+                            src={getFileUrl(task.writer.profile_image_url)} 
+                            alt="Avatar" 
+                            className="w-full h-full object-cover rounded-lg" 
+                          />
+                        ) : (
+                          task.writer && task.writer.first_name ? task.writer.first_name[0] : (task.writer?.email ? task.writer.email[0] : "!")
+                        )}
                       </div>
                       <span className="text-[12px] font-bold text-foreground/80">
-                        {task.writer ? `${task.writer.first_name} ${task.writer.last_name}` : "Unallocated"}
+                        {task.writer 
+                          ? ((task.writer.first_name || task.writer.last_name) 
+                              ? `${task.writer.first_name || ""} ${task.writer.last_name || ""}`.trim() 
+                              : task.writer.email.split("@")[0]) 
+                          : "Unallocated"}
                       </span>
                     </div>
                   </td>

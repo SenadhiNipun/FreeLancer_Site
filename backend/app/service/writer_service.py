@@ -15,76 +15,104 @@ class WriterService:
     def get_public_profile(db: Session, user_id: int) -> WriterProfileResponse:
         user = db.query(UserEntity).filter(UserEntity.id == user_id).first()
         if not user:
-            raise NotFoundException(detail="Writer not found")
+            raise NotFoundException(detail="User not found")
 
         writer_profile = user.writer_profile
-        if not writer_profile:
-            # Maybe the user is not a writer? 
-            # We can still return a basic profile if needed, but for now expect writer_profile
-            raise NotFoundException(detail="Writer profile not found for this user")
-
-        # Count completed projects
-        completed_count = db.query(TaskAssignmentEntity).join(TaskEntity).filter(
-            TaskAssignmentEntity.writer_id == user_id,
-            TaskEntity.task_status == "COMPLETED"
-        ).count()
-
-        # Build qualifications list
-        quals = [q.qualification_name for q in writer_profile.qualifications]
+        user_profile = user.user_profile
         
-        # Build expertise list (tags)
+        quals = []
         expertise = []
-        if writer_profile.specialization:
-            expertise.append(writer_profile.specialization.name)
-        if writer_profile.academic_category:
-            expertise.append(writer_profile.academic_category.name)
+        completed_count = 0
+        avg_rating = 4.9
+        reviews_list = []
         
-        # Add some default tags if empty for UI consistency
+        city = None
+        country = None
+        bio = None
+        experience_years = None
+        education_level = None
+        institution_name = None
+        academic_category = None
+        specialization = None
+        
+        if writer_profile:
+            # Count completed projects
+            completed_count = db.query(TaskAssignmentEntity).join(TaskEntity).filter(
+                TaskAssignmentEntity.writer_id == user_id,
+                TaskEntity.task_status == "COMPLETED"
+            ).count()
+
+            # Build qualifications list
+            quals = [q.qualification_name for q in writer_profile.qualifications]
+            
+            # Build expertise list (tags)
+            if writer_profile.specialization:
+                expertise.append(writer_profile.specialization.name)
+            if writer_profile.academic_category:
+                expertise.append(writer_profile.academic_category.name)
+            
+            # Fetch actual reviews
+            review_entities = db.query(ReviewEntity).filter(ReviewEntity.writer_id == user_id).all()
+            
+            for r in review_entities:
+                cust_name = "Anonymous Client"
+                if r.customer:
+                    last_name_init = f" {r.customer.last_name[0]}." if r.customer.last_name else ""
+                    cust_name = f"{r.customer.first_name or 'Client'}{last_name_init}"
+                reviews_list.append(PublicReviewModel(
+                    id=r.id,
+                    rating=r.rating,
+                    feedback=r.feedback,
+                    created_at=r.created_at,
+                    customer_name=cust_name
+                ))
+
+            # Calculate dynamic average rating
+            if review_entities:
+                avg_rating = sum(r.rating for r in review_entities) / len(review_entities)
+            else:
+                avg_rating = 4.9 # Default fallback rating
+
+            city = writer_profile.city
+            country = writer_profile.country
+            bio = writer_profile.bio
+            experience_years = writer_profile.experience_years
+            education_level = writer_profile.education_level.name if writer_profile.education_level else None
+            institution_name = writer_profile.institution_name
+            academic_category = writer_profile.academic_category.name if writer_profile.academic_category else None
+            specialization = writer_profile.specialization.name if writer_profile.specialization else None
+        elif user_profile:
+            # For non-writers (e.g. customers), pull basic info from user_profile
+            bio = "Client Profile"
+            if user_profile.address:
+                parts = user_profile.address.split(",")
+                if len(parts) >= 2:
+                    city = parts[0].strip()
+                    country = parts[1].strip()
+                else:
+                    city = user_profile.address
+
         if not expertise:
             expertise = ["Academic Writing", "Research"]
 
-        # Fetch actual reviews
-        review_entities = db.query(ReviewEntity).filter(ReviewEntity.writer_id == user_id).all()
-        
-        reviews_list = []
-        for r in review_entities:
-            cust_name = "Anonymous Client"
-            if r.customer:
-                last_name_init = f" {r.customer.last_name[0]}." if r.customer.last_name else ""
-                cust_name = f"{r.customer.first_name or 'Client'}{last_name_init}"
-            reviews_list.append(PublicReviewModel(
-                id=r.id,
-                rating=r.rating,
-                feedback=r.feedback,
-                created_at=r.created_at,
-                customer_name=cust_name
-            ))
-
-        # Calculate dynamic average rating
-        if review_entities:
-            avg_rating = sum(r.rating for r in review_entities) / len(review_entities)
-        else:
-            avg_rating = 4.9 # Default fallback rating
-
-        profile_img = None
-        if user.user_profile:
-            profile_img = user.user_profile.profile_image_url
+        profile_img = user_profile.profile_image_url if user_profile else None
+        profile_id = writer_profile.id if writer_profile else (user_profile.id if user_profile else user.id)
 
         return WriterProfileResponse(
-            id=writer_profile.id,
+            id=profile_id,
             user_id=user.id,
             first_name=user.first_name or "",
             last_name=user.last_name or "",
             email=user.email,
             phone=user.mobile_number,
-            city=writer_profile.city,
-            country=writer_profile.country,
-            bio=writer_profile.bio,
-            experience_years=writer_profile.experience_years,
-            education_level=writer_profile.education_level.name if writer_profile.education_level else None,
-            institution_name=writer_profile.institution_name,
-            academic_category=writer_profile.academic_category.name if writer_profile.academic_category else None,
-            specialization=writer_profile.specialization.name if writer_profile.specialization else None,
+            city=city,
+            country=country,
+            bio=bio,
+            experience_years=experience_years,
+            education_level=education_level,
+            institution_name=institution_name,
+            academic_category=academic_category,
+            specialization=specialization,
             qualifications=quals,
             expertise=expertise,
             completed_projects=completed_count,
@@ -106,16 +134,35 @@ class WriterService:
             user.last_name = request.last_name
         if request.phone is not None:
             user.mobile_number = request.phone
-        # Email update might need verification, but for now we just allow it or keep it simple
-        # if request.email is not None:
-        #     user.email = request.email
 
         writer_profile = user.writer_profile
         if not writer_profile:
-            # Create if doesn't exist? (Should exist for writers)
-            writer_profile = WriterProfileEntity(user_id=user_id)
-            db.add(writer_profile)
-            db.flush()
+            # For non-writers (e.g. customers), update UserProfileEntity
+            from app.entity.user_profile_entity import UserProfileEntity
+            user_profile = user.user_profile
+            if not user_profile:
+                user_profile = UserProfileEntity(user_id=user_id)
+                db.add(user_profile)
+                db.flush()
+            
+            if request.phone is not None:
+                user_profile.phone_number = request.phone
+                
+            # Combine city and country into address
+            if request.city is not None or request.country is not None:
+                c = request.city if request.city is not None else (user_profile.address.split(",")[0].strip() if user_profile.address and "," in user_profile.address else "")
+                co = request.country if request.country is not None else (user_profile.address.split(",")[1].strip() if user_profile.address and "," in user_profile.address else "")
+                if c and co:
+                    user_profile.address = f"{c}, {co}"
+                elif c:
+                    user_profile.address = c
+                elif co:
+                    user_profile.address = co
+            
+            db.commit()
+            db.refresh(user)
+            db.refresh(user_profile)
+            return WriterService.get_public_profile(db, user_id)
 
         # Update Profile fields
         if request.city is not None:

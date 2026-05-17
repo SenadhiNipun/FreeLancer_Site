@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from app.config.database import Base
 from app.entity.base_entity import BaseEntity
 import uuid
+from typing import Optional
 
 class UserEntity(Base, BaseEntity):
     __tablename__ = "users"
@@ -48,3 +49,8 @@ class UserEntity(Base, BaseEntity):
         uselist=False,
         cascade="all, delete-orphan"
     )
+
+    @property
+    def profile_image_url(self) -> Optional[str]:
+        return self.user_profile.profile_image_url if self.user_profile else None
+

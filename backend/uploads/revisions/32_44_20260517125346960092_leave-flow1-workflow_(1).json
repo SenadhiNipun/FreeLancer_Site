@@ -1,0 +1,198 @@
+{
+  "nodes": [
+    {
+      "id": "node-1778054982364",
+      "type": "statusNode",
+      "position": {
+        "x": 540,
+        "y": 220
+      },
+      "data": {
+        "label": "HR Assistance",
+        "role": [
+          "development_manager"
+        ],
+        "color": "purple",
+        "type": "approval",
+        "description": "",
+        "employee_ids": [],
+        "employee_names": []
+      },
+      "measured": {
+        "width": 180,
+        "height": 109
+      },
+      "selected": false
+    },
+    {
+      "id": "node-1778055050915",
+      "type": "statusNode",
+      "position": {
+        "x": 540,
+        "y": 460
+      },
+      "data": {
+        "label": "HR Manager",
+        "role": [
+          "hr_manager"
+        ],
+        "color": "yellow",
+        "type": "approval",
+        "description": "",
+        "employee_ids": [],
+        "employee_names": []
+      },
+      "measured": {
+        "width": 180,
+        "height": 109
+      },
+      "selected": false
+    },
+    {
+      "id": "node-1778568410692",
+      "type": "statusNode",
+      "position": {
+        "x": 540,
+        "y": 660
+      },
+      "data": {
+        "label": "Approved",
+        "role": [],
+        "color": "green",
+        "type": "end",
+        "description": "",
+        "employee_ids": [],
+        "employee_names": []
+      },
+      "measured": {
+        "width": 180,
+        "height": 88
+      },
+      "selected": false
+    },
+    {
+      "id": "node-1778568437076",
+      "type": "statusNode",
+      "position": {
+        "x": 860,
+        "y": 660
+      },
+      "data": {
+        "label": "Rejected",
+        "role": [],
+        "color": "red",
+        "type": "rejected",
+        "description": "",
+        "employee_ids": [],
+        "employee_names": []
+      },
+      "measured": {
+        "width": 180,
+        "height": 88
+      },
+      "selected": false
+    },
+    {
+      "id": "node-1778576089812",
+      "type": "statusNode",
+      "position": {
+        "x": 540,
+        "y": 40
+      },
+      "data": {
+        "label": "Request",
+        "role": [
+          "hr_intern"
+        ],
+        "color": "gray",
+        "type": "start",
+        "description": "",
+        "employee_ids": [],
+        "employee_names": []
+      },
+      "measured": {
+        "width": 180,
+        "height": 109
+      },
+      "selected": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "enode-1778054982364-node-1778055050915-1778055064851",
+      "source": "node-1778054982364",
+      "target": "node-1778055050915",
+      "type": "transition",
+      "data": {
+        "label": "Transition",
+        "type": "default",
+        "role": ""
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#6B7280"
+      }
+    },
+    {
+      "id": "enode-1778054982364-node-1778568437076-1778568456652",
+      "source": "node-1778054982364",
+      "target": "node-1778568437076",
+      "type": "transition",
+      "data": {
+        "label": "Transition",
+        "type": "default",
+        "role": ""
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#6B7280"
+      }
+    },
+    {
+      "id": "enode-1778055050915-node-1778568437076-1778568461564",
+      "source": "node-1778055050915",
+      "target": "node-1778568437076",
+      "type": "transition",
+      "data": {
+        "label": "Transition",
+        "type": "default",
+        "role": ""
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#6B7280"
+      }
+    },
+    {
+      "id": "enode-1778055050915-node-1778568410692-1778568496796",
+      "source": "node-1778055050915",
+      "target": "node-1778568410692",
+      "type": "transition",
+      "data": {
+        "label": "Transition",
+        "type": "default",
+        "role": ""
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#6B7280"
+      }
+    },
+    {
+      "id": "enode-1778576089812-node-1778054982364-1778576103642",
+      "source": "node-1778576089812",
+      "target": "node-1778054982364",
+      "type": "transition",
+      "data": {
+        "label": "Transition",
+        "type": "default",
+        "role": ""
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#6B7280"
+      }
+    }
+  ],
+  "name": "Leave flow1"
+}

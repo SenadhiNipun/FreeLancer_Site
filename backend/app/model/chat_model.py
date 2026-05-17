@@ -16,6 +16,7 @@ class ChatMessageResponse(ChatMessageBase):
     sender_id: int
     is_read: bool
     created_at: datetime
+    sender_profile_image_url: Optional[str] = None
 
 class ChatSessionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -31,6 +32,7 @@ class ChatSessionResponse(BaseModel):
     # Optional: include task title or other user details
     task_title: Optional[str] = None
     other_party_name: Optional[str] = None
+    other_party_profile_image_url: Optional[str] = None
 
 class ChatSessionListResponse(BaseModel):
     sessions: List[ChatSessionResponse]

@@ -8,10 +8,18 @@ import {
   MoreVertical, 
   User, 
   MessageSquare,
-  Clock,
   Check,
   CheckCheck,
-  ChevronLeft
+  ChevronLeft,
+  Plus,
+  Phone,
+  Mail,
+  Smile,
+  Paperclip,
+  Mic,
+  BookOpen,
+  FileText,
+  Clock
 } from "lucide-react";
 import { chatService } from "@/services/chat.service";
 import { authService } from "@/services/auth.service";
@@ -19,6 +27,7 @@ import { ChatSession, ChatMessage } from "@/types/chat";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { getFileUrl } from "@/lib/api-client";
 
 export default function ChatInterface() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -28,6 +37,7 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"open" | "closed">("open");
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -139,7 +149,6 @@ export default function ChatInterface() {
       console.error("Failed to send message:", error);
     } finally {
       setIsSending(false);
-      // Re-focus the input after sending
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   };
@@ -148,199 +157,375 @@ export default function ChatInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Filter based on Search and Tabs
   const filteredSessions = [...sessions]
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-    .filter(s => 
-      s.other_party_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.task_title?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    .filter(s => {
+      const matchesSearch = s.other_party_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            s.task_title?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Let active tab split open/active tasks vs closed tasks dynamically
+      const isSessionOpen = s.is_active !== false; 
+      if (activeTab === "open") {
+        return matchesSearch && isSessionOpen;
+      } else {
+        return matchesSearch && !isSessionOpen;
+      }
+    });
 
   if (isLoading && sessions.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[600px] glass rounded-[32px] border-border/50">
+      <div className="flex items-center justify-center h-[750px] bg-[#F4F7F8] rounded-[2rem] border border-slate-100">
         <div className="flex flex-col items-center gap-4">
-          <div className="size-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Loading Chats...</p>
+          <div className="size-10 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Initializing OChat Engine...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[750px] glass rounded-[32px] border-border/50 shadow-2xl overflow-hidden">
+    <div className="flex h-[750px] bg-white rounded-[2.5rem] border border-slate-150 shadow-xl overflow-hidden font-sans text-slate-800 animate-in fade-in duration-500">
       
-      {/* ── Sessions List (Sidebar) ──────────────── */}
+      {/* ── Column B: Chat Session Inbox (Medium Sidebar) ──────────────── */}
       <div className={cn(
-        "w-full md:w-[350px] border-r border-border/50 flex flex-col bg-card/30",
+        "w-full md:w-[320px] bg-[#F4F7F8] border-r border-slate-200 flex flex-col flex-shrink-0",
         activeSession ? "hidden md:flex" : "flex"
       )}>
-        <div className="p-6 border-b border-border/50">
-          <h2 className="text-xl font-bold text-foreground mb-4">Messages</h2>
+        {/* Header Row */}
+        <div className="p-6 pb-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-black tracking-tight text-slate-900">Chats</h2>
+            <div className="flex items-center gap-2">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                <Plus className="size-3.5 text-[#0D9488]" />
+                New Chat
+              </button>
+              <button className="p-2 hover:bg-slate-200/50 rounded-xl text-slate-500 transition-colors">
+                <MoreVertical className="size-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Search bar */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search conversations..." 
+              placeholder="Search Contact" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-muted/20 border border-border/50 rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/30"
+              className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all placeholder:text-slate-400"
             />
+          </div>
+
+          {/* Capsule Tab Toggle */}
+          <div className="flex p-1 bg-slate-200/60 rounded-2xl">
+            <button 
+              onClick={() => setActiveTab("open")}
+              className={cn(
+                "flex-1 py-2 text-xs font-bold rounded-xl transition-all",
+                activeTab === "open" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              Open
+            </button>
+            <button 
+              onClick={() => setActiveTab("closed")}
+              className={cn(
+                "flex-1 py-2 text-xs font-bold rounded-xl transition-all",
+                activeTab === "closed" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              Closed
+            </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {/* Sessions Stream */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-6 space-y-1.5">
           {filteredSessions.length > 0 ? (
-            filteredSessions.map((session) => (
-              <button
-                key={session.id}
-                onClick={() => setActiveSession(session)}
-                className={cn(
-                  "w-full p-5 flex items-start gap-4 transition-all hover:bg-primary/5 text-left border-b border-border/50",
-                  activeSession?.id === session.id && "bg-primary/10 border-l-[4px] border-l-primary pl-4"
-                )}
-              >
-                <div className="size-12 rounded-2xl bg-gradient-to-br from-[#7C5CFC] to-[#A78BFA] flex items-center justify-center flex-shrink-0 shadow-sm text-white">
-                  <User className="size-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-foreground truncate">{session.task_title}</span>
-                    <span className="text-[10px] text-muted-foreground/60 font-medium">
-                      {formatDistanceToNow(new Date(session.updated_at), { addSuffix: false })}
-                    </span>
+            filteredSessions.map((session) => {
+              const isActive = activeSession?.id === session.id;
+              return (
+                <button
+                  key={session.id}
+                  onClick={() => setActiveSession(session)}
+                  className={cn(
+                    "w-full p-4 flex items-start gap-3.5 rounded-[1.5rem] transition-all text-left",
+                    isActive 
+                      ? "bg-[#EBF3FC] shadow-sm border border-blue-100" 
+                      : "hover:bg-slate-200/40 border border-transparent"
+                  )}
+                >
+                  {/* Circular Avatar with status dot */}
+                  <div className="relative flex-shrink-0">
+                    <div className="size-11 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 border border-white shadow-sm overflow-hidden">
+                      {session.other_party_profile_image_url ? (
+                        <img 
+                          src={getFileUrl(session.other_party_profile_image_url)} 
+                          alt={session.other_party_name} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-500 bg-slate-100">
+                          {session.other_party_name?.[0] || "C"}
+                        </div>
+                      )}
+                    </div>
+                    {/* Active indicator dot */}
+                    <div className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
                   </div>
-                  <p className="text-xs font-semibold text-primary truncate mb-1">{session.other_party_name}</p>
-                  <p className="text-xs text-muted-foreground truncate">Click to start chatting</p>
-                </div>
-              </button>
-            ))
+
+                  {/* Body details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="font-bold text-slate-900 text-[13px] truncate pr-2">{session.other_party_name}</span>
+                      <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">
+                        {formatDistanceToNow(new Date(session.updated_at), { addSuffix: false })}
+                      </span>
+                    </div>
+                    <p className={cn(
+                      "text-xs font-semibold truncate mb-1",
+                      isActive ? "text-blue-600" : "text-slate-500"
+                    )}>
+                      {session.task_title}
+                    </p>
+                    <p className="text-[11px] text-slate-400 truncate">Click to chat</p>
+                  </div>
+                </button>
+              );
+            })
           ) : (
-            <div className="p-10 text-center space-y-3">
-              <MessageSquare className="size-10 text-[#c4bfd8] mx-auto opacity-50" />
-              <p className="text-xs font-medium text-[#9490a8] italic">No active conversations found.</p>
+            <div className="py-20 text-center space-y-3">
+              <MessageSquare className="size-8 text-slate-300 mx-auto opacity-70" />
+              <p className="text-xs font-bold text-slate-400 italic">No {activeTab} chats found.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Chat Window (Main Area) ──────────────── */}
+      {/* ── Column C: Active Chat Window ──────────────── */}
       <div className={cn(
-        "flex-1 flex flex-col bg-card/20",
+        "flex-1 flex flex-col bg-[#F9FAFB]",
         !activeSession ? "hidden md:flex" : "flex"
       )}>
         {activeSession ? (
           <>
-            {/* Header */}
-            <div className="p-5 border-b border-border/50 bg-card/80 backdrop-blur-sm flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            {/* Premium Header */}
+            <div className="px-6 py-4 border-b border-slate-200 bg-white/95 backdrop-blur-md flex items-center justify-between shadow-sm z-10">
+              <div className="flex items-center gap-3.5">
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="md:hidden size-8 text-primary"
+                  className="md:hidden size-8 text-slate-600 hover:bg-slate-100"
                   onClick={() => setActiveSession(null)}
                 >
                   <ChevronLeft className="size-5" />
                 </Button>
-                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                  <User className="size-5" />
+                
+                {/* Active user Avatar */}
+                <div className="size-11 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 overflow-hidden shadow-inner flex-shrink-0">
+                  {activeSession.other_party_profile_image_url ? (
+                    <img 
+                      src={getFileUrl(activeSession.other_party_profile_image_url)} 
+                      alt={activeSession.other_party_name} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-500">
+                      {activeSession.other_party_name?.[0] || "C"}
+                    </div>
+                  )}
                 </div>
+
                 <div>
-                  <h3 className="font-bold text-foreground leading-tight">{activeSession.task_title}</h3>
-                  <p className="text-[10px] font-bold text-primary uppercase tracking-wider">{activeSession.other_party_name}</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-slate-900 text-[15px] leading-tight">{activeSession.other_party_name}</h3>
+                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[9px] font-bold border border-blue-100 shadow-sm uppercase tracking-wider">
+                      Active Task
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-bold text-[#0D9488] uppercase tracking-wider mt-0.5">{activeSession.task_title}</p>
                 </div>
               </div>
+
+              {/* Utility action headers */}
               <div className="flex items-center gap-2">
-                <button className="p-2 hover:bg-primary/5 rounded-lg transition-colors text-muted-foreground/50 hover:text-primary">
-                  <MoreVertical className="size-5" />
+                <button className="p-2.5 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-200">
+                  <Phone className="size-4" />
+                </button>
+                <button className="p-2.5 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-200">
+                  <Mail className="size-4" />
+                </button>
+                <button className="p-2.5 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-200">
+                  <MoreVertical className="size-4" />
                 </button>
               </div>
             </div>
 
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-[url('/grid-light.svg')] bg-center">
+            {/* Messages Stream */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50/30">
+              <div className="flex justify-center my-2">
+                <div className="flex items-center gap-4 w-full max-w-[400px]">
+                  <div className="h-[1px] bg-slate-200 flex-1" />
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">TODAY</span>
+                  <div className="h-[1px] bg-slate-200 flex-1" />
+                </div>
+              </div>
+
               {messages.length > 0 ? (
                 messages.map((msg, idx) => {
                   const isMine = msg.sender_id == currentUserId;
                   const showDate = idx === 0 || 
                     new Date(msg.created_at).getDate() !== new Date(messages[idx-1].created_at).getDate();
 
+                  const formattedTime = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
                   return (
                     <React.Fragment key={msg.id}>
                       {showDate && (
                         <div className="flex justify-center my-4">
-                          <span className="px-3 py-1 rounded-full bg-violet-50 text-[10px] font-bold text-[#9490a8] uppercase tracking-widest border border-violet-100">
+                          <span className="px-3 py-1 rounded-full bg-slate-200/50 text-[9px] font-bold text-slate-500 uppercase tracking-widest border border-slate-100">
                             {new Date(msg.created_at).toLocaleDateString()}
                           </span>
                         </div>
                       )}
+                      
+                      {/* Structured Message block */}
                       <div className={cn(
-                        "flex flex-col max-w-[75%] animate-in fade-in slide-in-from-bottom-2 duration-300",
-                        isMine ? "ml-auto items-end" : "mr-auto items-start"
+                        "flex flex-col w-full group animate-in fade-in slide-in-from-bottom-2 duration-300",
+                        isMine ? "items-end" : "items-start"
                       )}>
-                        <div className={cn(
-                          "px-5 py-3 rounded-2xl shadow-sm relative",
-                          isMine 
-                            ? "bg-primary text-white rounded-tr-none shadow-primary/20" 
-                            : "bg-card text-foreground rounded-tl-none border border-border/50"
-                        )}>
-                          <p className="text-[13px] leading-relaxed font-medium">{msg.message_text}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-1.5 px-1">
-                          <span className="text-[10px] font-bold text-[#c4bfd8]">
-                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          {isMine && (
-                            msg.is_read ? <CheckCheck className="size-3 text-emerald-400" /> : <Check className="size-3 text-[#c4bfd8]" />
+                        
+                        {/* 1. Header Name + Time Row */}
+                        <div className="flex items-center gap-2 mb-1 px-11 text-[10px] font-bold text-slate-400">
+                          {isMine ? (
+                            <>
+                              <span>{formattedTime}</span>
+                              <span className="text-slate-500">You</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-slate-500">{activeSession.other_party_name}</span>
+                              <span>{formattedTime}</span>
+                            </>
                           )}
                         </div>
+
+                        {/* 2. Avatar + Bubble Row */}
+                        <div className={cn(
+                          "flex items-end gap-2.5 max-w-[85%]",
+                          isMine ? "flex-row-reverse" : "flex-row"
+                        )}>
+                          {/* Circular Avatar */}
+                          <div className="size-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-500 flex-shrink-0 overflow-hidden shadow-sm border border-white">
+                            {msg.sender_profile_image_url ? (
+                              <img 
+                                src={getFileUrl(msg.sender_profile_image_url)} 
+                                alt="Avatar" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <User className="size-3.5" />
+                            )}
+                          </div>
+
+                          {/* Message Bubble container */}
+                          <div className="flex flex-col items-start gap-1">
+                            <div className={cn(
+                              "px-4.5 py-3 rounded-2xl shadow-sm text-slate-900 text-[13px] leading-relaxed font-medium relative",
+                              isMine 
+                                ? "bg-[#DEE9F7] rounded-tr-none border border-blue-200/30" 
+                                : "bg-[#ECF0F3] rounded-tl-none border border-slate-300/20"
+                            )}>
+                              <p className="whitespace-pre-wrap">{msg.message_text}</p>
+                            </div>
+                            
+                            {/* Read Indicators for my messages */}
+                            {isMine && (
+                              <div className="flex justify-end w-full px-1 mt-0.5">
+                                {msg.is_read ? (
+                                  <CheckCheck className="size-3 text-emerald-500" />
+                                ) : (
+                                  <Check className="size-3 text-slate-400" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
                       </div>
                     </React.Fragment>
                   );
                 })
               ) : (
-                <div className="flex flex-col items-center justify-center h-full opacity-30 grayscale">
-                  <div className="size-20 bg-violet-50 rounded-full flex items-center justify-center mb-4">
-                    <MessageSquare className="size-10 text-[#7C5CFC]" />
+                <div className="flex flex-col items-center justify-center h-full opacity-40 py-20">
+                  <div className="size-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <MessageSquare className="size-8 text-[#0D9488]" />
                   </div>
-                  <p className="text-sm font-bold text-[#1a1033]">Start the conversation!</p>
-                  <p className="text-xs font-medium text-[#9490a8] mt-1 text-center max-w-[200px]">Send a message to discuss project details.</p>
+                  <p className="text-xs font-bold text-slate-600">Start a Premium Conversation</p>
+                  <p className="text-[10px] text-slate-400 mt-1 text-center max-w-[220px]">Discuss project specifications, timelines, and budgets.</p>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
-            <div className="p-5 bg-card/80 backdrop-blur-md border-t border-border/50">
-              <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-                <div className="flex-1 relative group">
+            {/* Premium Two-Tier Composer Card */}
+            <div className="p-6 bg-transparent border-t-0">
+              <form onSubmit={handleSendMessage} className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col transition-all focus-within:ring-2 focus-within:ring-[#0D9488]/10 focus-within:border-[#0D9488]">
+                {/* Tier 1: Text Entry Field */}
+                <div className="flex items-center px-5 py-4 gap-3">
                   <input 
                     ref={inputRef}
                     type="text" 
-                    placeholder="Type your message here..." 
+                    placeholder="Write your message..." 
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     disabled={isSending}
-                    className="w-full bg-muted/20 border border-border/50 rounded-[20px] py-3.5 px-5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary/30 transition-all outline-none placeholder:text-muted-foreground/30"
+                    className="flex-1 bg-transparent border-none outline-none text-slate-900 text-sm placeholder:text-slate-400 h-10 w-full"
                   />
+                  <Button 
+                    type="submit" 
+                    disabled={!newMessage.trim() || isSending}
+                    className="size-10 rounded-xl bg-[#0D9488] hover:bg-[#0D9488]/90 flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#0D9488]/20 transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+                  >
+                    <Send className={cn("size-4.5 text-white transition-transform", isSending ? "animate-pulse" : "group-hover:translate-x-0.5 group-hover:-translate-y-0.5")} />
+                  </Button>
                 </div>
-                <Button 
-                  type="submit" 
-                  disabled={!newMessage.trim() || isSending}
-                  className="size-12 rounded-2xl bg-primary hover:bg-primary/90 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-                >
-                  <Send className={cn("size-5 text-white transition-transform", isSending ? "animate-pulse" : "group-hover:translate-x-0.5 group-hover:-translate-y-0.5")} />
-                </Button>
+
+                {/* Tier 2: Bottom Utility Action Row */}
+                <div className="px-5 py-3 bg-[#F4F7F8] border-t border-slate-100 flex items-center justify-between text-slate-500">
+                  <div className="flex items-center gap-3">
+                    <button type="button" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors text-[11px] font-bold">
+                      <BookOpen className="size-3.5 text-slate-400" />
+                      Template
+                    </button>
+                    <button type="button" className="p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors">
+                      <Smile className="size-4 text-slate-400" />
+                    </button>
+                    <button type="button" className="p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors">
+                      <Paperclip className="size-4 text-slate-400" />
+                    </button>
+                    <button type="button" className="p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors">
+                      <Mic className="size-4 text-slate-400" />
+                    </button>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
+                    {newMessage.length}/1000
+                  </span>
+                </div>
               </form>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-card/10 backdrop-blur-[2px]">
-            <div className="size-24 rounded-[32px] glass bg-gradient-to-br from-primary/10 to-transparent flex items-center justify-center mb-6 shadow-sm border border-border/50">
-              <MessageSquare className="size-10 text-primary" strokeWidth={1.5} />
+          <div className="flex-1 flex flex-col items-center justify-center bg-[#F9FAFB] p-8">
+            <div className="size-20 rounded-[2rem] bg-gradient-to-br from-[#0D9488]/10 to-transparent flex items-center justify-center mb-6 shadow-sm border border-slate-100">
+              <MessageSquare className="size-9 text-[#0D9488]" strokeWidth={1.5} />
             </div>
-            <h3 className="text-xl font-bold text-foreground">Your Inbox</h3>
-            <p className="text-sm text-muted-foreground mt-2 text-center max-w-[280px]">
-              Select a conversation from the list to start chatting with experts or customers.
+            <h3 className="text-lg font-extrabold text-slate-900">Your Inbox</h3>
+            <p className="text-xs text-slate-400 mt-2 text-center max-w-[260px] leading-relaxed">
+              Select a conversation from the sidebar list to start chatting with experts or customers using OChat SaaS Messaging.
             </p>
           </div>
         )}
