@@ -512,7 +512,7 @@ class TaskService:
     # CUSTOMER — request revision
     # ──────────────────────────────────────────────
     @staticmethod
-    def request_revision(db: Session, task_id: int, customer_id: int, request: RevisionRequest):
+    async def request_revision(db: Session, task_id: int, customer_id: int, revision_note: str, files: List["UploadFile"] = None):
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task or task.customer_id != customer_id:
             raise NotFoundException(detail="Task not found")
@@ -530,11 +530,41 @@ class TaskService:
             task_id=task_id,
             submission_id=last_submission.id,
             requested_by_user_id=customer_id,
-            revision_note=request.revision_note,
+            revision_note=revision_note,
             revision_status="REQUESTED",
         )
         db.add(revision)
         task.task_status = "REVISION_REQUESTED"
+        db.flush()  # Flush to get revision.id before adding files
+
+        # Save revision files if provided
+        if files:
+            import os, shutil
+            from app.entity.revision_file_entity import RevisionFileEntity
+            from datetime import datetime as dt
+
+            upload_dir = "uploads/revisions"
+            os.makedirs(upload_dir, exist_ok=True)
+
+            for file in files:
+                timestamp = dt.now().strftime("%Y%m%d%H%M%S%f")
+                safe_filename = file.filename.replace(" ", "_")
+                saved_name = f"{task_id}_{revision.id}_{timestamp}_{safe_filename}"
+                file_path = os.path.join(upload_dir, saved_name)
+
+                with open(file_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+
+                revision_file = RevisionFileEntity(
+                    revision_id=revision.id,
+                    uploaded_by_user_id=customer_id,
+                    file_name=file.filename,
+                    file_url=f"/uploads/revisions/{saved_name}",
+                    mime_type=file.content_type,
+                    file_size=getattr(file, "size", 0),
+                )
+                db.add(revision_file)
+
         db.commit()
         db.refresh(revision)
         return RevisionResponse.model_validate(revision)

@@ -1,12 +1,11 @@
-from typing import List, Annotated
-from fastapi import APIRouter, Depends, status, File, UploadFile
+from typing import List, Annotated, Optional
+from fastapi import APIRouter, Depends, status, File, UploadFile, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.config.database import db_dependency
 from app.service.task_service import TaskService
 from app.service.auth_service import AuthService
 from app.model.create_task_request import CreateTaskRequest
-from app.model.revision_request import RevisionRequest
 from app.model.generic_response import GenericResponse
 from app.model.add_task_file_request import AddTaskFilesRequest
 
@@ -82,14 +81,15 @@ def accept_bid(
     return GenericResponse.success(message="Bid accepted successfully", results=result)
 
 @router.post("/tasks/{task_id}/request-revision")
-def request_revision(
+async def request_revision(
     task_id: int,
-    request: RevisionRequest,
     db: db_dependency,
-    auth: HTTPAuthorizationCredentials = Depends(security)
+    auth: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    revision_note: Annotated[str, Form(...)],
+    files: Annotated[Optional[List[UploadFile]], File()] = None,
 ):
     customer_id = get_current_user_id(db, auth)
-    result = TaskService.request_revision(db, task_id, customer_id, request)
+    result = await TaskService.request_revision(db, task_id, customer_id, revision_note, files or [])
     return GenericResponse.success(message="Revision requested successfully", results=result)
 
 @router.post("/tasks/{task_id}/files")

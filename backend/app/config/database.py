@@ -57,7 +57,9 @@ def init_db():
         from app.entity.task_assignment_entity import TaskAssignmentEntity
         from app.entity.task_submission_entity import TaskSubmissionEntity
         from app.entity.submission_file_entity import SubmissionFileEntity
+        from app.entity.task_bid_entity import TaskBidEntity
         from app.entity.task_revision_entity import TaskRevisionEntity
+        from app.entity.revision_file_entity import RevisionFileEntity
         from app.entity.payment_entity import PaymentEntity
         from app.entity.chat_session_entity import ChatSessionEntity
         from app.entity.chat_message_entity import ChatMessageEntity

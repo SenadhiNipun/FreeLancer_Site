@@ -25,9 +25,10 @@ init_db()
 setup_cors(app)
 register_exception_handlers(app)
 
-# Ensure uploads directory exists
-if not os.path.exists("uploads"):
-    os.makedirs("uploads")
+# Ensure uploads directories exist
+os.makedirs("uploads/tasks", exist_ok=True)
+os.makedirs("uploads/revisions", exist_ok=True)
+os.makedirs("uploads/submissions", exist_ok=True)
 
 # Mount static files
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

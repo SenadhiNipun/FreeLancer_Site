@@ -22,3 +22,4 @@ class TaskRevisionEntity(Base, BaseEntity):
     task = relationship("TaskEntity", back_populates="revisions")
     submission = relationship("TaskSubmissionEntity")
     requester = relationship("UserEntity")
+    files = relationship("RevisionFileEntity", back_populates="revision", cascade="all, delete-orphan")

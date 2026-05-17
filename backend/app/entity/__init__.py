@@ -17,6 +17,7 @@ from .task_bid_entity import TaskBidEntity
 from .task_submission_entity import TaskSubmissionEntity
 from .submission_file_entity import SubmissionFileEntity
 from .task_revision_entity import TaskRevisionEntity
+from .revision_file_entity import RevisionFileEntity
 from .payment_entity import PaymentEntity
 from .chat_session_entity import ChatSessionEntity
 from .chat_message_entity import ChatMessageEntity
