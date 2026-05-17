@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userService } from "@/services/user.service";
 import { useRouter } from "next/navigation";
+import { getFileUrl } from "@/lib/api-client";
 
 export default function WriterProfile() {
   const router = useRouter();
@@ -41,6 +42,7 @@ export default function WriterProfile() {
   const [institutionName, setInstitutionName] = React.useState("");
   const [academicStatus, setAcademicStatus] = React.useState(""); // Degree Level
   const [experienceYears, setExperienceYears] = React.useState(0);
+  const [profileImageUrl, setProfileImageUrl] = React.useState("");
 
   const fetchProfile = async () => {
     try {
@@ -58,6 +60,7 @@ export default function WriterProfile() {
       setInstitutionName(data.institution_name || "");
       setAcademicStatus(data.education_level || "");
       setExperienceYears(data.experience_years || 0);
+      setProfileImageUrl(data.profile_image_url || "");
     } catch (error) {
       console.error("Failed to load profile:", error);
     } finally {
@@ -93,9 +96,22 @@ export default function WriterProfile() {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const res = await userService.uploadProfilePicture(file);
+      const newUrl = res.results.profile_image_url;
+      setProfileImageUrl(newUrl);
+      alert("Profile picture uploaded successfully!");
+    } catch (error: any) {
+      alert(error.message || "Failed to upload profile picture");
+    }
+  };
+
   const handleViewPublicProfile = () => {
     if (!profile) return;
-    // Route to the new high-fidelity public profile page using user_id!
     router.push(`/profile/${profile.user_id}`);
   };
 
@@ -151,11 +167,21 @@ export default function WriterProfile() {
                 </div>
              </div>
              
-             <div className="mx-auto w-32 h-32 rounded-3xl bg-violet-100 flex items-center justify-center text-[#7C5CFC] text-4xl font-black mb-6 border-4 border-white shadow-xl relative group">
-                {initials}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl cursor-pointer">
+             <div className="mx-auto w-32 h-32 rounded-3xl bg-violet-100 flex items-center justify-center text-[#7C5CFC] text-4xl font-black mb-6 border-4 border-white shadow-xl relative group overflow-hidden">
+                {profileImageUrl ? (
+                   <img src={getFileUrl(profileImageUrl)} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                   initials
+                )}
+                <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl cursor-pointer">
                    <Camera className="size-8 text-white" />
-                </div>
+                   <input 
+                     type="file" 
+                     accept="image/*" 
+                     className="hidden" 
+                     onChange={handleImageUpload} 
+                   />
+                </label>
              </div>
              
              <h2 className="text-2xl font-bold text-[#1a1033]">{firstName} {lastName}</h2>

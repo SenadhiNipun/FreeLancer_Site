@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { userService } from "@/services/user.service";
+import { getFileUrl } from "@/lib/api-client";
 
 export default function PublicProfile() {
   const params = useParams();
@@ -104,8 +105,12 @@ export default function PublicProfile() {
                 </div>
               </div>
 
-              <div className="mx-auto w-32 h-32 rounded-3xl bg-gradient-to-tr from-[#7C5CFC] to-[#b19ffa] flex items-center justify-center text-white text-4xl font-black mb-6 border-4 border-white shadow-xl">
-                {initials}
+              <div className="mx-auto w-32 h-32 rounded-3xl bg-gradient-to-tr from-[#7C5CFC] to-[#b19ffa] flex items-center justify-center text-white text-4xl font-black mb-6 border-4 border-white shadow-xl overflow-hidden">
+                {profile.profile_image_url ? (
+                  <img src={getFileUrl(profile.profile_image_url)} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  initials
+                )}
               </div>
 
               <h2 className="text-2xl font-black text-[#1a1033] tracking-tight">

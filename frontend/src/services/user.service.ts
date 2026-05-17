@@ -14,5 +14,14 @@ export const userService = {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  },
+
+  uploadProfilePicture: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient(`/api/v1/users/me/profile-picture`, {
+      method: 'POST',
+      body: formData,
+    });
   }
 };

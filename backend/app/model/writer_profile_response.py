@@ -35,5 +35,6 @@ class WriterProfileResponse(BaseModel):
     expertise: List[str] = []
     completed_projects: int = 0
     rating: float = 4.9
+    profile_image_url: Optional[str] = None
     reviews: List[PublicReviewModel] = []
 

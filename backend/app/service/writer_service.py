@@ -66,6 +66,10 @@ class WriterService:
         else:
             avg_rating = 4.9 # Default fallback rating
 
+        profile_img = None
+        if user.user_profile:
+            profile_img = user.user_profile.profile_image_url
+
         return WriterProfileResponse(
             id=writer_profile.id,
             user_id=user.id,
@@ -85,6 +89,7 @@ class WriterService:
             expertise=expertise,
             completed_projects=completed_count,
             rating=avg_rating,
+            profile_image_url=profile_img,
             reviews=reviews_list
         )
 
