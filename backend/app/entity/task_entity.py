@@ -38,6 +38,7 @@ class TaskEntity(Base, BaseEntity):
     submissions = relationship("TaskSubmissionEntity", back_populates="task", cascade="all, delete-orphan")
     revisions = relationship("TaskRevisionEntity", back_populates="task", cascade="all, delete-orphan")
     bids = relationship("TaskBidEntity", back_populates="task", cascade="all, delete-orphan")
+    review = relationship("ReviewEntity", back_populates="task", uselist=False, cascade="all, delete-orphan")
 
     @property
     def writer(self):

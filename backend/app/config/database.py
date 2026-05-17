@@ -63,6 +63,7 @@ def init_db():
         from app.entity.payment_entity import PaymentEntity
         from app.entity.chat_session_entity import ChatSessionEntity
         from app.entity.chat_message_entity import ChatMessageEntity
+        from app.entity.review_entity import ReviewEntity
         
         logger.info("Initializing database schema...")
         Base.metadata.create_all(bind=engine)

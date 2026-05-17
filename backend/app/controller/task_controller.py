@@ -8,6 +8,8 @@ from app.service.auth_service import AuthService
 from app.model.create_task_request import CreateTaskRequest
 from app.model.generic_response import GenericResponse
 from app.model.add_task_file_request import AddTaskFilesRequest
+from app.model.review_model import CreateReviewRequest
+from app.service.review_service import ReviewService
 
 router = APIRouter(
     prefix="/api/v1/customer",
@@ -92,6 +94,16 @@ async def request_revision(
     result = await TaskService.request_revision(db, task_id, customer_id, revision_note, files or [])
     return GenericResponse.success(message="Revision requested successfully", results=result)
 
+@router.post("/tasks/{task_id}/approve")
+def approve_task(
+    task_id: int,
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security)
+):
+    customer_id = get_current_user_id(db, auth)
+    result = TaskService.approve_task(db, task_id, customer_id)
+    return GenericResponse.success(message="Task approved and payment released successfully", results=result)
+
 @router.post("/tasks/{task_id}/files")
 async def add_task_files(
     task_id: int,
@@ -103,3 +115,14 @@ async def add_task_files(
     user_id = get_current_user_id(db, auth)
     result = await TaskService.save_task_files_locally(db, task_id, user_id, files, file_type)
     return GenericResponse.success(message="Files uploaded successfully", results=result)
+
+@router.post("/tasks/{task_id}/reviews")
+def submit_review(
+    task_id: int,
+    request: CreateReviewRequest,
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security)
+):
+    customer_id = get_current_user_id(db, auth)
+    result = ReviewService.submit_review(db, task_id, customer_id, request)
+    return GenericResponse.success(message="Review submitted successfully", results=result)

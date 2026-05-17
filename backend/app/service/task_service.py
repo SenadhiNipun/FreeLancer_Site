@@ -578,6 +578,34 @@ class TaskService:
         db.refresh(submission)
         return SubmissionResponse.model_validate(submission)
 
+    @staticmethod
+    def approve_task(db: Session, task_id: int, customer_id: int):
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task or task.customer_id != customer_id:
+            raise NotFoundException(detail="Task not found")
+
+        task.task_status = "COMPLETED"
+
+        # Notify the writer if one is assigned
+        writer = task.writer
+        if writer:
+            try:
+                from app.service.notification_service import NotificationService
+                NotificationService.create_notification(
+                    db=db,
+                    user_id=writer.id,
+                    title="Task Approved!",
+                    message=f"The client has approved your work for task '{task.title}' and released the payment!",
+                    notification_type="TASK_APPROVED",
+                    related_id=task_id
+                )
+            except Exception as e:
+                print(f"Failed to send task approval notification: {e}")
+
+        db.commit()
+        db.refresh(task)
+        return TaskResponse.model_validate(task)
+
     # ──────────────────────────────────────────────
     # CUSTOMER — request revision
     # ──────────────────────────────────────────────

@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, List
 from app.model.bid_response import BidResponse
 from app.model.task_workflow_response import SubmissionResponse, RevisionResponse
+from app.model.review_model import ReviewResponse
 
 class UserResponse(BaseModel):
     id: int
@@ -59,6 +60,7 @@ class TaskResponse(BaseModel):
     files: List[TaskFileResponse] = []
     submissions: List[SubmissionResponse] = []
     revisions: List[RevisionResponse] = []
+    review: Optional[ReviewResponse] = None
     created_at: datetime
     updated_at: datetime
 

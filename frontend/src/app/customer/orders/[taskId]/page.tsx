@@ -17,7 +17,9 @@ import {
   Info,
   Upload,
   X,
-  Paperclip
+  Paperclip,
+  Activity,
+  Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -38,6 +40,7 @@ export default function OrderDetails() {
   const [bids, setBids] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isAccepting, setIsAccepting] = React.useState<number | null>(null);
+  const [isApproving, setIsApproving] = React.useState(false);
 
   // Revision modal state
   const [showRevisionModal, setShowRevisionModal] = React.useState(false);
@@ -108,6 +111,53 @@ export default function OrderDetails() {
       alert(error.message || "Failed to accept bid");
     } finally {
       setIsAccepting(null);
+    }
+  };
+
+  const handleApproveTask = async () => {
+    if (!taskIdParam) return;
+    if (!confirm("Are you sure you want to approve the work and release the payment? This action is irreversible.")) {
+      return;
+    }
+    setIsApproving(true);
+    try {
+      const taskId = parseInt(taskIdParam);
+      await taskService.approveTask(taskId);
+      alert("Project approved and payment released successfully!");
+      // Refetch task data
+      const taskRes = await taskService.getTaskDetails(taskId);
+      setTask(taskRes.results);
+    } catch (error: any) {
+      alert(error.message || "Failed to approve task");
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  // Review states
+  const [reviewRating, setReviewRating] = React.useState(0);
+  const [hoverRating, setHoverRating] = React.useState(0);
+  const [reviewFeedback, setReviewFeedback] = React.useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = React.useState(false);
+
+  const handleSubmitReview = async () => {
+    if (reviewRating === 0) {
+      alert("Please select a star rating.");
+      return;
+    }
+    if (!taskIdParam) return;
+    setIsSubmittingReview(true);
+    try {
+      const taskId = parseInt(taskIdParam);
+      await taskService.submitReview(taskId, reviewRating, reviewFeedback);
+      alert("Thank you for your feedback! Review submitted successfully.");
+      // Refetch task data
+      const taskRes = await taskService.getTaskDetails(taskId);
+      setTask(taskRes.results);
+    } catch (error: any) {
+      alert(error.message || "Failed to submit review");
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
 
@@ -410,11 +460,22 @@ export default function OrderDetails() {
               </div>
               
               <div className="flex flex-wrap gap-4 pt-4">
-                 <Button className="rounded-xl flex-1 h-12 shadow-lg shadow-[#7C5CFC]/20 bg-[#7C5CFC] hover:bg-[#6d4ef0] gap-2 font-bold">
-                    Approve & Release Payment
+                 <Button 
+                   onClick={handleApproveTask}
+                   disabled={isApproving || task.task_status === "COMPLETED"}
+                   className="rounded-xl flex-1 h-12 shadow-lg shadow-[#7C5CFC]/20 bg-[#7C5CFC] hover:bg-[#6d4ef0] gap-2 font-bold flex items-center justify-center text-white"
+                 >
+                   {isApproving ? (
+                     <Activity className="size-4 animate-spin" />
+                   ) : task.task_status === "COMPLETED" ? (
+                     "Approved & Completed"
+                   ) : (
+                     "Approve & Release Payment"
+                   )}
                  </Button>
                  <Button
                    variant="outline"
+                   disabled={task.task_status === "COMPLETED"}
                    onClick={() => setShowRevisionModal(true)}
                    className="rounded-xl flex-1 h-12 border-orange-500/20 text-orange-600 hover:bg-orange-500/10 gap-2 font-bold"
                  >
@@ -517,6 +578,130 @@ export default function OrderDetails() {
                   </Card>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ── Writer Feedback & Review Section ── */}
+          {task.task_status === "COMPLETED" && (
+            <div className="space-y-4 pt-6 border-t border-slate-100">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-[#1a1033]">
+                <Star className="size-5 text-amber-500 fill-amber-500/20" /> Expert Performance Review
+              </h2>
+
+              {task.review ? (
+                /* Static submitted review display */
+                <Card className="border-emerald-100 bg-emerald-50/10 rounded-2xl overflow-hidden shadow-sm p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          className={cn(
+                            "size-5 transition-all duration-300",
+                            s <= task.review.rating
+                              ? "text-amber-500 fill-amber-500"
+                              : "text-slate-200 fill-transparent"
+                          )}
+                        />
+                      ))}
+                      <span className="ml-2 text-sm font-bold text-[#1a1033]">{task.review.rating}.0 / 5.0</span>
+                    </div>
+                    <span className="text-[11px] text-[#9490a8] font-semibold bg-white border border-slate-100 px-2.5 py-1 rounded-full shadow-xs">
+                      Submitted {format(new Date(task.review.created_at), "dd MMM yyyy")}
+                    </span>
+                  </div>
+                  
+                  {task.review.feedback && (
+                    <div className="relative p-4 rounded-xl bg-white border border-slate-100/80 shadow-xs">
+                      <p className="text-sm italic text-[#1a1033]/80 leading-relaxed">
+                        "{task.review.feedback}"
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-2.5 text-xs text-[#9490a8] font-bold">
+                    <CheckCircle2 className="size-4 text-emerald-500" />
+                    <span>Your rating and feedback have been sent to {task.writer?.first_name || 'the writer'}</span>
+                  </div>
+                </Card>
+              ) : (
+                /* Interactive review submission form */
+                <Card className="border-violet-100 bg-white rounded-2xl overflow-hidden shadow-md p-6 space-y-6">
+                  <div className="space-y-1.5">
+                    <h3 className="font-bold text-base text-[#1a1033]">
+                      How was your experience with {task.writer?.first_name || "the writer"}?
+                    </h3>
+                    <p className="text-xs text-[#9490a8] leading-relaxed">
+                      Your rating and feedback help maintain the highest standards of academic help on our platform.
+                    </p>
+                  </div>
+
+                  {/* Star Rating Selector */}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs uppercase font-bold text-[#9490a8] tracking-widest">Select Rating</span>
+                    <div className="flex items-center gap-2 pt-1">
+                      {[1, 2, 3, 4, 5].map((s) => {
+                        const isStarred = s <= (hoverRating || reviewRating);
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onMouseEnter={() => setHoverRating(s)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            onClick={() => setReviewRating(s)}
+                            className="focus:outline-none transition-transform hover:scale-125 duration-200"
+                          >
+                            <Star
+                              className={cn(
+                                "size-8 transition-colors duration-200 cursor-pointer",
+                                isStarred
+                                  ? "text-amber-500 fill-amber-400 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]"
+                                  : "text-slate-200 fill-transparent"
+                              )}
+                            />
+                          </button>
+                        );
+                      })}
+                      {reviewRating > 0 && (
+                        <span className="ml-3 text-sm font-black text-amber-500 uppercase tracking-wider animate-pulse">
+                          {reviewRating === 5 ? "Excellent! 5/5" : 
+                           reviewRating === 4 ? "Great! 4/5" : 
+                           reviewRating === 3 ? "Good! 3/5" : 
+                           reviewRating === 2 ? "Fair 2/5" : "Poor 1/5"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Feedback Textarea */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs uppercase font-bold text-[#9490a8] tracking-widest">Share more details (Optional)</span>
+                      <span className="text-[10px] text-[#9490a8]">Maximum 1000 characters</span>
+                    </div>
+                    <textarea
+                      value={reviewFeedback}
+                      onChange={(e) => setReviewFeedback(e.target.value)}
+                      placeholder="Share your experience here... (e.g. communication speed, understanding of instructions, depth of analysis)"
+                      maxLength={1000}
+                      rows={4}
+                      className="w-full text-sm rounded-xl border border-slate-200 p-4 outline-none focus:border-[#7C5CFC]/80 focus:ring-1 focus:ring-[#7C5CFC]/20 transition-all placeholder:text-[#9490a8]/60"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleSubmitReview}
+                    disabled={isSubmittingReview || reviewRating === 0}
+                    className="w-full rounded-xl h-12 shadow-lg shadow-[#7C5CFC]/20 bg-[#7C5CFC] hover:bg-[#6d4ef0] font-bold text-white flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingReview ? (
+                      <Activity className="size-4 animate-spin" />
+                    ) : (
+                      "Submit Feedback"
+                    )}
+                  </Button>
+                </Card>
+              )}
             </div>
           )}
         </div>

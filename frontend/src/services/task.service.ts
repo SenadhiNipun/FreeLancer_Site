@@ -45,6 +45,19 @@ export const taskService = {
     });
   },
 
+  approveTask: async (taskId: number) => {
+    return apiClient(`/api/v1/customer/tasks/${taskId}/approve`, {
+      method: 'POST',
+    });
+  },
+
+  submitReview: async (taskId: number, rating: number, feedback?: string) => {
+    return apiClient(`/api/v1/customer/tasks/${taskId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify({ rating, feedback }),
+    });
+  },
+
   addFilesToTask: async (taskId: number, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => {
