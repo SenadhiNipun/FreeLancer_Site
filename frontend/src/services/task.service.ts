@@ -31,10 +31,17 @@ export const taskService = {
     });
   },
 
-  requestRevision: async (taskId: number, data: { revision_note: string }) => {
+  requestRevision: async (taskId: number, data: { revision_note: string; files?: File[] }) => {
+    const formData = new FormData();
+    formData.append('revision_note', data.revision_note);
+    if (data.files && data.files.length > 0) {
+      data.files.forEach((file) => {
+        formData.append('files', file);
+      });
+    }
     return apiClient(`/api/v1/customer/tasks/${taskId}/request-revision`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: formData,
     });
   },
 
