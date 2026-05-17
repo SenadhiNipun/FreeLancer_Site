@@ -344,7 +344,7 @@ export default function OrderDetails() {
 
           {/* Submissions Section (If assigned/completed) */}
           {!isBiddingPhase && task.submissions?.length > 0 && (
-            <div className="space-y-4">
+            <div id="expert-submissions" className="space-y-4">
               <h2 className="text-xl font-bold flex items-center gap-2 text-[#1a1033]">
                  <CheckCircle2 className="size-5 text-emerald-500" /> Expert Deliveries ({task.submissions.length})
               </h2>

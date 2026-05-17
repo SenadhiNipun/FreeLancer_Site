@@ -69,6 +69,10 @@ export function NotificationBell() {
         return { icon: Info, color: "text-indigo-500", bg: "bg-indigo-50" };
       case "REVISION_REQUESTED":
         return { icon: RotateCcw, color: "text-amber-500", bg: "bg-amber-50" };
+      case "REVISION_DELIVERED":
+        return { icon: Check, color: "text-emerald-500", bg: "bg-emerald-50" };
+      case "WORK_DELIVERED":
+        return { icon: Check, color: "text-emerald-500", bg: "bg-emerald-50" };
       default:
         return { icon: Info, color: "text-blue-500", bg: "bg-blue-50" };
     }
@@ -134,6 +138,8 @@ export function NotificationBell() {
                         router.push(`/writer/tasks/${n.related_id}`);
                       } else if (n.notification_type === "REVISION_REQUESTED" && n.related_id) {
                         router.push(`/writer/tasks/${n.related_id}#revision-history`);
+                      } else if ((n.notification_type === "WORK_DELIVERED" || n.notification_type === "REVISION_DELIVERED") && n.related_id) {
+                        router.push(`/customer/orders/${n.related_id}#expert-submissions`);
                       } else if (n.notification_type === "TASK_AVAILABLE" && n.related_id) {
                         router.push(`/writer/tasks/available`);
                       }

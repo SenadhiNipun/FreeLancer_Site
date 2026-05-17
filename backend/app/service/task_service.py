@@ -549,6 +549,31 @@ class TaskService:
         for rev in active_revisions:
             rev.revision_status = "COMPLETED"
 
+        # Notify the customer about the delivery
+        customer_id = task.customer_id
+        if customer_id:
+            try:
+                from app.service.notification_service import NotificationService
+                if active_revisions:
+                    title = "Revision Delivered"
+                    message = f"The writer has submitted revised files for project '{task.title}'"
+                    notification_type = "REVISION_DELIVERED"
+                else:
+                    title = "Work Delivered"
+                    message = f"The writer has submitted the completed work for project '{task.title}'"
+                    notification_type = "WORK_DELIVERED"
+
+                NotificationService.create_notification(
+                    db=db,
+                    user_id=customer_id,
+                    title=title,
+                    message=message,
+                    notification_type=notification_type,
+                    related_id=task_id
+                )
+            except Exception as e:
+                print(f"Failed to send delivery notification to customer: {e}")
+
         db.commit()
         db.refresh(submission)
         return SubmissionResponse.model_validate(submission)
