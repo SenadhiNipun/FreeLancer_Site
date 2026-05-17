@@ -3,7 +3,8 @@ from app.entity.user_entity import UserEntity
 from app.entity.writer_profile_entity import WriterProfileEntity
 from app.entity.task_entity import TaskEntity
 from app.entity.task_assignment_entity import TaskAssignmentEntity
-from app.model.writer_profile_response import WriterProfileResponse
+from app.entity.review_entity import ReviewEntity
+from app.model.writer_profile_response import WriterProfileResponse, PublicReviewModel
 from app.model.update_writer_profile_request import UpdateWriterProfileRequest
 from app.entity.writer_qualification_entity import WriterQualificationEntity
 from app.exceptions.exception import NotFoundException
@@ -42,6 +43,29 @@ class WriterService:
         if not expertise:
             expertise = ["Academic Writing", "Research"]
 
+        # Fetch actual reviews
+        review_entities = db.query(ReviewEntity).filter(ReviewEntity.writer_id == user_id).all()
+        
+        reviews_list = []
+        for r in review_entities:
+            cust_name = "Anonymous Client"
+            if r.customer:
+                last_name_init = f" {r.customer.last_name[0]}." if r.customer.last_name else ""
+                cust_name = f"{r.customer.first_name or 'Client'}{last_name_init}"
+            reviews_list.append(PublicReviewModel(
+                id=r.id,
+                rating=r.rating,
+                feedback=r.feedback,
+                created_at=r.created_at,
+                customer_name=cust_name
+            ))
+
+        # Calculate dynamic average rating
+        if review_entities:
+            avg_rating = sum(r.rating for r in review_entities) / len(review_entities)
+        else:
+            avg_rating = 4.9 # Default fallback rating
+
         return WriterProfileResponse(
             id=writer_profile.id,
             user_id=user.id,
@@ -60,7 +84,8 @@ class WriterService:
             qualifications=quals,
             expertise=expertise,
             completed_projects=completed_count,
-            rating=4.9 # Mock rating for now
+            rating=avg_rating,
+            reviews=reviews_list
         )
 
     @staticmethod

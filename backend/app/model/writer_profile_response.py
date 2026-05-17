@@ -1,9 +1,20 @@
 from pydantic import BaseModel
 from typing import List, Optional
+from datetime import datetime
 
 class QualificationModel(BaseModel):
     id: int
     qualification_name: str
+
+class PublicReviewModel(BaseModel):
+    id: int
+    rating: int
+    feedback: Optional[str] = None
+    created_at: datetime
+    customer_name: str
+
+    class Config:
+        from_attributes = True
 
 class WriterProfileResponse(BaseModel):
     id: int
@@ -24,3 +35,5 @@ class WriterProfileResponse(BaseModel):
     expertise: List[str] = []
     completed_projects: int = 0
     rating: float = 4.9
+    reviews: List[PublicReviewModel] = []
+

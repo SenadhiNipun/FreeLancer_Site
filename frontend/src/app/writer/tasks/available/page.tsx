@@ -257,8 +257,6 @@ export default function AvailableTasks() {
           </div>
         </form>
       </Dialog>
-
-      </Dialog>
     </div>
   );
 }
