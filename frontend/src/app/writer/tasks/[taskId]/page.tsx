@@ -15,7 +15,10 @@ import {
   Info,
   ChevronRight,
   ArrowRight,
-  Activity
+  Activity,
+  RotateCcw,
+  Paperclip,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +41,8 @@ export default function WriterTaskDetails() {
   const [bidAmount, setBidAmount] = React.useState("");
   const [bidMessage, setBidMessage] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     const fetchTask = async () => {
@@ -71,9 +76,12 @@ export default function WriterTaskDetails() {
       const taskId = parseInt(taskIdParam);
       await taskService.submitTask(taskId, {
         submission_note: submissionNote,
-        files: [] // Mock for now, file upload would go here
+        is_final: true,
+        files: selectedFiles
       });
       alert("Work submitted successfully!");
+      setSubmissionNote("");
+      setSelectedFiles([]);
       // Refresh task
       const response = await taskService.getWriterTaskDetails(taskId);
       setTask(response.results);
@@ -82,6 +90,17 @@ export default function WriterTaskDetails() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      setSelectedFiles((prev) => [...prev, ...filesArray]);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmitBid = async (e: React.FormEvent) => {
@@ -339,8 +358,52 @@ export default function WriterTaskDetails() {
                         onChange={(e) => setSubmissionNote(e.target.value)}
                         required
                     />
+                     <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileChange} 
+                      multiple 
+                      className="hidden" 
+                    />
+
+                    {selectedFiles.length > 0 && (
+                      <div className="space-y-2 border-t border-white/5 pt-4 mt-4">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                          <Paperclip className="size-3 text-primary" /> Selected Files ({selectedFiles.length})
+                        </p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {selectedFiles.map((file, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02]">
+                              <div className="flex items-center gap-2 truncate">
+                                <div className="size-8 rounded-lg bg-white/5 flex items-center justify-center text-primary shrink-0">
+                                  <FileText className="size-4" />
+                                </div>
+                                <div className="truncate">
+                                  <p className="text-xs font-bold text-foreground truncate">{file.name}</p>
+                                  <p className="text-[9px] text-muted-foreground uppercase font-bold">
+                                    {(file.size / 1024).toFixed(1)} KB
+                                  </p>
+                                </div>
+                              </div>
+                              <button 
+                                type="button" 
+                                onClick={() => handleRemoveFile(idx)} 
+                                className="size-7 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 flex items-center justify-center transition-colors"
+                              >
+                                <X className="size-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex flex-col md:flex-row items-center gap-4">
-                        <button type="button" className="w-full md:w-auto h-14 rounded-2xl px-8 glass border-white/10 hover:bg-white/10 text-[13px] font-bold transition-all flex items-center justify-center gap-3">
+                        <button 
+                          type="button" 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full md:w-auto h-14 rounded-2xl px-8 glass border-white/10 hover:bg-white/10 text-[13px] font-bold transition-all flex items-center justify-center gap-3"
+                        >
                           <Upload className="size-5 text-primary" />
                           Attach Final Files
                         </button>
@@ -363,6 +426,95 @@ export default function WriterTaskDetails() {
                 </div>
               </div>
             )
+          )}
+
+          {/* ── Revision History Section ── */}
+          {task.revisions && task.revisions.length > 0 && (
+            <div className="glass rounded-[2rem] overflow-hidden border-white/5 shadow-2xl space-y-6 p-8">
+              <div className="flex items-center justify-between border-b border-white/5 pb-5">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                    <RotateCcw className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">Revision History</h3>
+                    <p className="text-[10px] text-muted-foreground font-medium">Revisions requested by the client</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-500/10 text-amber-500">
+                  {task.revisions.length} Requests
+                </span>
+              </div>
+
+              <div className="space-y-6">
+                {[...task.revisions].reverse().map((rev: any, idx: number) => (
+                  <div key={rev.id} className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-300 space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4">
+                        <div className="size-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 font-black text-sm shrink-0">
+                          {task.revisions.length - idx}
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold text-foreground leading-snug">
+                            {rev.revision_note}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                            Requested on {format(new Date(rev.requested_at), "MMM dd, yyyy · h:mm a")}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <span className={cn(
+                        "shrink-0 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border",
+                        rev.revision_status === "REQUESTED"
+                          ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                          : rev.revision_status === "IN_PROGRESS"
+                          ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                          : rev.revision_status === "COMPLETED"
+                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                          : "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                      )}>
+                        {rev.revision_status.replace("_", " ")}
+                      </span>
+                    </div>
+
+                    {/* Attached files */}
+                    {rev.files && rev.files.length > 0 && (
+                      <div className="pt-2 border-t border-white/5">
+                        <p className="text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-1.5">
+                          <Paperclip className="size-3 text-amber-500" /> Attached Revision Materials ({rev.files.length})
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {rev.files.map((file: any) => (
+                            <div
+                              key={file.id}
+                              className="group/file flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-amber-500/30 transition-all duration-300"
+                            >
+                              <div className="flex items-center gap-3 truncate">
+                                <div className="size-9 rounded-lg bg-white/5 flex items-center justify-center text-amber-500 group-hover/file:scale-105 transition-all">
+                                  <FileText className="size-4" />
+                                </div>
+                                <div className="flex flex-col truncate">
+                                  <span className="text-[12px] font-bold text-foreground truncate">{file.file_name}</span>
+                                  <span className="text-[9px] text-muted-foreground font-bold uppercase">
+                                    {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : "Unknown size"}
+                                  </span>
+                                </div>
+                              </div>
+                              <a href={getFileUrl(file.file_url)} target="_blank" rel="noopener noreferrer">
+                                <button className="size-8 rounded-lg glass border-white/10 text-amber-500 hover:bg-amber-500 hover:text-white transition-all shadow-lg flex items-center justify-center">
+                                  <Download className="size-3.5" />
+                                </button>
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 

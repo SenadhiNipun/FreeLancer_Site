@@ -346,28 +346,68 @@ export default function OrderDetails() {
           {!isBiddingPhase && task.submissions?.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-bold flex items-center gap-2 text-[#1a1033]">
-                 <CheckCircle2 className="size-5 text-emerald-500" /> Expert Submissions
+                 <CheckCircle2 className="size-5 text-emerald-500" /> Expert Deliveries ({task.submissions.length})
               </h2>
-              <Card className="border-emerald-500/10 shadow-sm bg-emerald-500/5 rounded-2xl">
-                <div className="divide-y divide-emerald-500/10">
-                  {task.submissions.map((file: any) => (
-                    <div key={file.id} className="p-6 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-white border border-emerald-500/20 flex items-center justify-center text-emerald-600 shadow-sm">
-                          <FileText className="size-5" />
-                        </div>
-                        <div className="space-y-1">
-                          <h3 className="font-bold text-sm text-[#1a1033]">{file.name || "Project_Submission.docx"}</h3>
-                          <p className="text-xs text-[#9490a8]">{file.size || "1.2 MB"} • Uploaded on {format(new Date(file.submitted_at), "dd MMM yyyy")}</p>
-                        </div>
+              <div className="space-y-4">
+                {[...task.submissions].reverse().map((sub: any) => (
+                  <Card key={sub.id} className="border-emerald-500/10 shadow-sm bg-white rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-emerald-500/5 bg-emerald-500/[0.02] flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                          {sub.submission_status.replace("_", " ")}
+                        </span>
+                        <p className="text-[10px] text-[#9490a8] font-bold mt-1.5 uppercase tracking-wider">
+                          Delivered on {format(new Date(sub.submitted_at), "MMM dd, yyyy · h:mm a")}
+                        </p>
                       </div>
-                      <Button variant="outline" size="sm" className="rounded-xl border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/10 gap-2">
-                        <Download className="size-4" /> Download
-                      </Button>
                     </div>
-                  ))}
-                </div>
-              </Card>
+                    <div className="p-6 space-y-4">
+                      {sub.submission_note && (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-sm text-[#1a1033] leading-relaxed italic">
+                          "{sub.submission_note}"
+                        </div>
+                      )}
+
+                      {sub.files && sub.files.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-[#9490a8] flex items-center gap-1.5">
+                            <Paperclip className="size-3.5 text-emerald-500" /> Delivered Files ({sub.files.length})
+                          </p>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {sub.files.map((file: any) => (
+                              <div
+                                key={file.id}
+                                className="group flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/70 hover:border-emerald-500/30 transition-all duration-300"
+                              >
+                                <div className="flex items-center gap-3 truncate">
+                                  <div className="size-9 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-emerald-600 shrink-0">
+                                    <FileText className="size-4.5" />
+                                  </div>
+                                  <div className="flex flex-col truncate">
+                                    <span className="text-[12px] font-bold text-[#1a1033] truncate">{file.file_name}</span>
+                                    <span className="text-[9px] text-[#9490a8] font-bold uppercase">
+                                      {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : "Unknown size"}
+                                    </span>
+                                  </div>
+                                </div>
+                                <a href={getFileUrl(file.file_url)} target="_blank" rel="noopener noreferrer">
+                                  <Button variant="outline" size="sm" className="size-8 p-0 rounded-lg border-emerald-500/20 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center">
+                                    <Download className="size-4" />
+                                  </Button>
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center p-6 border border-dashed border-slate-200 rounded-xl">
+                          <p className="text-xs font-bold text-[#9490a8] uppercase">No physical files attached to this submission</p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
               
               <div className="flex flex-wrap gap-4 pt-4">
                  <Button className="rounded-xl flex-1 h-12 shadow-lg shadow-[#7C5CFC]/20 bg-[#7C5CFC] hover:bg-[#6d4ef0] gap-2 font-bold">

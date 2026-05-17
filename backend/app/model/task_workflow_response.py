@@ -2,6 +2,17 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
 
+class SubmissionFileResponse(BaseModel):
+    id: int
+    submission_id: int
+    file_name: str
+    file_url: str
+    mime_type: Optional[str] = None
+    file_size: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
 class SubmissionResponse(BaseModel):
     id: int
     task_id: int
@@ -9,6 +20,7 @@ class SubmissionResponse(BaseModel):
     submission_note: Optional[str] = None
     submission_status: str
     submitted_at: datetime
+    files: List[SubmissionFileResponse] = []
 
     class Config:
         from_attributes = True

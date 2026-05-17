@@ -471,7 +471,14 @@ class TaskService:
     # WRITER — submit completed work
     # ──────────────────────────────────────────────
     @staticmethod
-    def submit_task(db: Session, task_id: int, writer_id: int, request: SubmitTaskRequest):
+    async def submit_task(
+        db: Session, 
+        task_id: int, 
+        writer_id: int, 
+        submission_note: str, 
+        is_final: bool = True, 
+        files: List["UploadFile"] = None
+    ):
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task:
             raise NotFoundException(detail="Task not found")
@@ -499,11 +506,49 @@ class TaskService:
         submission = TaskSubmissionEntity(
             task_id=task_id,
             writer_id=writer_id,
-            submission_note=request.submission_note,
-            submission_status="FINAL_SUBMISSION" if request.is_final else "DRAFT_SUBMISSION",
+            submission_note=submission_note,
+            submission_status="FINAL_SUBMISSION" if is_final else "DRAFT_SUBMISSION",
         )
         db.add(submission)
         task.task_status = "SUBMITTED"
+        db.flush()  # Flush to get submission.id
+
+        # Save submission files if provided
+        if files:
+            import os, shutil
+            from app.entity.submission_file_entity import SubmissionFileEntity
+            from datetime import datetime as dt
+
+            upload_dir = "uploads/submissions"
+            os.makedirs(upload_dir, exist_ok=True)
+
+            for file in files:
+                timestamp = dt.now().strftime("%Y%m%d%H%M%S%f")
+                safe_filename = file.filename.replace(" ", "_")
+                saved_name = f"{task_id}_{submission.id}_{timestamp}_{safe_filename}"
+                file_path = os.path.join(upload_dir, saved_name)
+
+                with open(file_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+
+                submission_file = SubmissionFileEntity(
+                    submission_id=submission.id,
+                    file_name=file.filename,
+                    file_url=f"/uploads/submissions/{saved_name}",
+                    mime_type=file.content_type,
+                    file_size=getattr(file, "size", 0),
+                )
+                db.add(submission_file)
+
+        # Transition any active revision requests to COMPLETED
+        from app.entity.task_revision_entity import TaskRevisionEntity
+        active_revisions = db.query(TaskRevisionEntity).filter(
+            TaskRevisionEntity.task_id == task_id,
+            TaskRevisionEntity.revision_status.in_(["REQUESTED", "IN_PROGRESS"])
+        ).all()
+        for rev in active_revisions:
+            rev.revision_status = "COMPLETED"
+
         db.commit()
         db.refresh(submission)
         return SubmissionResponse.model_validate(submission)

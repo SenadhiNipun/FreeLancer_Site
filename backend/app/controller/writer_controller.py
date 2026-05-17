@@ -1,5 +1,5 @@
 from typing import List, Annotated
-from fastapi import APIRouter, Depends, status, File, UploadFile
+from fastapi import APIRouter, Depends, status, File, UploadFile, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.config.database import db_dependency
@@ -98,14 +98,23 @@ def withdraw_bid(
 
 # ── Submit completed work ──────────────────────────────────────
 @router.post("/tasks/{task_id}/submit")
-def submit_task(
+async def submit_task(
     task_id: int,
     db: db_dependency,
-    request: SubmitTaskRequest,
+    submission_note: Annotated[str, Form(...)],
+    is_final: Annotated[bool, Form()] = True,
+    files: Annotated[List[UploadFile], File()] = None,
     auth: HTTPAuthorizationCredentials = Depends(security),
 ):
     writer_id = get_current_user_id(db, auth)
-    result = TaskService.submit_task(db, task_id, writer_id, request)
+    result = await TaskService.submit_task(
+        db,
+        task_id=task_id,
+        writer_id=writer_id,
+        submission_note=submission_note,
+        is_final=is_final,
+        files=files or []
+    )
     return GenericResponse.success(message="Task submitted successfully", results=result)
 
 

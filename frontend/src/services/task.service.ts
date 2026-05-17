@@ -88,10 +88,18 @@ export const taskService = {
     });
   },
 
-  submitTask: async (taskId: number, data: { submission_note: string; is_final: boolean }) => {
+  submitTask: async (taskId: number, data: { submission_note: string; is_final: boolean; files?: File[] }) => {
+    const formData = new FormData();
+    formData.append("submission_note", data.submission_note);
+    formData.append("is_final", String(data.is_final));
+    if (data.files && data.files.length > 0) {
+      data.files.forEach((file) => {
+        formData.append("files", file);
+      });
+    }
     return apiClient(`/api/v1/writer/tasks/${taskId}/submit`, {
-      method: 'POST',
-      body: JSON.stringify(data),
+      method: "POST",
+      body: formData,
     });
   }
 };

@@ -16,6 +16,8 @@ class TaskRepository:
         from sqlalchemy.orm import selectinload
         from app.entity.task_assignment_entity import TaskAssignmentEntity
         from app.entity.task_bid_entity import TaskBidEntity
+        from app.entity.task_revision_entity import TaskRevisionEntity
+        from app.entity.task_submission_entity import TaskSubmissionEntity
         return (
             db.query(TaskEntity)
             .options(
@@ -23,8 +25,8 @@ class TaskRepository:
                 selectinload(TaskEntity.bids).selectinload(TaskBidEntity.writer),
                 selectinload(TaskEntity.customer),
                 selectinload(TaskEntity.files),
-                selectinload(TaskEntity.submissions),
-                selectinload(TaskEntity.revisions)
+                selectinload(TaskEntity.submissions).selectinload(TaskSubmissionEntity.files),
+                selectinload(TaskEntity.revisions).selectinload(TaskRevisionEntity.files)
             )
             .filter(TaskEntity.id == task_id, TaskEntity.is_delete == False)
             .first()
