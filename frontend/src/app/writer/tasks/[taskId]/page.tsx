@@ -430,7 +430,7 @@ export default function WriterTaskDetails() {
 
           {/* ── Revision History Section ── */}
           {task.revisions && task.revisions.length > 0 && (
-            <div className="glass rounded-[2rem] overflow-hidden border-white/5 shadow-2xl space-y-6 p-8">
+            <div id="revision-history" className="glass rounded-[2rem] overflow-hidden border-white/5 shadow-2xl space-y-6 p-8">
               <div className="flex items-center justify-between border-b border-white/5 pb-5">
                 <div className="flex items-center gap-3">
                   <div className="size-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">

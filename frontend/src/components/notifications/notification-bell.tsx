@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { Bell, Check, Clock, Info, MessageSquare, Zap } from "lucide-react";
+import { Bell, Check, Clock, Info, MessageSquare, Zap, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { notificationService } from "@/services/notification.service";
 import { cn } from "@/lib/utils";
@@ -67,6 +67,8 @@ export function NotificationBell() {
         return { icon: MessageSquare, color: "text-[#7C5CFC]", bg: "bg-violet-50" };
       case "BID_RECEIVED":
         return { icon: Info, color: "text-indigo-500", bg: "bg-indigo-50" };
+      case "REVISION_REQUESTED":
+        return { icon: RotateCcw, color: "text-amber-500", bg: "bg-amber-50" };
       default:
         return { icon: Info, color: "text-blue-500", bg: "bg-blue-50" };
     }
@@ -130,6 +132,8 @@ export function NotificationBell() {
                         router.push(`/customer/orders/${n.related_id}`);
                       } else if (n.notification_type === "BID_ACCEPTED" && n.related_id) {
                         router.push(`/writer/tasks/${n.related_id}`);
+                      } else if (n.notification_type === "REVISION_REQUESTED" && n.related_id) {
+                        router.push(`/writer/tasks/${n.related_id}#revision-history`);
                       } else if (n.notification_type === "TASK_AVAILABLE" && n.related_id) {
                         router.push(`/writer/tasks/available`);
                       }

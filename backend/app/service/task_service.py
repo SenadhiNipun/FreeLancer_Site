@@ -610,6 +610,22 @@ class TaskService:
                 )
                 db.add(revision_file)
 
+        # Notify the writer about the revision request
+        writer = task.writer
+        if writer:
+            try:
+                from app.service.notification_service import NotificationService
+                NotificationService.create_notification(
+                    db=db,
+                    user_id=writer.id,
+                    title="Revision Requested",
+                    message=f"The client requested a revision for project '{task.title}'",
+                    notification_type="REVISION_REQUESTED",
+                    related_id=task_id
+                )
+            except Exception as e:
+                print(f"Failed to send revision notification: {e}")
+
         db.commit()
         db.refresh(revision)
         return RevisionResponse.model_validate(revision)
