@@ -29,6 +29,7 @@ register_exception_handlers(app)
 os.makedirs("uploads/tasks", exist_ok=True)
 os.makedirs("uploads/revisions", exist_ok=True)
 os.makedirs("uploads/submissions", exist_ok=True)
+os.makedirs("uploads/chats", exist_ok=True)
 
 # Mount static files
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

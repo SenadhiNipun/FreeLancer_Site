@@ -17,3 +17,4 @@ class ChatMessageEntity(Base):
     # Relationships
     session = relationship("ChatSessionEntity", back_populates="messages")
     sender = relationship("UserEntity", foreign_keys=[sender_id])
+    attachments = relationship("ChatMessageAttachmentEntity", back_populates="message", cascade="all, delete-orphan")

@@ -20,7 +20,6 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { authService } from "@/services/auth.service";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export function WriterSidebar() {
   const pathname = usePathname();
@@ -89,14 +88,6 @@ export function WriterSidebar() {
             );
           })}
         </nav>
-
-        {/* Theme Switcher */}
-        <div className="mt-4 px-2 mb-6">
-          <p className="px-3 pb-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
-            Appearance
-          </p>
-          <ThemeToggle />
-        </div>
 
         <div className="mt-auto pt-6 border-t border-white/10">
           <button

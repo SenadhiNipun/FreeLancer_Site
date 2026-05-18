@@ -38,6 +38,22 @@ export default function CompletedTasks() {
     fetchCompletedTasks();
   }, []);
 
+  React.useEffect(() => {
+    if (!isLoading && typeof window !== "undefined" && window.location.hash) {
+      const hash = window.location.hash;
+      const element = document.getElementById(hash.substring(1));
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          element.classList.add("ring-4", "ring-amber-400/55", "scale-[1.02]", "shadow-2xl");
+          setTimeout(() => {
+            element.classList.remove("ring-4", "ring-amber-400/55", "scale-[1.02]", "shadow-2xl");
+          }, 3500);
+        }, 300);
+      }
+    }
+  }, [isLoading]);
+
   const completedTasks = tasks.filter(t => t.task_status === 'COMPLETED');
 
   return (
@@ -68,7 +84,7 @@ export default function CompletedTasks() {
       ) : (
         <div className="grid gap-8 lg:grid-cols-2">
           {completedTasks.map((task) => (
-            <Card key={task.id} className="border-border/50 shadow-sm hover:shadow-xl hover:shadow-emerald-400/5 transition-all bg-white rounded-2xl overflow-hidden group">
+            <Card id={`task-${task.id}`} key={task.id} className="border-border/50 shadow-sm hover:shadow-xl hover:shadow-emerald-400/5 transition-all bg-white rounded-2xl overflow-hidden group">
               <CardHeader className="border-b border-border/50 p-6 flex flex-row items-center justify-between bg-emerald-50/20">
                 <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
                   <CheckCircle2 className="size-3" /> Completed

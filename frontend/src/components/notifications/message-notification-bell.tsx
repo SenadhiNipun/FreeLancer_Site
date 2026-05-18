@@ -16,7 +16,7 @@ export function MessageNotificationBell() {
 
   const fetchNotifications = async () => {
     try {
-      const response = await notificationService.getNotifications();
+      const response = await notificationService.getNotifications() as any;
       if (!response.is_error) {
         // Filter ONLY message notifications
         const messageNotifications = response.results.filter(
@@ -61,21 +61,24 @@ export function MessageNotificationBell() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "relative size-9 flex items-center justify-center rounded-lg transition-all",
-          isOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+          "relative size-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-white/10 hover:border-[#7C5CFC]/30 hover:text-[#7C5CFC] hover:shadow-[0_0_15px_rgba(124,92,252,0.15)]",
+          isOpen ? "bg-[#7C5CFC]/10 text-[#7C5CFC] border-[#7C5CFC]/30 shadow-[0_0_15px_rgba(124,92,252,0.15)]" : "text-muted-foreground"
         )}
       >
         <MessageSquare className="size-[18px]" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 size-4 rounded-full bg-[#7C5CFC] border-2 border-white text-[9px] font-bold text-white flex items-center justify-center">
-            {unreadCount > 9 ? "9+" : unreadCount}
+          <span className="absolute -top-1.5 -right-1.5 flex h-4.5 w-4.5 items-center justify-center">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7C5CFC] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4.5 w-4.5 bg-[#7C5CFC] border border-white text-[8px] font-black text-white flex items-center justify-center shadow-lg shadow-primary/40">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white border border-border shadow-2xl shadow-black/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="p-4 border-b border-border flex items-center justify-between bg-white">
+        <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-white/95 dark:bg-[#120B24]/95 border border-slate-200/50 dark:border-white/10 shadow-2xl shadow-black/10 backdrop-blur-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="p-4 border-b border-slate-200/50 dark:border-white/10 flex items-center justify-between">
             <h3 className="text-sm font-bold text-foreground">Messages</h3>
             {unreadCount > 0 && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider">
@@ -84,7 +87,7 @@ export function MessageNotificationBell() {
             )}
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[400px] overflow-y-auto py-2">
             {notifications.length === 0 ? (
               <div className="p-10 flex flex-col items-center text-center">
                 <div className="size-12 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
@@ -109,17 +112,19 @@ export function MessageNotificationBell() {
                       }
                     }}
                     className={cn(
-                      "p-4 flex gap-4 cursor-pointer transition-colors border-b border-border/50 last:border-0",
-                      n.is_read ? "opacity-60 grayscale-[0.5]" : "hover:bg-muted/30"
+                      "mx-2 my-1 p-3 flex gap-3.5 cursor-pointer rounded-xl transition-all duration-200",
+                      n.is_read 
+                        ? "opacity-50 hover:bg-slate-50 dark:hover:bg-white/5" 
+                        : "bg-primary/5 hover:bg-primary/10 border-l-2 border-primary"
                     )}
                   >
-                    <div className="size-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                    <div className="size-10 rounded-xl bg-violet-50 dark:bg-violet-950 flex items-center justify-center shrink-0 shadow-sm">
                       <MessageSquare className="size-5 text-[#7C5CFC]" />
                     </div>
-                    <div className="space-y-1 min-w-0">
+                    <div className="space-y-1 min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-foreground leading-tight">{n.title}</p>
                       <p className="text-[12px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</p>
-                      <div className="flex items-center gap-1.5 pt-1 text-[10px] text-muted-foreground/60 font-medium">
+                      <div className="flex items-center gap-1.5 pt-1 text-[10px] text-muted-foreground/60 font-bold uppercase tracking-wider">
                         <Clock className="size-3" />
                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                       </div>

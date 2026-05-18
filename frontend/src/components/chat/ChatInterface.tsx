@@ -11,15 +11,15 @@ import {
   Check,
   CheckCheck,
   ChevronLeft,
-  Plus,
-  Phone,
-  Mail,
   Smile,
   Paperclip,
-  Mic,
-  BookOpen,
   FileText,
-  Clock
+  Clock,
+  X,
+  Download,
+  Loader2,
+  File,
+  Trash
 } from "lucide-react";
 import { chatService } from "@/services/chat.service";
 import { authService } from "@/services/auth.service";
@@ -28,6 +28,18 @@ import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { getFileUrl } from "@/lib/api-client";
+
+const EMOJIS = [
+  // Smileys & Emotions
+  "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", 
+  "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳", "😏", 
+  // Hand Gestures & People
+  "👍", "👎", "👊", "✊", "🤛", "🤜", "🤞", "✌️", "🤟", "🤘", "👌", "🤌", "👈", "👉", "👆", "👇", 
+  "☝️", "✋", "🤚", "🖐️", "🖖", "👋", "✍️", "👏", "🙌", "🙏", "💪", "🧠", "👀", "🗣️", "👤", "👥",
+  // Academic & Office & Symbols
+  "📝", "📚", "📖", "✏️", "🎓", "💼", "📅", "📊", "📈", "📉", "📁", "💻", "💡", "✨", "🔥", "⭐", 
+  "🌟", "✅", "❌", "💯", "🔔", "📢", "💬", "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎"
+];
 
 export default function ChatInterface() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -39,11 +51,66 @@ export default function ChatInterface() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"open" | "closed">("open");
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [stagedFiles, setStagedFiles] = useState<{ file_name: string; file_url: string; mime_type?: string; file_size?: number }[]>([]);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const sessionIdParam = searchParams.get("session");
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleAddEmoji = (emoji: string) => {
+    setNewMessage(prev => prev + emoji);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const handleToggleSessionStatus = async () => {
+    if (!activeSession) return;
+    try {
+      const updated = await chatService.toggleSessionStatus(activeSession.id);
+      
+      // Update session status in sessions list and activeSession
+      setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, is_active: updated.is_active } : s));
+      setActiveSession(prev => prev ? { ...prev, is_active: updated.is_active } : null);
+      setShowDropdown(false);
+    } catch (error) {
+      console.error("Failed to toggle session status:", error);
+    }
+  };
+
+  const handleClearChatMessages = () => {
+    setMessages([]);
+    setShowDropdown(false);
+  };
+
+  const handleDeleteMessage = async (msgId: number) => {
+    try {
+      await chatService.deleteMessage(msgId);
+      setMessages(prev => prev.filter(m => m.id !== msgId));
+    } catch (error) {
+      console.error("Failed to delete message:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -98,14 +165,14 @@ export default function ChatInterface() {
 
   useEffect(() => {
     if (activeSession) {
-      fetchMessages(activeSession.id);
-      const interval = setInterval(() => fetchMessages(activeSession.id), 5000); // Poll messages every 5s
+      fetchMessages(activeSession.id, true);
+      const interval = setInterval(() => fetchMessages(activeSession.id, false), 5000); // Poll messages every 5s
       return () => clearInterval(interval);
     }
   }, [activeSession]);
 
   useEffect(() => {
-    scrollToBottom();
+    scrollToBottom(false);
   }, [messages]);
 
   const fetchSessions = async () => {
@@ -119,10 +186,13 @@ export default function ChatInterface() {
     }
   };
 
-  const fetchMessages = async (sessionId: number) => {
+  const fetchMessages = async (sessionId: number, isInitial = false) => {
     try {
       const data = await chatService.getMessages(sessionId);
       setMessages(data);
+      if (isInitial) {
+        scrollToBottom(true);
+      }
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     }
@@ -130,14 +200,20 @@ export default function ChatInterface() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeSession || !newMessage.trim() || isSending) return;
+    const hasText = newMessage.trim().length > 0;
+    const hasFiles = stagedFiles.length > 0;
+    if (!activeSession || (!hasText && !hasFiles) || isSending) return;
 
     setIsSending(true);
     try {
-      const sentMsg = await chatService.sendMessage(activeSession.id, { message_text: newMessage });
+      const sentMsg = await chatService.sendMessage(activeSession.id, { 
+        message_text: newMessage,
+        attachments: stagedFiles
+      });
       setMessages(prev => [...prev, sentMsg]);
       setNewMessage("");
-      scrollToBottom();
+      setStagedFiles([]);
+      scrollToBottom(true);
 
       // Update session locally to move it to the top
       setSessions(prev => prev.map(s => 
@@ -153,8 +229,47 @@ export default function ChatInterface() {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingFile(true);
+    try {
+      const uploaded = await chatService.uploadAttachment(files[0]);
+      setStagedFiles(prev => [...prev, {
+        file_name: uploaded.file_name,
+        file_url: uploaded.file_url,
+        mime_type: uploaded.mime_type,
+        file_size: uploaded.file_size
+      }]);
+    } catch (error) {
+      console.error("Failed to upload file:", error);
+    } finally {
+      setIsUploadingFile(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveStagedFile = (idx: number) => {
+    setStagedFiles(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const scrollToBottom = (force = false) => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= 150;
+
+    if (force || isAtBottom) {
+      setTimeout(() => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: force ? "auto" : "smooth"
+        });
+      }, 50);
+    }
   };
 
   // Filter based on Search and Tabs
@@ -196,15 +311,6 @@ export default function ChatInterface() {
         <div className="p-6 pb-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-black tracking-tight text-slate-900">Chats</h2>
-            <div className="flex items-center gap-2">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-                <Plus className="size-3.5 text-[#0D9488]" />
-                New Chat
-              </button>
-              <button className="p-2 hover:bg-slate-200/50 rounded-xl text-slate-500 transition-colors">
-                <MoreVertical className="size-4" />
-              </button>
-            </div>
           </div>
 
           {/* Search bar */}
@@ -224,7 +330,7 @@ export default function ChatInterface() {
             <button 
               onClick={() => setActiveTab("open")}
               className={cn(
-                "flex-1 py-2 text-xs font-bold rounded-xl transition-all",
+                "flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer select-none",
                 activeTab === "open" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
               )}
             >
@@ -233,7 +339,7 @@ export default function ChatInterface() {
             <button 
               onClick={() => setActiveTab("closed")}
               className={cn(
-                "flex-1 py-2 text-xs font-bold rounded-xl transition-all",
+                "flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer select-none",
                 activeTab === "closed" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
               )}
             >
@@ -252,7 +358,7 @@ export default function ChatInterface() {
                   key={session.id}
                   onClick={() => setActiveSession(session)}
                   className={cn(
-                    "w-full p-4 flex items-start gap-3.5 rounded-[1.5rem] transition-all text-left",
+                    "w-full p-4 flex items-start gap-3.5 rounded-[1.5rem] transition-all text-left cursor-pointer select-none",
                     isActive 
                       ? "bg-[#EBF3FC] shadow-sm border border-blue-100" 
                       : "hover:bg-slate-200/40 border border-transparent"
@@ -339,7 +445,7 @@ export default function ChatInterface() {
                   )}
                 </div>
 
-                <div>
+                <div className="select-none cursor-default">
                   <div className="flex items-center gap-2">
                     <h3 className="font-extrabold text-slate-900 text-[15px] leading-tight">{activeSession.other_party_name}</h3>
                     <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[9px] font-bold border border-blue-100 shadow-sm uppercase tracking-wider">
@@ -351,22 +457,46 @@ export default function ChatInterface() {
               </div>
 
               {/* Utility action headers */}
-              <div className="flex items-center gap-2">
-                <button className="p-2.5 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-200">
-                  <Phone className="size-4" />
-                </button>
-                <button className="p-2.5 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-200">
-                  <Mail className="size-4" />
-                </button>
-                <button className="p-2.5 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-200">
+              <div className="flex items-center gap-2 relative">
+                <button 
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className={cn(
+                    "p-2.5 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-200",
+                    showDropdown && "bg-slate-100 border-slate-200 text-slate-800"
+                  )}
+                >
                   <MoreVertical className="size-4" />
                 </button>
+
+                {showDropdown && (
+                  <div 
+                    ref={dropdownRef}
+                    className="absolute right-0 top-full mt-2 w-52 bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl shadow-2xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200 flex flex-col"
+                  >
+                    <button
+                      type="button"
+                      onClick={handleToggleSessionStatus}
+                      className="px-4 py-2.5 text-xs font-bold text-left hover:bg-slate-50 text-slate-700 hover:text-slate-900 transition-colors flex items-center gap-2.5"
+                    >
+                      <span className={cn("size-2 rounded-full", activeSession.is_active !== false ? "bg-rose-500 animate-pulse" : "bg-emerald-500 animate-pulse")} />
+                      {activeSession.is_active !== false ? "Close Chat Session" : "Reopen Chat Session"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearChatMessages}
+                      className="px-4 py-2.5 text-xs font-bold text-left hover:bg-slate-50 text-slate-700 hover:text-rose-600 transition-colors border-t border-slate-100 flex items-center gap-2.5"
+                    >
+                      <Trash className="size-3.5 text-slate-400" />
+                      Clear Chat Feed
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Messages Stream */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50/30">
-              <div className="flex justify-center my-2">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50/30">
+              <div className="flex justify-center my-2 select-none cursor-default">
                 <div className="flex items-center gap-4 w-full max-w-[400px]">
                   <div className="h-[1px] bg-slate-200 flex-1" />
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">TODAY</span>
@@ -377,6 +507,8 @@ export default function ChatInterface() {
               {messages.length > 0 ? (
                 messages.map((msg, idx) => {
                   const isMine = msg.sender_id == currentUserId;
+                  const messageAgeMs = new Date().getTime() - new Date(msg.created_at).getTime();
+                  const isDeletable = isMine && messageAgeMs <= 120000;
                   const showDate = idx === 0 || 
                     new Date(msg.created_at).getDate() !== new Date(messages[idx-1].created_at).getDate();
 
@@ -385,7 +517,7 @@ export default function ChatInterface() {
                   return (
                     <React.Fragment key={msg.id}>
                       {showDate && (
-                        <div className="flex justify-center my-4">
+                        <div className="flex justify-center my-4 select-none cursor-default">
                           <span className="px-3 py-1 rounded-full bg-slate-200/50 text-[9px] font-bold text-slate-500 uppercase tracking-widest border border-slate-100">
                             {new Date(msg.created_at).toLocaleDateString()}
                           </span>
@@ -419,7 +551,7 @@ export default function ChatInterface() {
                           isMine ? "flex-row-reverse" : "flex-row"
                         )}>
                           {/* Circular Avatar */}
-                          <div className="size-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-500 flex-shrink-0 overflow-hidden shadow-sm border border-white">
+                  <div className="size-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-500 flex-shrink-0 overflow-hidden shadow-sm border border-white">
                             {msg.sender_profile_image_url ? (
                               <img 
                                 src={getFileUrl(msg.sender_profile_image_url)} 
@@ -432,27 +564,81 @@ export default function ChatInterface() {
                           </div>
 
                           {/* Message Bubble container */}
-                          <div className="flex flex-col items-start gap-1">
-                            <div className={cn(
-                              "px-4.5 py-3 rounded-2xl shadow-sm text-slate-900 text-[13px] leading-relaxed font-medium relative",
-                              isMine 
-                                ? "bg-[#DEE9F7] rounded-tr-none border border-blue-200/30" 
-                                : "bg-[#ECF0F3] rounded-tl-none border border-slate-300/20"
-                            )}>
-                              <p className="whitespace-pre-wrap">{msg.message_text}</p>
-                            </div>
-                            
-                            {/* Read Indicators for my messages */}
-                            {isMine && (
-                              <div className="flex justify-end w-full px-1 mt-0.5">
-                                {msg.is_read ? (
-                                  <CheckCheck className="size-3 text-emerald-500" />
-                                ) : (
-                                  <Check className="size-3 text-slate-400" />
-                                )}
-                              </div>
-                            )}
-                          </div>
+                           <div className="flex flex-col items-start gap-1 w-full">
+                             {msg.message_text && (
+                               <div className={cn("flex items-center gap-2 max-w-full", isMine ? "flex-row-reverse" : "flex-row")}>
+                                 {isDeletable && (
+                                   <button
+                                     type="button"
+                                     onClick={() => handleDeleteMessage(msg.id)}
+                                     title="Delete message (available for 2 mins)"
+                                     className="opacity-0 group-hover:opacity-100 transition-all p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full shadow-sm border border-slate-200 bg-white/90 backdrop-blur flex-shrink-0 cursor-pointer"
+                                   >
+                                     <Trash className="size-3.5" />
+                                   </button>
+                                 )}
+                                 <div className={cn(
+                                   "px-4.5 py-3 rounded-2xl shadow-sm text-slate-900 text-[13px] leading-relaxed font-medium relative max-w-full cursor-default select-none",
+                                   isMine 
+                                     ? "bg-[#DEE9F7] rounded-tr-none border border-blue-200/30" 
+                                     : "bg-[#ECF0F3] rounded-tl-none border border-slate-300/20"
+                                 )}>
+                                   <p className="whitespace-pre-wrap">{msg.message_text}</p>
+                                 </div>
+                               </div>
+                             )}
+
+                             {/* Render Attachments */}
+                             {msg.attachments && msg.attachments.length > 0 && (
+                               <div className="flex flex-col gap-2 mt-1.5 w-full min-w-[240px] max-w-full">
+                                 {msg.attachments.map((att) => (
+                                   <a
+                                     key={att.id}
+                                     href={getFileUrl(att.file_url)}
+                                     download={att.file_name}
+                                     target="_blank"
+                                     rel="noopener noreferrer"
+                                     className={cn(
+                                       "flex items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all text-left shadow-sm group/att hover:shadow-md max-w-full",
+                                       isMine
+                                         ? "bg-white/85 border-blue-100 hover:bg-white"
+                                         : "bg-white/95 border-slate-200 hover:bg-white"
+                                     )}
+                                   >
+                                     <div className="flex items-center gap-3 min-w-0 flex-1">
+                                       <div className="size-9 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center flex-shrink-0 text-[#0D9488] group-hover/att:scale-105 transition-transform">
+                                         <FileText className="size-4.5" />
+                                       </div>
+                                       <div className="flex flex-col min-w-0 flex-1">
+                                         <span className="text-[12px] font-bold text-slate-800 truncate leading-snug group-hover/att:text-[#0D9488] transition-colors">
+                                           {att.file_name}
+                                         </span>
+                                         {att.file_size && (
+                                           <span className="text-[10px] font-bold text-slate-400 mt-0.5">
+                                             {(att.file_size / 1024).toFixed(1)} KB
+                                           </span>
+                                         )}
+                                       </div>
+                                     </div>
+                                     <div className="p-2 rounded-xl bg-slate-50 border border-slate-150 text-slate-500 group-hover/att:bg-[#0D9488] group-hover/att:text-white group-hover/att:border-[#0D9488] transition-all flex-shrink-0">
+                                       <Download className="size-4" />
+                                     </div>
+                                   </a>
+                                 ))}
+                               </div>
+                             )}
+                             
+                             {/* Read Indicators for my messages */}
+                             {isMine && (
+                               <div className="flex justify-end w-full px-1 mt-0.5">
+                                 {msg.is_read ? (
+                                   <CheckCheck className="size-3 text-emerald-500" />
+                                 ) : (
+                                   <Check className="size-3 text-slate-400" />
+                                 )}
+                               </div>
+                             )}
+                           </div>
                         </div>
 
                       </div>
@@ -468,26 +654,59 @@ export default function ChatInterface() {
                   <p className="text-[10px] text-slate-400 mt-1 text-center max-w-[220px]">Discuss project specifications, timelines, and budgets.</p>
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Premium Two-Tier Composer Card */}
             <div className="p-6 bg-transparent border-t-0">
-              <form onSubmit={handleSendMessage} className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col transition-all focus-within:ring-2 focus-within:ring-[#0D9488]/10 focus-within:border-[#0D9488]">
+              <form onSubmit={handleSendMessage} className="bg-white rounded-3xl border border-slate-200 shadow-xl flex flex-col transition-all focus-within:ring-2 focus-within:ring-[#0D9488]/10 focus-within:border-[#0D9488]">
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                {/* Staged Attachments Container */}
+                {stagedFiles.length > 0 && (
+                  <div className="px-5 pt-4 pb-2 flex flex-wrap gap-2.5 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl">
+                    {stagedFiles.map((file, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-white border border-slate-200/80 rounded-2xl pl-3.5 pr-2.5 py-2 shadow-sm animate-in zoom-in duration-200">
+                        <FileText className="size-4 text-[#0D9488]" />
+                        <div className="flex flex-col max-w-[150px]">
+                          <span className="text-[11px] font-bold text-slate-800 truncate leading-snug">{file.file_name}</span>
+                          {file.file_size && (
+                            <span className="text-[9px] font-semibold text-slate-400">
+                              {(file.file_size / 1024).toFixed(1)} KB
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStagedFile(idx)}
+                          className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-rose-500 transition-colors"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Tier 1: Text Entry Field */}
-                <div className="flex items-center px-5 py-4 gap-3">
+                <div className={cn("flex items-center px-5 py-4 gap-3", stagedFiles.length === 0 && "rounded-t-3xl")}>
                   <input 
                     ref={inputRef}
                     type="text" 
-                    placeholder="Write your message..." 
+                    placeholder={isUploadingFile ? "Uploading attachment..." : "Write your message..."}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    disabled={isSending}
+                    disabled={isSending || isUploadingFile}
                     className="flex-1 bg-transparent border-none outline-none text-slate-900 text-sm placeholder:text-slate-400 h-10 w-full"
                   />
                   <Button 
                     type="submit" 
-                    disabled={!newMessage.trim() || isSending}
+                    disabled={(!newMessage.trim() && stagedFiles.length === 0) || isSending || isUploadingFile}
                     className="size-10 rounded-xl bg-[#0D9488] hover:bg-[#0D9488]/90 flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#0D9488]/20 transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
                   >
                     <Send className={cn("size-4.5 text-white transition-transform", isSending ? "animate-pulse" : "group-hover:translate-x-0.5 group-hover:-translate-y-0.5")} />
@@ -495,20 +714,62 @@ export default function ChatInterface() {
                 </div>
 
                 {/* Tier 2: Bottom Utility Action Row */}
-                <div className="px-5 py-3 bg-[#F4F7F8] border-t border-slate-100 flex items-center justify-between text-slate-500">
+                <div className="px-5 py-3 bg-[#F4F7F8] border-t border-slate-100 flex items-center justify-between text-slate-500 rounded-b-3xl">
                   <div className="flex items-center gap-3">
-                    <button type="button" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors text-[11px] font-bold">
-                      <BookOpen className="size-3.5 text-slate-400" />
-                      Template
-                    </button>
-                    <button type="button" className="p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors">
-                      <Smile className="size-4 text-slate-400" />
-                    </button>
-                    <button type="button" className="p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors">
-                      <Paperclip className="size-4 text-slate-400" />
-                    </button>
-                    <button type="button" className="p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors">
-                      <Mic className="size-4 text-slate-400" />
+                    <div className="relative">
+                      <button 
+                        type="button" 
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className={cn(
+                          "p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors",
+                          showEmojiPicker && "bg-slate-200/80 text-slate-950"
+                        )}
+                      >
+                        <Smile className="size-4 text-slate-400" />
+                      </button>
+                      
+                      {showEmojiPicker && (
+                        <div 
+                          ref={emojiPickerRef}
+                          className="absolute bottom-full left-0 mb-3 w-72 bg-white/95 backdrop-blur-md border border-slate-200 rounded-3xl shadow-2xl p-4.5 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200 flex flex-col gap-3.5"
+                        >
+                          <div className="flex items-center justify-between px-1">
+                            <span className="text-[11px] font-extrabold text-slate-800 tracking-wide uppercase">Select Emoji</span>
+                            <button 
+                              type="button" 
+                              onClick={() => setShowEmojiPicker(false)}
+                              className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                          
+                          <div className="grid grid-cols-8 gap-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
+                            {EMOJIS.map((emoji, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleAddEmoji(emoji)}
+                                className="size-7 flex items-center justify-center text-lg hover:bg-slate-100 rounded-lg active:scale-90 transition-all"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingFile || isSending}
+                      className="p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors relative"
+                    >
+                      {isUploadingFile ? (
+                        <Loader2 className="size-4 text-[#0D9488] animate-spin" />
+                      ) : (
+                        <Paperclip className="size-4 text-slate-400" />
+                      )}
                     </button>
                   </div>
                   <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">

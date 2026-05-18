@@ -1,3 +1,12 @@
+export interface ChatMessageAttachment {
+  id: number;
+  message_id: number;
+  file_name: string;
+  file_url: string;
+  mime_type?: string;
+  file_size?: number;
+}
+
 export interface ChatMessage {
   id: number;
   session_id: number;
@@ -6,6 +15,7 @@ export interface ChatMessage {
   is_read: boolean;
   created_at: string;
   sender_profile_image_url?: string;
+  attachments?: ChatMessageAttachment[];
 }
 
 export interface ChatSession {
@@ -23,4 +33,5 @@ export interface ChatSession {
 
 export interface SendMessageRequest {
   message_text: string;
+  attachments?: Omit<ChatMessageAttachment, "id" | "message_id">[];
 }

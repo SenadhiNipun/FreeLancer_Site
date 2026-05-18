@@ -5,8 +5,24 @@ from typing import List, Optional
 class ChatMessageBase(BaseModel):
     message_text: str
 
+class ChatAttachmentCreate(BaseModel):
+    file_name: str
+    file_url: str
+    mime_type: Optional[str] = None
+    file_size: Optional[int] = None
+
 class ChatMessageCreate(ChatMessageBase):
-    pass
+    attachments: Optional[List[ChatAttachmentCreate]] = None
+
+class ChatMessageAttachmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    message_id: int
+    file_name: str
+    file_url: str
+    mime_type: Optional[str] = None
+    file_size: Optional[int] = None
 
 class ChatMessageResponse(ChatMessageBase):
     model_config = ConfigDict(from_attributes=True)
@@ -17,6 +33,7 @@ class ChatMessageResponse(ChatMessageBase):
     is_read: bool
     created_at: datetime
     sender_profile_image_url: Optional[str] = None
+    attachments: Optional[List[ChatMessageAttachmentResponse]] = []
 
 class ChatSessionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

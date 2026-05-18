@@ -47,7 +47,8 @@ class ChatRepository:
         from sqlalchemy.orm import selectinload
         from app.entity.user_entity import UserEntity
         return db.query(ChatMessageEntity).options(
-            selectinload(ChatMessageEntity.sender).selectinload(UserEntity.user_profile)
+            selectinload(ChatMessageEntity.sender).selectinload(UserEntity.user_profile),
+            selectinload(ChatMessageEntity.attachments)
         ).filter(
             ChatMessageEntity.session_id == session_id
         ).order_by(ChatMessageEntity.created_at.asc()).all()

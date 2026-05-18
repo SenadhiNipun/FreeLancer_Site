@@ -38,6 +38,21 @@ class ChatService:
         
         created_message = ChatRepository.create_message(db, message)
         
+        # Save attachments if present
+        if request.attachments:
+            from app.entity.chat_message_attachment_entity import ChatMessageAttachmentEntity
+            for att in request.attachments:
+                db_att = ChatMessageAttachmentEntity(
+                    message_id=created_message.id,
+                    file_name=att.file_name,
+                    file_url=att.file_url,
+                    mime_type=att.mime_type,
+                    file_size=att.file_size
+                )
+                db.add(db_att)
+            db.commit()
+            db.refresh(created_message)
+        
         recipient_id = session.writer_id if sender_id == session.customer_id else session.customer_id
         from app.service.notification_service import NotificationService
         
@@ -92,3 +107,34 @@ class ChatService:
                 
             results.append(resp)
         return results
+
+    @staticmethod
+    def toggle_session_status(db: Session, session_id: int, user_id: int):
+        session = ChatRepository.get_session_by_id(db, session_id)
+        if not session:
+            raise NotFoundException(detail="Chat session not found")
+        
+        if user_id not in [session.customer_id, session.writer_id]:
+            raise ValidationException(detail="You are not a participant in this chat")
+        
+        session.is_active = not session.is_active
+        db.commit()
+        db.refresh(session)
+        return session
+
+    @staticmethod
+    def delete_message(db: Session, message_id: int, user_id: int):
+        message = db.query(ChatMessageEntity).filter(ChatMessageEntity.id == message_id).first()
+        if not message:
+            raise NotFoundException(detail="Message not found")
+        
+        if message.sender_id != user_id:
+            raise ValidationException(detail="You can only delete your own messages")
+        
+        from datetime import datetime
+        time_diff = (datetime.now() - message.created_at).total_seconds()
+        if time_diff > 120:
+            raise ValidationException(detail="Messages can only be deleted within 2 minutes of sending")
+        
+        db.delete(message)
+        db.commit()
