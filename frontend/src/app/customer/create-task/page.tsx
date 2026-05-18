@@ -1,10 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Calendar,
   Upload,
-  ChevronRight,
+  ChevronDown,
   Info,
   X,
   File,
@@ -12,7 +12,9 @@ import {
   ShieldCheck,
   Zap,
   Target,
-  ArrowRight
+  ArrowRight,
+  Activity,
+  Award
 } from "lucide-react";
 
 import { academicService } from "@/services/academic.service";
@@ -20,17 +22,18 @@ import { taskService } from "@/services/task.service";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-/* ── Tiny UI Components ── */
+/* ── Refined Custom Labels ── */
 const Label = ({ children, htmlFor, required }: { children: React.ReactNode; htmlFor?: string; required?: boolean }) => (
-  <label htmlFor={htmlFor} className="text-[12px] font-bold text-[#332a4d] flex items-center gap-1 mb-1.5 ml-0.5">
+  <label htmlFor={htmlFor} className="text-[10px] font-extrabold text-muted-foreground/80 uppercase tracking-widest flex items-center gap-1.5 mb-2 ml-0.5 select-none">
     {children}
-    {required && <span className="text-red-500">*</span>}
+    {required && <span className="text-rose-500 font-bold">*</span>}
   </label>
 );
 
+/* ── Frosted Glass Cards ── */
 const Card = ({ children, className }: { children: React.ReactNode; className?: string }) => (
   <div className={cn(
-    "rounded-[24px] bg-white border border-[#E8E6F0] shadow-[0_8px_30px_rgb(0,0,0,0.02)] p-6 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(124,92,252,0.06)]",
+    "rounded-[2rem] glass p-8 shadow-2xl shadow-black/5 border border-white/10 dark:border-white/5 relative overflow-hidden transition-all duration-500 hover:shadow-primary/5",
     className
   )}>
     {children}
@@ -39,11 +42,11 @@ const Card = ({ children, className }: { children: React.ReactNode; className?: 
 
 export default function CreateTask() {
   const router = useRouter();
-  const [categories, setCategories] = React.useState<any[]>([]);
-  const [educationLevels, setEducationLevels] = React.useState<any[]>([]);
-  const [specializations, setSpecializations] = React.useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [educationLevels, setEducationLevels] = useState<any[]>([]);
+  const [specializations, setSpecializations] = useState<any[]>([]);
 
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = useState({
     title: "",
     description: "",
     academic_category_id: "",
@@ -53,11 +56,12 @@ export default function CreateTask() {
     is_urgent: false,
   });
 
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [files, setFiles] = React.useState<File[]>([]);
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [files, setFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ── File helpers ── */
   const addFiles = (incoming: FileList | null) => {
@@ -70,8 +74,8 @@ export default function CreateTask() {
     ];
     const maxSize = 10 * 1024 * 1024;
     const valid = Array.from(incoming).filter((f) => {
-      if (!allowed.includes(f.type)) { alert(`${f.name}: unsupported file type`); return false; }
-      if (f.size > maxSize) { alert(`${f.name}: exceeds 10 MB limit`); return false; }
+      if (!allowed.includes(f.type)) { alert(`${f.name}: unsupported file type. Please upload PDF, DOCX, JPEG, or PNG.`); return false; }
+      if (f.size > maxSize) { alert(`${f.name}: exceeds 10 MB limit.`); return false; }
       return true;
     });
     setFiles((prev) => {
@@ -90,7 +94,7 @@ export default function CreateTask() {
   };
 
   /* ── Data fetching ── */
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchMetadata = async () => {
       try {
         const [cats, edus] = await Promise.all([
@@ -101,6 +105,8 @@ export default function CreateTask() {
         setEducationLevels(edus.results || []);
       } catch (error) {
         console.error("Failed to fetch metadata:", error);
+      } finally {
+        setIsPageLoading(false);
       }
     };
     fetchMetadata();
@@ -125,7 +131,6 @@ export default function CreateTask() {
     e.preventDefault();
     setError(null);
     
-    // Client-side validation
     if (formData.title.length < 5) {
       setError("Project title must be at least 5 characters long.");
       return;
@@ -137,7 +142,6 @@ export default function CreateTask() {
     }
 
     setIsLoading(true);
-    console.log("Starting task creation...");
 
     try {
       const payload = {
@@ -150,21 +154,14 @@ export default function CreateTask() {
         deadline: formData.deadline ? `${formData.deadline}T23:59:59Z` : null,
       };
       
-      console.log("Payload being sent:", payload);
       const response = await taskService.createTask(payload);
-      console.log("Task created successfully:", response);
-      
       const createdTask = response.results;
       
-      // If there are files, upload them
       if (files.length > 0 && createdTask?.id) {
-        console.log("Uploading files for task:", createdTask.id);
         try {
           await taskService.addFilesToTask(createdTask.id, files);
-          console.log("Files uploaded successfully");
         } catch (fileErr) {
           console.error("Failed to upload files:", fileErr);
-          // We still created the task, so maybe just alert?
           alert("Task created, but files failed to upload. You can add them later in project details.");
         }
       }
@@ -178,56 +175,82 @@ export default function CreateTask() {
     }
   };
 
-  const inputBase = "w-full rounded-xl bg-white border border-[#E8E6F0] px-4 text-sm transition-all duration-200 outline-none placeholder:text-[#B4B1C1]/60 placeholder:text-[13px] placeholder:font-normal text-[#1a1033]";
-  const inputCls = cn(inputBase, "h-11 focus:border-[#7C5CFC] focus:ring-4 focus:ring-[#7C5CFC]/5");
+  // Base styling for modern frosted inputs
+  const inputBase = "w-full rounded-2xl bg-white/40 dark:bg-slate-900/30 backdrop-blur-sm border border-slate-200/60 dark:border-slate-800/40 px-4 text-sm transition-all duration-300 outline-none placeholder:text-muted-foreground/35 placeholder:text-[13px] placeholder:font-normal text-foreground focus:border-primary focus:ring-4 focus:ring-primary/10";
+  const inputCls = cn(inputBase, "h-12.5");
+
+  if (isPageLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-reveal">
+        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-primary/20 animate-pulse" />
+          <Activity className="size-6 text-primary animate-bounce" />
+        </div>
+        <div className="space-y-2 text-center">
+          <p className="text-sm font-bold text-foreground tracking-tight uppercase tracking-[0.2em]">Initializing Portal</p>
+          <div className="w-48 h-1 bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-primary animate-progress" style={{ width: '50%' }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-[1200px] mx-auto space-y-8 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="max-w-[1200px] mx-auto space-y-8 pb-10 animate-reveal">
 
-      {/* ── Header Section ── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F5F3FF] text-[#7C5CFC] text-[10px] font-bold uppercase tracking-wider mb-2">
-            <Sparkles className="size-3" />
-            Project Creation
+      {/* ── Page Header Hero ── */}
+      <div className="glass rounded-[2rem] p-8 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 border-gradient">
+        <div className="absolute -bottom-24 -left-24 size-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="relative z-10 space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass bg-primary/10 border border-primary/25 text-primary text-[10px] font-black uppercase tracking-wider animate-float">
+            <Sparkles className="size-3.5" />
+            Project Creation Portal
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#1a1033]">
-            What are we working on?
-          </h1>
-          <p className="text-[#9490a8] text-sm max-w-lg">
-            Detailed requirements help our top experts provide more accurate bids and faster delivery.
-          </p>
+          <div className="space-y-1.5">
+            <h1 className="text-3xl font-black text-foreground tracking-tight leading-tight">
+              What are we working on?
+            </h1>
+            <p className="text-sm text-muted-foreground font-medium max-w-md leading-relaxed">
+              Detailed requirements help our top academic experts provide highly accurate bids and faster turnarounds.
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-sm font-medium text-[#9490a8]">
-          <div className="flex -space-x-2">
+
+        <div className="relative z-10 w-full md:w-auto flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/5">
+          <div className="flex -space-x-2.5">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="size-8 rounded-full border-2 border-white bg-[#F5F3FF] flex items-center justify-center text-[10px] text-[#7C5CFC] font-bold">
+              <div key={i} className="size-8 rounded-full border-2 border-white dark:border-slate-900 bg-gradient-to-tr from-primary to-[#8B5CF6] flex items-center justify-center text-[10px] text-white font-black shadow-md">
                 {i}
               </div>
             ))}
           </div>
-          <span>Active experts online</span>
+          <div className="text-xs font-black text-foreground uppercase tracking-widest">
+            142 Experts <span className="text-emerald-500 font-black animate-pulse">● Online</span>
+          </div>
         </div>
       </div>
 
-      {/* ── Error Message ── */}
+      {/* ── Submission Error Alert ── */}
       {error && (
-        <div className="p-4 rounded-2xl bg-red-50 border border-red-100 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-          <div className="size-8 rounded-full bg-red-500 flex items-center justify-center shrink-0">
-            <X className="size-4 text-white" />
+        <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+          <div className="size-8 rounded-full bg-rose-500/10 flex items-center justify-center shrink-0 text-rose-500">
+            <X className="size-4" />
           </div>
-          <p className="text-sm font-bold text-red-600">{error}</p>
+          <p className="text-sm font-bold text-rose-500">{error}</p>
         </div>
       )}
 
-      {/* ── Main Layout ── */}
+      {/* ── Main Workspace Grid ── */}
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* ────── Left: Main Form (8 cols) ────── */}
+        {/* ────── Left: Main Assignment Builder (8 cols) ────── */}
         <div className="lg:col-span-8 space-y-6">
           <Card>
             <div className="space-y-6">
-              {/* Task Title */}
+              
+              {/* Project Title */}
               <div>
                 <Label htmlFor="title" required>Project Title</Label>
                 <input
@@ -240,7 +263,7 @@ export default function CreateTask() {
                 />
               </div>
 
-              {/* Grid 1: Category & Specialization */}
+              {/* Grid 1: Academic Scope & Domain */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label htmlFor="category" required>Academic Category</Label>
@@ -257,9 +280,10 @@ export default function CreateTask() {
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                       ))}
                     </select>
-                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-[#9490a8] rotate-90 pointer-events-none" />
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60 pointer-events-none" />
                   </div>
                 </div>
+                
                 <div>
                   <Label htmlFor="specialization" required>Specialization</Label>
                   <div className="relative">
@@ -267,7 +291,7 @@ export default function CreateTask() {
                       id="specialization"
                       required
                       disabled={!formData.academic_category_id}
-                      className={cn(inputCls, "appearance-none pr-10 cursor-pointer disabled:bg-[#F8F7FA] disabled:text-[#B4B1C1]")}
+                      className={cn(inputCls, "appearance-none pr-10 cursor-pointer disabled:bg-slate-100/50 dark:disabled:bg-slate-900/30 disabled:text-muted-foreground/40")}
                       value={formData.specialization_id}
                       onChange={(e) => setFormData({ ...formData, specialization_id: e.target.value })}
                     >
@@ -276,12 +300,12 @@ export default function CreateTask() {
                         <option key={spec.id} value={spec.id}>{spec.name}</option>
                       ))}
                     </select>
-                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-[#9490a8] rotate-90 pointer-events-none" />
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60 pointer-events-none" />
                   </div>
                 </div>
               </div>
 
-              {/* Grid 2: Education & Deadline */}
+              {/* Grid 2: Target Standard & Timeline */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <Label htmlFor="education_level" required>Education Level</Label>
@@ -298,13 +322,14 @@ export default function CreateTask() {
                         <option key={edu.id} value={edu.id}>{edu.name}</option>
                       ))}
                     </select>
-                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-[#9490a8] rotate-90 pointer-events-none" />
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60 pointer-events-none" />
                   </div>
                 </div>
+                
                 <div>
                   <Label htmlFor="deadline" required>Submission Deadline</Label>
                   <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-[#7C5CFC]" />
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 size-4.5 text-primary" />
                     <input
                       id="deadline"
                       type="date"
@@ -318,7 +343,7 @@ export default function CreateTask() {
                 </div>
               </div>
 
-              {/* Description */}
+              {/* Description Brief block */}
               <div>
                 <Label htmlFor="description" required>Project Brief & Instructions</Label>
                 <textarea
@@ -327,67 +352,67 @@ export default function CreateTask() {
                   rows={6}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Share details about the project, word count, formatting styles, and any specific requirements..."
-                  className={cn(inputBase, "py-4 min-h-[160px] focus:border-[#7C5CFC] focus:ring-4 focus:ring-[#7C5CFC]/5 resize-none")}
+                  placeholder="Share details about the project, target word count, citation formatting styles, and any structural requirements..."
+                  className={cn(inputBase, "py-4.5 min-h-[180px] resize-none leading-relaxed")}
                 />
               </div>
 
-              {/* Urgent Toggle */}
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-[#F5F3FF] border border-[#7C5CFC]/10">
+              {/* Urgent Escrow Toggle Capsule */}
+              <div className="flex items-center justify-between p-5 rounded-2xl bg-primary/[0.02] border border-primary/10">
                 <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                    <Zap className={cn("size-5 transition-colors", formData.is_urgent ? "text-amber-500 fill-amber-500" : "text-[#9490a8]")} />
+                  <div className="size-11 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/40 flex items-center justify-center shadow-sm">
+                    <Zap className={cn("size-5 transition-colors", formData.is_urgent ? "text-amber-500 fill-amber-500" : "text-muted-foreground/70")} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-[#1a1033]">Mark as Urgent</p>
-                    <p className="text-[11px] text-[#9490a8]">Prioritize this task to get bids within minutes.</p>
+                    <p className="text-[13px] font-bold text-foreground">Mark as Urgent Project</p>
+                    <p className="text-[10px] text-muted-foreground font-medium">Prioritize this task to receive verified expert bids within minutes.</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, is_urgent: !formData.is_urgent })}
                   className={cn(
-                    "w-12 h-6 rounded-full transition-all relative",
-                    formData.is_urgent ? "bg-[#7C5CFC]" : "bg-[#E8E6F0]"
+                    "w-12 h-6 rounded-full transition-all relative cursor-pointer select-none",
+                    formData.is_urgent ? "bg-primary" : "bg-slate-200 dark:bg-slate-800"
                   )}
                 >
                   <div className={cn(
-                    "size-4 bg-white rounded-full absolute top-1 transition-all",
-                    formData.is_urgent ? "left-7" : "left-1"
+                    "size-4.5 bg-white rounded-full absolute top-0.75 transition-all shadow-sm",
+                    formData.is_urgent ? "left-6.5" : "left-1"
                   )} />
                 </button>
               </div>
 
-              {/* File Upload Area */}
-              <div>
-                <Label>Supporting Documents</Label>
+              {/* Supporting Attachments Section */}
+              <div className="space-y-3">
+                <Label>Supporting Reference Documents</Label>
                 <div
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleDrop}
                   className={cn(
-                    "relative overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-300",
+                    "relative overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-500 cursor-pointer",
                     isDragging 
-                      ? "border-[#7C5CFC] bg-[#F5F3FF]" 
-                      : "border-[#E8E6F0] bg-[#FAFAFC] hover:border-[#7C5CFC]/50 hover:bg-white"
+                      ? "border-primary bg-primary/5 dark:bg-primary/10" 
+                      : "border-slate-200/80 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-900/10 hover:border-primary/50 hover:bg-white/40 dark:hover:bg-slate-900/20"
                   )}
                 >
                   <div className="p-8 flex flex-col items-center text-center">
-                    <div className="size-12 rounded-2xl bg-white shadow-sm border border-[#E8E6F0] flex items-center justify-center mb-4">
-                      <Upload className={cn("size-6 transition-colors", isDragging ? "text-[#7C5CFC]" : "text-[#9490a8]")} />
+                    <div className="size-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/40 shadow-sm flex items-center justify-center mb-4">
+                      <Upload className={cn("size-5.5 transition-colors", isDragging ? "text-primary animate-bounce" : "text-muted-foreground/60")} />
                     </div>
-                    <p className="text-sm font-bold text-[#1a1033] mb-1">
-                      {isDragging ? "Drop your files here" : "Drag & drop files or click to upload"}
+                    <p className="text-sm font-bold text-foreground mb-1">
+                      {isDragging ? "Drop documents here" : "Drag & drop files or click to upload"}
                     </p>
-                    <p className="text-xs text-[#9490a8] mb-6">
-                      PDF, DOCX, JPG, PNG (Max 10MB each)
+                    <p className="text-xs text-muted-foreground/70 mb-5 leading-none">
+                      Acceptable types: PDF, DOCX, JPEG, PNG (Up to 10MB per file)
                     </p>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-6 h-9 rounded-xl border border-[#E8E6F0] bg-white text-[12px] font-bold text-[#1a1033] hover:bg-[#F5F3FF] hover:text-[#7C5CFC] hover:border-[#7C5CFC] transition-all"
+                      className="px-5 h-9 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground transition-all cursor-pointer select-none"
                     >
-                      Select Files
+                      Browse Storage
                     </button>
                     <input
                       ref={fileInputRef}
@@ -399,107 +424,138 @@ export default function CreateTask() {
                   </div>
                 </div>
 
-                {/* File List */}
+                {/* Staged file tags */}
                 {files.length > 0 && (
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                     {files.map((f) => (
                       <div
                         key={f.name}
-                        className="flex items-center justify-between p-3 rounded-xl bg-white border border-[#E8E6F0] group hover:border-[#7C5CFC]/30 transition-all"
+                        className="flex items-center justify-between p-3.5 rounded-xl bg-white/50 dark:bg-slate-900/20 border border-slate-200/60 dark:border-slate-800/40 group hover:border-primary/30 transition-all"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="size-8 rounded-lg bg-[#F5F3FF] flex items-center justify-center shrink-0 text-[#7C5CFC]">
+                          <div className="size-8.5 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                             <File className="size-4" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[12px] font-bold text-[#1a1033] truncate">{f.name}</p>
-                            <p className="text-[10px] text-[#9490a8]">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
+                            <p className="text-xs font-bold text-foreground truncate">{f.name}</p>
+                            <p className="text-[10px] text-muted-foreground/75 font-semibold">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => removeFile(f.name)}
-                          className="size-7 rounded-full flex items-center justify-center hover:bg-red-50 text-[#9490a8] hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                          className="size-7 rounded-full flex items-center justify-center hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100 cursor-pointer select-none"
                         >
-                          <X className="size-3.5" />
+                          <X className="size-4" />
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+
             </div>
           </Card>
         </div>
 
-        {/* ────── Right: Sidebar (4 cols) ────── */}
+        {/* ────── Right: Informative Sidebar Guides (4 cols) ────── */}
         <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
           
-          {/* How it Works */}
-          <Card className="bg-[#1a1033] border-none">
-            <h2 className="text-white text-lg font-bold mb-6 flex items-center gap-2">
-              <Zap className="size-5 text-[#7C5CFC]" />
+          {/* Guide card container */}
+          <Card className="bg-gradient-to-br from-[#1E1B4B] to-[#0F172A] dark:from-[#090D1A] dark:to-black border-none text-white shadow-2xl relative">
+            <div className="absolute top-0 right-0 size-32 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <h2 className="text-white text-base font-black uppercase tracking-wider mb-6 flex items-center gap-2 relative z-10">
+              <Zap className="size-5 text-[#8B5CF6]" />
               How it Works
             </h2>
-            <div className="space-y-6">
+            <div className="space-y-6 relative z-10">
               {[
-                { icon: Target, title: "Post your task", desc: "Share details and let writers know what you need." },
-                { icon: Sparkles, title: "Writers bid", desc: "Top experts compete by offering their best price." },
-                { icon: ShieldCheck, title: "Safe Payment", desc: "Funds are held securely until you're 100% satisfied." },
+                { icon: Target, title: "Post your assignment", desc: "Share instructions and let the platform catalog your academic requirements." },
+                { icon: Sparkles, title: "Writers place bids", desc: "Verified experts bid competitively for your task. Choose the best rate." },
+                { icon: ShieldCheck, title: "Secured Escrow Wallet", desc: "Your payment remains safe in escrow. Release only when 100% satisfied." },
               ].map((s, idx) => (
                 <div key={idx} className="flex gap-4">
-                  <div className="size-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
-                    <s.icon className="size-5 text-[#7C5CFC]" />
+                  <div className="size-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/5">
+                    <s.icon className="size-4 text-[#8B5CF6]" strokeWidth={2.5} />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-white text-sm font-bold">{s.title}</p>
-                    <p className="text-white/60 text-[11px] leading-relaxed">{s.desc}</p>
+                    <p className="text-white text-xs font-bold tracking-tight">{s.title}</p>
+                    <p className="text-white/60 text-[10.5px] leading-relaxed font-medium">{s.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-8 p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
-              <Info className="size-4 text-[#7C5CFC] shrink-0 mt-0.5" />
-              <p className="text-white/80 text-[11px] leading-relaxed">
-                Expert bids typically start appearing within <strong>15 minutes</strong> of posting.
+            
+            <div className="mt-8 p-4 rounded-xl bg-white/5 border border-white/10 flex items-start gap-3 relative z-10">
+              <Info className="size-4 text-primary shrink-0 mt-0.5" />
+              <p className="text-white/80 text-[10.5px] leading-relaxed font-medium">
+                Expert responses and bids typically start appearing within <strong>15 minutes</strong> of project submission.
               </p>
             </div>
           </Card>
 
-          {/* Secure Card */}
-          <div className="p-6 rounded-[24px] bg-gradient-to-br from-violet-600 to-indigo-700 text-white shadow-xl shadow-violet-500/10">
+          {/* Secure Escrow Payment Panel */}
+          <div className="p-8 rounded-[2rem] bg-gradient-to-br from-primary to-[#8B5CF6] text-white shadow-2xl shadow-primary/20 relative overflow-hidden group">
+            <div className="absolute -top-12 -right-12 size-36 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+            
             <div className="flex items-center gap-2 mb-4">
-              <ShieldCheck className="size-5" />
-              <span className="text-xs font-bold uppercase tracking-widest">Secure Checkout</span>
+              <Award className="size-5 text-white animate-float" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/90">SaaS Escrow Protection</span>
             </div>
-            <p className="text-sm font-medium leading-relaxed opacity-90 mb-8">
-              Every project is protected by our Escrow Guarantee. No payment is released without your approval.
+            <p className="text-[12.5px] font-bold leading-relaxed text-white/90 mb-8">
+              Every assignment is fully protected by our Escrow Guarantee. No payment is released until you approve the delivered work.
             </p>
+            
             <button
               type="submit"
               disabled={isLoading}
               className={cn(
-                "w-full h-14 rounded-2xl bg-white text-[#7C5CFC] text-base font-extrabold flex items-center justify-center gap-3 transition-all shadow-xl shadow-black/20 disabled:opacity-70 disabled:cursor-not-allowed",
-                !isLoading && "hover:bg-[#F5F3FF] hover:scale-[1.02] active:scale-[0.98]"
+                "w-full h-13 rounded-2xl bg-white text-primary text-sm font-black flex items-center justify-center gap-2 transition-all shadow-xl shadow-black/10 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer select-none",
+                !isLoading && "hover:bg-slate-50 hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-0.5 active:translate-y-0"
               )}
             >
               {isLoading ? (
-                <div className="size-6 border-[3px] border-[#7C5CFC] border-t-transparent rounded-full animate-spin" />
+                <>
+                  <Loader2 className="size-4.5 animate-spin text-primary" />
+                  Creating Project...
+                </>
               ) : (
                 <>
-                  Create Project
-                  <ArrowRight className="size-5" />
+                  Publish Project Task
+                  <ArrowRight className="size-4.5" />
                 </>
               )}
             </button>
           </div>
 
-          <p className="text-center text-[10px] text-[#9490a8] px-4 leading-relaxed">
-            By creating this project, you agree to our Terms of Service and Privacy Policy.
+          <p className="text-center text-[10px] text-muted-foreground/60 px-4 leading-relaxed font-medium select-none">
+            By publishing, you agree to our ProjectHub Terms of Use and Escrow Refund Policy.
           </p>
         </div>
 
       </form>
     </div>
+  );
+}
+
+// Inline Spinner loader helper
+function Loader2({ className, ...props }: React.ComponentProps<"svg">) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn("animate-spin", className)}
+      {...props}
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
   );
 }

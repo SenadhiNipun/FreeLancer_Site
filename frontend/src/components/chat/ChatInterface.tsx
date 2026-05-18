@@ -721,7 +721,7 @@ export default function ChatInterface() {
                         type="button" 
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                         className={cn(
-                          "p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors",
+                          "p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors cursor-pointer select-none",
                           showEmojiPicker && "bg-slate-200/80 text-slate-950"
                         )}
                       >
@@ -738,7 +738,7 @@ export default function ChatInterface() {
                             <button 
                               type="button" 
                               onClick={() => setShowEmojiPicker(false)}
-                              className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                              className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer select-none"
                             >
                               <X className="size-3" />
                             </button>
@@ -750,7 +750,7 @@ export default function ChatInterface() {
                                 key={idx}
                                 type="button"
                                 onClick={() => handleAddEmoji(emoji)}
-                                className="size-7 flex items-center justify-center text-lg hover:bg-slate-100 rounded-lg active:scale-90 transition-all"
+                                className="size-7 flex items-center justify-center text-lg hover:bg-slate-100 rounded-lg active:scale-90 transition-all cursor-pointer select-none"
                               >
                                 {emoji}
                               </button>
@@ -763,7 +763,7 @@ export default function ChatInterface() {
                       type="button" 
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploadingFile || isSending}
-                      className="p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors relative"
+                      className="p-2 rounded-lg hover:bg-slate-200/50 hover:text-slate-800 transition-colors relative cursor-pointer select-none"
                     >
                       {isUploadingFile ? (
                         <Loader2 className="size-4 text-[#0D9488] animate-spin" />
