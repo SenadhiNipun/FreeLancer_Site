@@ -19,7 +19,8 @@ import {
   Download,
   Loader2,
   File,
-  Trash
+  Trash,
+  DollarSign
 } from "lucide-react";
 import { chatService } from "@/services/chat.service";
 import { authService } from "@/services/auth.service";
@@ -63,6 +64,15 @@ export default function ChatInterface() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const sessionIdParam = searchParams.get("session");
+
+  const [showBidChangeModal, setShowBidChangeModal] = useState(false);
+  const [proposedAmount, setProposedAmount] = useState("");
+  const [bidChangeReason, setBidChangeReason] = useState("");
+  const [isSubmittingBidChange, setIsSubmittingBidChange] = useState(false);
+  const [bidChangeError, setBidChangeError] = useState("");
+
+  const isCustomer = activeSession ? currentUserId === activeSession.customer_id : false;
+  const isWriter = activeSession ? currentUserId === activeSession.writer_id : false;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -226,6 +236,58 @@ export default function ChatInterface() {
     } finally {
       setIsSending(false);
       setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  };
+
+  const handleSendBidChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeSession || !proposedAmount || isSubmittingBidChange) return;
+    
+    const amount = parseFloat(proposedAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setBidChangeError("Please enter a valid positive amount.");
+      return;
+    }
+    
+    setIsSubmittingBidChange(true);
+    setBidChangeError("");
+    try {
+      const sentMsg = await chatService.sendMessage(activeSession.id, {
+        message_text: bidChangeReason.trim() || `Proposed new bid amount: $${amount}`,
+        message_type: "BID_CHANGE",
+        proposed_amount: amount
+      });
+      
+      setMessages(prev => [...prev, sentMsg]);
+      setShowBidChangeModal(false);
+      setProposedAmount("");
+      setBidChangeReason("");
+      
+      // Update session locally to move it to the top
+      setSessions(prev => prev.map(s => 
+        s.id === activeSession.id 
+          ? { ...s, updated_at: new Date().toISOString() } 
+          : s
+      ));
+    } catch (error: any) {
+      console.error("Failed to send bid change request:", error);
+      setBidChangeError(error?.message || "Failed to submit bid change request. Please try again.");
+    } finally {
+      setIsSubmittingBidChange(false);
+    }
+  };
+
+  const handleRespondToBidChange = async (messageId: number, action: 'ACCEPT' | 'REJECT') => {
+    try {
+      const updatedMsg = await chatService.respondToBidChange(messageId, action);
+      // Update the message in messages array
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, bid_change_status: updatedMsg.bid_change_status } : m));
+      // Fetch sessions to update task status/budget if accepted
+      if (action === 'ACCEPT') {
+        fetchSessions();
+      }
+    } catch (error) {
+      console.error("Failed to respond to bid change:", error);
     }
   };
 
@@ -458,6 +520,16 @@ export default function ChatInterface() {
 
               {/* Utility action headers */}
               <div className="flex items-center gap-2 relative">
+                {isWriter && activeSession.is_active !== false && (
+                  <Button
+                    onClick={() => setShowBidChangeModal(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2 px-4 text-xs font-bold shadow-sm shadow-emerald-600/10 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <DollarSign className="size-3.5" />
+                    Change Bid
+                  </Button>
+                )}
+                
                 <button 
                   onClick={() => setShowDropdown(!showDropdown)}
                   className={cn(
@@ -565,27 +637,98 @@ export default function ChatInterface() {
 
                           {/* Message Bubble container */}
                            <div className="flex flex-col items-start gap-1 w-full">
-                             {msg.message_text && (
-                               <div className={cn("flex items-center gap-2 max-w-full", isMine ? "flex-row-reverse" : "flex-row")}>
-                                 {isDeletable && (
-                                   <button
-                                     type="button"
-                                     onClick={() => handleDeleteMessage(msg.id)}
-                                     title="Delete message (available for 2 mins)"
-                                     className="opacity-0 group-hover:opacity-100 transition-all p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full shadow-sm border border-slate-200 bg-white/90 backdrop-blur flex-shrink-0 cursor-pointer"
-                                   >
-                                     <Trash className="size-3.5" />
-                                   </button>
-                                 )}
+                             {msg.message_type === "BID_CHANGE" ? (
+                               <div className={cn("flex flex-col gap-2.5 max-w-full w-full min-w-[280px] md:min-w-[320px]", isMine ? "items-end" : "items-start")}>
                                  <div className={cn(
-                                   "px-4.5 py-3 rounded-2xl shadow-sm text-slate-900 text-[13px] leading-relaxed font-medium relative max-w-full cursor-default select-none",
+                                   "p-5 rounded-2xl shadow-md border text-slate-900 leading-relaxed font-medium relative max-w-full w-full bg-white backdrop-blur",
                                    isMine 
-                                     ? "bg-[#DEE9F7] rounded-tr-none border border-blue-200/30" 
-                                     : "bg-[#ECF0F3] rounded-tl-none border border-slate-300/20"
+                                     ? "border-emerald-100 shadow-emerald-500/5 bg-gradient-to-br from-white to-emerald-50/10" 
+                                     : "border-slate-200 shadow-slate-500/5 bg-gradient-to-br from-white to-slate-50/10"
                                  )}>
-                                   <p className="whitespace-pre-wrap">{msg.message_text}</p>
+                                   <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100">
+                                     <div className="size-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600">
+                                       <DollarSign className="size-5" />
+                                     </div>
+                                     <div className="min-w-0 flex-1 text-left">
+                                       <h4 className="text-[13px] font-extrabold text-slate-900 truncate">Bid Change Request</h4>
+                                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Proposed Budget</p>
+                                     </div>
+                                     <div className="ml-auto text-right">
+                                       <span className="text-lg font-black text-emerald-600">${msg.proposed_amount}</span>
+                                     </div>
+                                   </div>
+                                   
+                                   {msg.message_text && (
+                                     <div className="mb-4 text-xs font-semibold text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 text-left">
+                                       <p className="whitespace-pre-wrap">{msg.message_text}</p>
+                                     </div>
+                                   )}
+
+                                   {/* Interactive status / buttons */}
+                                   <div className="flex items-center justify-between gap-3 mt-2">
+                                     {msg.bid_change_status === "PENDING" ? (
+                                       isCustomer ? (
+                                         <div className="flex items-center gap-2 w-full">
+                                           <button
+                                             type="button"
+                                             onClick={() => handleRespondToBidChange(msg.id, 'ACCEPT')}
+                                             className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 animate-in zoom-in-95 duration-150"
+                                           >
+                                             <Check className="size-3.5" />
+                                             Accept
+                                           </button>
+                                           <button
+                                             type="button"
+                                             onClick={() => handleRespondToBidChange(msg.id, 'REJECT')}
+                                             className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 animate-in zoom-in-95 duration-150"
+                                           >
+                                             <X className="size-3.5" />
+                                             Decline
+                                           </button>
+                                         </div>
+                                       ) : (
+                                         <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 border border-amber-100/50 px-3 py-1.5 rounded-xl text-[11px] font-bold animate-in fade-in duration-200">
+                                           <Clock className="size-3.5 animate-pulse" />
+                                           <span>Waiting for client approval</span>
+                                         </div>
+                                       )
+                                     ) : msg.bid_change_status === "ACCEPTED" ? (
+                                       <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 border border-emerald-100/50 px-3 py-1.5 rounded-xl text-[11px] font-bold animate-in zoom-in-95 duration-200">
+                                         <CheckCheck className="size-3.5" />
+                                         <span>Bid Change Approved</span>
+                                       </div>
+                                     ) : (
+                                       <div className="flex items-center gap-1.5 text-rose-600 bg-rose-50 border border-rose-100/50 px-3 py-1.5 rounded-xl text-[11px] font-bold animate-in zoom-in-95 duration-200">
+                                         <X className="size-3.5" />
+                                         <span>Bid Change Declined</span>
+                                       </div>
+                                     )}
+                                   </div>
                                  </div>
                                </div>
+                             ) : (
+                               msg.message_text && (
+                                 <div className={cn("flex items-center gap-2 max-w-full", isMine ? "flex-row-reverse" : "flex-row")}>
+                                   {isDeletable && (
+                                     <button
+                                       type="button"
+                                       onClick={() => handleDeleteMessage(msg.id)}
+                                       title="Delete message (available for 2 mins)"
+                                       className="opacity-0 group-hover:opacity-100 transition-all p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full shadow-sm border border-slate-200 bg-white/90 backdrop-blur flex-shrink-0 cursor-pointer"
+                                     >
+                                       <Trash className="size-3.5" />
+                                     </button>
+                                   )}
+                                   <div className={cn(
+                                     "px-4.5 py-3 rounded-2xl shadow-sm text-slate-900 text-[13px] leading-relaxed font-medium relative max-w-full cursor-default select-none",
+                                     isMine 
+                                       ? "bg-[#DEE9F7] rounded-tr-none border border-blue-200/30" 
+                                       : "bg-[#ECF0F3] rounded-tl-none border border-slate-300/20"
+                                   )}>
+                                     <p className="whitespace-pre-wrap">{msg.message_text}</p>
+                                   </div>
+                                 </div>
+                               )
                              )}
 
                              {/* Render Attachments */}
@@ -791,6 +934,105 @@ export default function ChatInterface() {
           </div>
         )}
       </div>
+
+      {/* Bid Change Modal */}
+      {showBidChangeModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 flex-row">
+                <div className="size-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                  <DollarSign className="size-4.5" />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-extrabold text-slate-900 text-sm">Change Bid Request</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Adjust your proposal</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBidChangeModal(false);
+                  setBidChangeError("");
+                }}
+                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSendBidChange} className="p-6 space-y-4">
+              {bidChangeError && (
+                <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-xl text-left">
+                  {bidChangeError}
+                </div>
+              )}
+
+              <div className="space-y-1.5 text-left">
+                <label htmlFor="proposedAmount" className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">Proposed Bid Amount ($)</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                  <input
+                    id="proposedAmount"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    required
+                    value={proposedAmount}
+                    onChange={(e) => setProposedAmount(e.target.value)}
+                    disabled={isSubmittingBidChange}
+                    className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-emerald-500 rounded-2xl py-3 pl-10 pr-4 text-sm font-extrabold text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <label htmlFor="bidChangeReason" className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">Justification / Reason (Optional)</label>
+                <textarea
+                  id="bidChangeReason"
+                  rows={3}
+                  placeholder="Explain to the client why you're proposing this change..."
+                  value={bidChangeReason}
+                  onChange={(e) => setBidChangeReason(e.target.value)}
+                  disabled={isSubmittingBidChange}
+                  className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-emerald-500 rounded-2xl py-3 px-4 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400 resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBidChangeModal(false);
+                    setBidChangeError("");
+                  }}
+                  disabled={isSubmittingBidChange}
+                  className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 active:scale-95 transition-all cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingBidChange}
+                  className="flex-1 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/15 hover:shadow active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isSubmittingBidChange ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="size-3.5" />
+                      Send Request
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
