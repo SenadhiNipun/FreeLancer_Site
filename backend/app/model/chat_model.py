@@ -13,6 +13,8 @@ class ChatAttachmentCreate(BaseModel):
 
 class ChatMessageCreate(ChatMessageBase):
     attachments: Optional[List[ChatAttachmentCreate]] = None
+    message_type: Optional[str] = "TEXT"
+    proposed_amount: Optional[float] = None
 
 class ChatMessageAttachmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -34,6 +36,9 @@ class ChatMessageResponse(ChatMessageBase):
     created_at: datetime
     sender_profile_image_url: Optional[str] = None
     attachments: Optional[List[ChatMessageAttachmentResponse]] = []
+    message_type: str = "TEXT"
+    proposed_amount: Optional[float] = None
+    bid_change_status: Optional[str] = None
 
 class ChatSessionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

@@ -114,3 +114,17 @@ def delete_message(
     user_id = get_current_user_id(db, auth)
     ChatService.delete_message(db, message_id, user_id)
     return success_response(message="Message deleted successfully")
+
+@router.post("/messages/{message_id}/respond-bid-change")
+def respond_bid_change(
+    message_id: int,
+    action: str,
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security)
+):
+    user_id = get_current_user_id(db, auth)
+    message = ChatService.respond_to_bid_change(db, message_id, user_id, action)
+    return success_response(
+        results=ChatMessageResponse.model_validate(message),
+        message=f"Bid change request {action.lower()}ed successfully"
+    )

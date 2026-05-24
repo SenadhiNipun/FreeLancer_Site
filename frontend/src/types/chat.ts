@@ -16,6 +16,9 @@ export interface ChatMessage {
   created_at: string;
   sender_profile_image_url?: string;
   attachments?: ChatMessageAttachment[];
+  message_type?: string;
+  proposed_amount?: number;
+  bid_change_status?: string;
 }
 
 export interface ChatSession {
@@ -34,4 +37,6 @@ export interface ChatSession {
 export interface SendMessageRequest {
   message_text: string;
   attachments?: Omit<ChatMessageAttachment, "id" | "message_id">[];
+  message_type?: string;
+  proposed_amount?: number;
 }

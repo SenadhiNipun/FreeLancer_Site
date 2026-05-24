@@ -69,6 +69,16 @@ def init_db():
         logger.info("Initializing database schema...")
         Base.metadata.create_all(bind=engine)
         logger.info("Database synchronized successfully.")
+
+        # Check and dynamically add bid change columns to chat_messages
+        with engine.begin() as conn:
+            result = conn.execute(text("SHOW COLUMNS FROM chat_messages LIKE 'message_type'"))
+            if not result.fetchone():
+                logger.info("Adding bid change columns to chat_messages table...")
+                conn.execute(text("ALTER TABLE chat_messages ADD COLUMN message_type VARCHAR(50) NOT NULL DEFAULT 'TEXT'"))
+                conn.execute(text("ALTER TABLE chat_messages ADD COLUMN proposed_amount DECIMAL(10, 2) DEFAULT NULL"))
+                conn.execute(text("ALTER TABLE chat_messages ADD COLUMN bid_change_status VARCHAR(50) DEFAULT NULL"))
+                logger.info("Columns added successfully.")
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
 

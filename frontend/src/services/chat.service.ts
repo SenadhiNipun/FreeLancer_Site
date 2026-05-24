@@ -47,4 +47,11 @@ export const chatService = {
     })) as any;
     return response.results;
   },
+  
+  respondToBidChange: async (messageId: number, action: 'ACCEPT' | 'REJECT'): Promise<any> => {
+    const response = (await apiClient(`/api/v1/chat/messages/${messageId}/respond-bid-change?action=${action}`, {
+      method: 'POST',
+    })) as any;
+    return response.results;
+  },
 };
