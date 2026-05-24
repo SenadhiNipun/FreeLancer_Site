@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutGrid, CheckCircle2, Zap, Shield } from "lucide-react";
+import { LayoutGrid, CheckCircle2, Zap, Shield, Star } from "lucide-react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
@@ -9,6 +9,13 @@ const trust = [
   { icon: Shield,       label: "SOC 2 compliant" },
 ];
 
+const testimonial = {
+  quote: "ProjectHub transformed how I manage my academic workload. Absolutely seamless.",
+  author: "Dr. Sarah Chen",
+  role: "Research Lead, Stanford",
+  rating: 5,
+};
+
 export default function AuthLayout({
   children,
 }: {
@@ -16,89 +23,128 @@ export default function AuthLayout({
 }) {
   return (
     <div className="flex min-h-screen w-full relative">
-      {/* Theme Toggle - Fixed position */}
-      <div className="absolute top-6 right-6 z-50">
-         <ThemeToggle />
+      {/* Theme Toggle */}
+      <div className="absolute top-5 right-5 z-50">
+        <ThemeToggle />
       </div>
-      {/* ── Brand panel ── */}
-      <div className="hidden lg:flex w-[42%] flex-col bg-[#0F0F1A] relative overflow-hidden">
-        {/* subtle grid */}
+
+      {/* ── Brand Panel ── */}
+      <div className="hidden lg:flex w-[46%] flex-col relative overflow-hidden"
+        style={{ background: "linear-gradient(145deg, #0a0a18 0%, #0f0f2a 50%, #0d0d22 100%)" }}>
+
+        {/* Grid overlay */}
         <div
-          className="absolute inset-0 opacity-[0.035]"
+          className="absolute inset-0 opacity-[0.04]"
           style={{
             backgroundImage:
-              "linear-gradient(to right, #6366f1 1px, transparent 1px), linear-gradient(to bottom, #6366f1 1px, transparent 1px)",
-            backgroundSize: "40px 40px",
+              "linear-gradient(to right, #818cf8 1px, transparent 1px), linear-gradient(to bottom, #818cf8 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
           }}
         />
-        {/* glow blobs */}
-        <div className="absolute -top-32 -left-32 size-[500px] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
-        <div className="absolute -bottom-48 -right-24 size-[400px] rounded-full bg-violet-600/15 blur-[100px] pointer-events-none" />
 
-        <div className="relative flex h-full flex-col justify-between p-12">
+        {/* Gradient orbs */}
+        <div className="absolute -top-40 -left-40 size-[560px] rounded-full opacity-25 pointer-events-none"
+          style={{ background: "radial-gradient(circle, oklch(0.58 0.28 270) 0%, transparent 70%)", filter: "blur(80px)" }} />
+        <div className="absolute top-1/2 -right-32 size-[400px] rounded-full opacity-15 pointer-events-none"
+          style={{ background: "radial-gradient(circle, oklch(0.65 0.22 290) 0%, transparent 70%)", filter: "blur(60px)" }} />
+        <div className="absolute -bottom-32 left-16 size-[300px] rounded-full opacity-15 pointer-events-none"
+          style={{ background: "radial-gradient(circle, oklch(0.72 0.16 55) 0%, transparent 70%)", filter: "blur(60px)" }} />
+
+        <div className="relative flex h-full flex-col justify-between p-14">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group w-fit">
-            <div className="size-9 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:scale-105 transition-transform duration-200">
+          <Link href="/" className="flex items-center gap-3 group w-fit">
+            <div className="size-10 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-300 group-hover:scale-105 group-hover:rotate-3"
+              style={{ background: "linear-gradient(135deg, oklch(0.68 0.22 265), oklch(0.55 0.26 280))", boxShadow: "0 8px 24px oklch(0.58 0.22 265 / 0.4)" }}>
               <LayoutGrid className="size-5 text-white" strokeWidth={2.5} />
             </div>
-            <span className="text-lg font-bold text-white tracking-tight">
-              Project<span className="text-indigo-400">Hub</span>
+            <span className="text-[18px] font-bold text-white tracking-tight">
+              Project<span style={{ color: "oklch(0.78 0.18 265)" }}>Hub</span>
             </span>
           </Link>
 
-          {/* Headline */}
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1">
-                <span className="size-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                <span className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">
-                  Trusted by 5,000+ users
+          {/* Main content */}
+          <div className="space-y-10">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5"
+              style={{ background: "oklch(0.68 0.22 265 / 0.15)", border: "1px solid oklch(0.68 0.22 265 / 0.3)" }}>
+              <span className="size-1.5 rounded-full animate-pulse" style={{ background: "oklch(0.78 0.18 265)" }} />
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "oklch(0.82 0.14 265)" }}>
+                Trusted by 5,000+ professionals
+              </span>
+            </div>
+
+            {/* Headline */}
+            <div className="space-y-5">
+              <h2 className="text-[42px] font-black leading-[1.1] tracking-tight text-white">
+                Academic excellence,<br />
+                <span style={{ background: "linear-gradient(135deg, oklch(0.78 0.18 265), oklch(0.82 0.14 290))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                  delivered precisely.
                 </span>
-              </div>
-              <h2 className="text-4xl font-bold leading-tight text-white">
-                Manage your projects
-                <br />
-                <span className="text-indigo-400">with precision.</span>
               </h2>
-              <p className="text-base text-white/50 max-w-sm leading-relaxed">
+              <p className="text-[15px] leading-relaxed max-w-[340px] font-medium"
+                style={{ color: "oklch(0.98 0.005 260 / 0.45)" }}>
                 A modern platform built for academic professionals. Streamline
-                your workflow, collaborate, and deliver results.
+                your workflow, collaborate, and deliver outstanding results.
               </p>
             </div>
 
-            {/* Trust badges */}
-            <div className="space-y-3">
+            {/* Trust items */}
+            <div className="space-y-3.5">
               {trust.map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-center gap-3">
-                  <div className="size-7 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center flex-shrink-0">
-                    <Icon className="size-3.5 text-indigo-400" strokeWidth={2.5} />
+                <div key={label} className="flex items-center gap-3.5">
+                  <div className="size-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "oklch(0.68 0.22 265 / 0.15)", border: "1px solid oklch(0.68 0.22 265 / 0.25)" }}>
+                    <Icon className="size-4" style={{ color: "oklch(0.78 0.18 265)" }} strokeWidth={2.5} />
                   </div>
-                  <span className="text-sm text-white/60 font-medium">{label}</span>
+                  <span className="text-[13px] font-semibold" style={{ color: "oklch(0.98 0.005 260 / 0.55)" }}>{label}</span>
                 </div>
               ))}
             </div>
+
+            {/* Testimonial */}
+            <div className="p-5 rounded-2xl"
+              style={{ background: "oklch(1 0 0 / 0.04)", border: "1px solid oklch(1 0 0 / 0.08)" }}>
+              <div className="flex gap-0.5 mb-3">
+                {[...Array(testimonial.rating)].map((_, i) => (
+                  <Star key={i} className="size-3.5 fill-current" style={{ color: "oklch(0.78 0.16 70)" }} />
+                ))}
+              </div>
+              <p className="text-[13px] leading-relaxed mb-3 font-medium italic"
+                style={{ color: "oklch(0.98 0.005 260 / 0.55)" }}>
+                "{testimonial.quote}"
+              </p>
+              <div>
+                <p className="text-[12px] font-bold text-white">{testimonial.author}</p>
+                <p className="text-[11px] font-medium mt-0.5" style={{ color: "oklch(0.98 0.005 260 / 0.35)" }}>{testimonial.role}</p>
+              </div>
+            </div>
           </div>
 
-          <p className="text-xs text-white/25">
+          <p className="text-[11px] font-medium" style={{ color: "oklch(0.98 0.005 260 / 0.2)" }}>
             © 2026 Project Hub Inc. All rights reserved.
           </p>
         </div>
       </div>
 
-      {/* ── Form panel ── */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-background px-6 py-12 sm:px-12">
+      {/* ── Form Panel ── */}
+      <div className="flex flex-1 flex-col items-center justify-center bg-background px-6 py-12 sm:px-14 relative">
+        {/* Subtle background gradient */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse at 70% 30%, oklch(0.58 0.22 265 / 0.05) 0%, transparent 60%)" }} />
+
         {/* Mobile logo */}
         <div className="mb-10 flex lg:hidden">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
-              <LayoutGrid className="size-4 text-white" strokeWidth={2.5} />
+            <div className="size-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
+              <LayoutGrid className="size-4.5 text-white" strokeWidth={2.5} />
             </div>
-            <span className="text-base font-bold text-foreground tracking-tight">
+            <span className="text-[16px] font-bold text-foreground tracking-tight">
               Project<span className="text-primary">Hub</span>
             </span>
           </Link>
         </div>
-        <div className="w-full max-w-[400px]">{children}</div>
+
+        <div className="w-full max-w-[420px] relative z-10">{children}</div>
       </div>
     </div>
   );

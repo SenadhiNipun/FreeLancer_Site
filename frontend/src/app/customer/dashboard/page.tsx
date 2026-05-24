@@ -14,10 +14,7 @@ import {
   ChevronRight,
   Activity,
   Zap,
-  Target,
-  Award,
   Sparkles,
-  ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -25,79 +22,73 @@ import { cn } from "@/lib/utils";
 import { taskService } from "@/services/task.service";
 import { formatDistanceToNow } from "date-fns";
 
-/* ─── Advanced Premium Card Component ────────────────────── */
-function PremiumCard({ className, children, title, subtitle, action }: { 
-  className?: string; 
-  children: React.ReactNode;
-  title?: string;
-  subtitle?: string;
-  action?: React.ReactNode;
-}) {
+/* ─── Card ─── */
+function Card({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={cn("glass rounded-[2rem] p-7.5 relative group transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5 border border-white/10 dark:border-white/5 relative overflow-hidden", className)}>
-      {(title || action) && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7 relative z-20">
-          <div>
-            {title && <h3 className="text-[15px] font-black text-foreground tracking-tight uppercase tracking-wider">{title}</h3>}
-            {subtitle && <p className="text-[11px] text-muted-foreground font-semibold mt-1.5">{subtitle}</p>}
-          </div>
-          {action && <div className="relative z-30">{action}</div>}
-        </div>
-      )}
-      <div className="relative z-10">{children}</div>
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none rounded-[2rem]" />
+    <div className={cn("rounded-2xl relative overflow-hidden transition-all duration-300 hover:shadow-[0_8px_32px_oklch(0_0_0/0.08)] hover:-translate-y-0.5", className)}
+      style={{
+        background: "oklch(1 0 0 / 0.88)",
+        backdropFilter: "blur(16px)",
+        border: "1px solid oklch(0.88 0.018 260 / 0.55)",
+        boxShadow: "0 2px 8px oklch(0 0 0 / 0.05), inset 0 1px 0 oklch(1 0 0 / 0.7)"
+      }}>
+      {children}
     </div>
   );
 }
 
-/* ─── Premium Stat Cards ────────────────────── */
-function StatCard({ label, value, icon: Icon, trend, color, href }: { 
-  label: string; 
-  value: string; 
-  icon: any; 
-  trend?: { val: string; pos: boolean };
-  color: string;
-  href?: string;
+/* ─── Stat Card ─── */
+function StatCard({ label, value, icon: Icon, trend, gradient, href }: {
+  label: string; value: string; icon: any; trend?: { val: string; pos: boolean }; gradient: string; href?: string;
 }) {
-  const CardContent = (
-    <PremiumCard className="p-6 cursor-pointer hover:bg-white/[0.01] h-full flex flex-col justify-between select-none">
-      <div className="flex items-start justify-between mb-5">
-        <div className={cn("size-11 rounded-2xl flex items-center justify-center shadow-lg shadow-black/5 border border-white/10 dark:border-white/5", color)}>
-          <Icon className="size-5.5 text-white" strokeWidth={2.5} />
+  const content = (
+    <Card className="p-5 cursor-pointer group">
+      <div className="flex items-start justify-between mb-4">
+        <div className="size-10 rounded-xl flex items-center justify-center shadow-md flex-shrink-0"
+          style={{ background: gradient, boxShadow: "0 4px 12px oklch(0.58 0.22 265 / 0.2)" }}>
+          <Icon className="size-4.5 text-white" strokeWidth={2.5} />
         </div>
-        <div className="text-muted-foreground/30 hover:text-foreground transition-colors pt-1">
-          <ArrowUpRight className="size-4.5" />
-        </div>
+        <ArrowUpRight className="size-4 text-muted-foreground/30 group-hover:text-primary transition-colors" />
       </div>
-      <div>
-        <p className="text-[10px] font-extrabold text-muted-foreground/50 uppercase tracking-[0.2em] mb-2">{label}</p>
-        <div className="flex items-end justify-between">
-          <span className="text-2xl font-black text-foreground tracking-tight leading-none">
-            {value}
-          </span>
-          {trend && (
-            <span className={cn(
-              "text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider",
-              trend.pos ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/10" : "bg-rose-500/10 text-rose-500 border border-rose-500/10"
-            )}>
-              {trend.val}
-            </span>
-          )}
-        </div>
+      <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-[0.15em] mb-1.5">{label}</p>
+      <div className="flex items-end gap-2.5">
+        <span className="text-[26px] font-black text-foreground tracking-tight leading-none">{value}</span>
+        {trend && (
+          <span className={cn(
+            "text-[10px] font-bold px-2 py-0.5 rounded-lg mb-0.5",
+            trend.pos ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/15"
+              : "bg-rose-500/10 text-rose-500 border border-rose-500/15"
+          )}>{trend.val}</span>
+        )}
       </div>
-    </PremiumCard>
+    </Card>
   );
+  return href ? <Link href={href}>{content}</Link> : content;
+}
 
-  if (href) {
-    return <Link href={href} className="h-full">{CardContent}</Link>;
-  }
-
-  return <div className="h-full">{CardContent}</div>;
+/* ─── Status Badge ─── */
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { color: string; bg: string; label: string }> = {
+    OPEN:       { color: "oklch(0.65 0.18 70)",  bg: "oklch(0.78 0.16 70 / 0.12)",  label: "Open" },
+    COMPLETED:  { color: "oklch(0.55 0.2 145)",  bg: "oklch(0.65 0.18 145 / 0.12)", label: "Completed" },
+    ASSIGNED:   { color: "oklch(0.55 0.22 260)",  bg: "oklch(0.62 0.22 260 / 0.12)", label: "Assigned" },
+    IN_PROGRESS:{ color: "oklch(0.55 0.22 260)",  bg: "oklch(0.62 0.22 260 / 0.12)", label: "In Progress" },
+    SUBMITTED:  { color: "oklch(0.52 0.22 220)",  bg: "oklch(0.62 0.2 220 / 0.12)",  label: "Submitted" },
+    CANCELLED:  { color: "oklch(0.55 0.22 25)",   bg: "oklch(0.58 0.22 25 / 0.12)",  label: "Cancelled" },
+  };
+  const s = map[status] || { color: "oklch(0.5 0.05 260)", bg: "oklch(0.88 0.018 260 / 0.4)", label: status };
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+      style={{ background: s.bg, color: s.color, border: `1px solid ${s.color}30` }}>
+      <span className="size-1.5 rounded-full animate-pulse" style={{ background: s.color }} />
+      {s.label}
+    </span>
+  );
 }
 
 export default function CustomerDashboard() {
   const [statsData, setStatsData] = useState<any>(null);
-  const [userName, setUserName] = useState("Premium Client");
+  const [userName, setUserName] = useState("Client");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -105,7 +96,6 @@ export default function CustomerDashboard() {
       try {
         const response = await taskService.getDashboardStats();
         setStatsData(response.results);
-        
         const userStr = localStorage.getItem('user');
         if (userStr) {
           try {
@@ -113,17 +103,8 @@ export default function CustomerDashboard() {
             const first = user.first_name || "";
             const last = user.last_name || "";
             const full = `${first} ${last}`.trim();
-            // Handle if database name was set to generic Academic placeholder
-            if (full && first !== "Academic") {
-              setUserName(full);
-            } else if (first) {
-              setUserName(first);
-            } else {
-              setUserName("Premium Client");
-            }
-          } catch (e) {
-            console.error("Failed to parse user in customer dashboard:", e);
-          }
+            setUserName(full && first !== "Academic" ? full : first || "Client");
+          } catch { /* ignore */ }
         }
       } catch (error) {
         console.error("Failed to fetch dashboard stats:", error);
@@ -138,368 +119,319 @@ export default function CustomerDashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-reveal">
-        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-primary/20 animate-pulse" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 animate-reveal">
+        <div className="size-14 rounded-2xl flex items-center justify-center"
+          style={{ background: "linear-gradient(135deg, oklch(0.62 0.22 265 / 0.15), oklch(0.52 0.26 280 / 0.1))", border: "1px solid oklch(0.58 0.22 265 / 0.2)" }}>
           <Activity className="size-6 text-primary animate-bounce" />
         </div>
         <div className="space-y-2 text-center">
-          <p className="text-sm font-bold text-foreground tracking-tight uppercase tracking-[0.2em]">Synchronizing Portal</p>
-          <div className="w-48 h-1 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-primary animate-progress" style={{ width: '40%' }} />
+          <p className="text-[13px] font-bold text-foreground uppercase tracking-[0.15em]">Loading Dashboard</p>
+          <div className="w-36 h-1 rounded-full overflow-hidden" style={{ background: "oklch(0.88 0.018 260 / 0.5)" }}>
+            <div className="h-full rounded-full animate-progress" style={{ background: "linear-gradient(90deg, oklch(0.62 0.22 265), oklch(0.52 0.26 280))", width: "45%" }} />
           </div>
         </div>
       </div>
     );
   }
 
-  // Find most active task title if available
   const activeTasks = statsData?.recent_activity?.filter((p: any) => p.status !== 'OPEN' && p.status !== 'COMPLETED' && p.status !== 'CANCELLED') || [];
-  const mostActiveTitle = activeTasks.length > 0 ? activeTasks[0].title : "AI Healthcare System";
+  const mostActiveTitle = activeTasks.length > 0 ? activeTasks[0].title : "No active project";
 
   return (
-    <div className="space-y-8 animate-reveal pt-10 pb-10 px-2 lg:px-0">
-      
-      {/* ── Greeting & Welcome Hero ── */}
-      <div className="glass rounded-[2rem] p-8 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 border-gradient">
-        <div className="absolute -bottom-24 -left-24 size-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="relative z-10 space-y-4 text-center md:text-left">
-          <div className="size-12 rounded-2xl glass bg-card/50 flex items-center justify-center mx-auto md:mx-0 shadow-lg shadow-black/5 text-primary animate-float">
-            <Sparkles className="size-5.5" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-3xl font-black text-foreground tracking-tight leading-tight">
-              Good morning, <span className="text-primary">{userName}!</span>
-            </h1>
-            <p className="text-xs text-muted-foreground font-semibold max-w-md leading-relaxed mx-auto md:mx-0">
-              You have <span className="text-foreground font-black">{activeProjectsCount} active assignments</span> in escrow and several new verified expert bids awaiting your review.
-            </p>
-          </div>
-          <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-4">
-            <Link href="/customer/create-task">
-              <Button className="h-11 px-6 rounded-xl font-bold bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all gap-2 cursor-pointer select-none">
-                <PlusCircle className="size-4.5" />
-                New Project
-              </Button>
-            </Link>
-            <Link href="/customer/orders">
-              <button className="text-xs font-black text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 cursor-pointer select-none">
-                View All Deadlines <ChevronRight className="size-4" />
-              </button>
-            </Link>
-          </div>
-        </div>
+    <div className="space-y-7 animate-reveal pt-2 pb-10">
 
-        {/* Most Active Project Card */}
-        <div className="relative z-10 w-full md:w-auto">
-          <div className="glass bg-white/10 dark:bg-slate-900/10 p-6 rounded-3xl border border-white/20 dark:border-white/5 shadow-2xl shadow-black/5 max-w-xs ml-auto">
-            <p className="text-[10px] font-extrabold text-muted-foreground/60 uppercase tracking-[0.1em] mb-4">Most Active Project</p>
-            <div className="flex items-center gap-4 mb-4">
-              <div className="size-11 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/10 text-indigo-500">
-                <Activity className="size-5.5" />
+      {/* ── Hero Greeting ── */}
+      <div className="rounded-2xl p-7 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, oklch(0.62 0.22 265 / 0.08) 0%, oklch(0.65 0.2 310 / 0.05) 100%)",
+          border: "1px solid oklch(0.58 0.22 265 / 0.15)",
+          boxShadow: "0 4px 24px oklch(0.58 0.22 265 / 0.08)"
+        }}>
+        <div className="absolute -right-20 -top-20 size-64 rounded-full pointer-events-none opacity-30"
+          style={{ background: "radial-gradient(circle, oklch(0.65 0.2 310 / 0.3) 0%, transparent 70%)" }} />
+
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-3">
+            <div className="size-11 rounded-2xl flex items-center justify-center animate-float"
+              style={{ background: "linear-gradient(135deg, oklch(0.62 0.22 265 / 0.15), oklch(0.65 0.2 310 / 0.1))", border: "1px solid oklch(0.58 0.22 265 / 0.2)" }}>
+              <Sparkles className="size-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-[28px] font-black text-foreground tracking-tight leading-tight">
+                Good morning, <span className="text-primary">{userName}!</span>
+              </h1>
+              <p className="text-[14px] text-muted-foreground font-medium mt-1 max-w-md">
+                You have <span className="text-foreground font-bold">{activeProjectsCount} active assignments</span> and{" "}
+                <span className="text-foreground font-bold">expert bids</span> awaiting review.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-1">
+              <Link href="/customer/create-task">
+                <Button className="h-10 px-5 rounded-xl font-bold text-[13px] text-white gap-2 transition-all hover:-translate-y-0.5"
+                  style={{ background: "linear-gradient(135deg, oklch(0.62 0.22 265), oklch(0.52 0.26 280))", boxShadow: "0 4px 14px oklch(0.58 0.22 265 / 0.3)" }}>
+                  <PlusCircle className="size-4" />
+                  New Project
+                </Button>
+              </Link>
+              <Link href="/customer/orders"
+                className="text-[13px] font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                View All <ChevronRight className="size-4" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Active project card */}
+          <div className="rounded-2xl p-5 min-w-[220px]"
+            style={{ background: "oklch(1 0 0 / 0.7)", border: "1px solid oklch(0.88 0.018 260 / 0.5)", boxShadow: "0 4px 16px oklch(0 0 0 / 0.06)" }}>
+            <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-[0.15em] mb-3">Most Active Project</p>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="size-10 rounded-xl flex items-center justify-center"
+                style={{ background: "oklch(0.52 0.22 260 / 0.1)", border: "1px solid oklch(0.52 0.22 260 / 0.15)" }}>
+                <Activity className="size-5" style={{ color: "oklch(0.52 0.22 260)" }} />
               </div>
               <div className="min-w-0">
-                <p className="text-[13px] font-black text-foreground truncate max-w-[130px]" title={mostActiveTitle}>{mostActiveTitle}</p>
-                <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mt-1">Research Domain</p>
+                <p className="text-[13px] font-bold text-foreground truncate max-w-[140px]" title={mostActiveTitle}>{mostActiveTitle}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">Research Domain</p>
               </div>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-[10px] font-bold">
-                <span className="text-muted-foreground uppercase tracking-wider">Progress Status</span>
-                <span className="text-primary font-black">75%</span>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[11px] font-bold">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="text-primary">75%</span>
               </div>
-              <div className="h-1.5 rounded-full bg-slate-200/50 dark:bg-slate-800/80 overflow-hidden">
-                <div className="h-full bg-primary" style={{ width: '75%' }} />
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "oklch(0.88 0.018 260 / 0.4)" }}>
+                <div className="h-full rounded-full" style={{ width: "75%", background: "linear-gradient(90deg, oklch(0.62 0.22 265), oklch(0.52 0.26 280))" }} />
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Stats Grid ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          label="Posted Tasks" 
-          value={statsData ? (statsData.total_posted_count || 0).toString().padStart(2, '0') : "00"} 
-          icon={FileText} 
-          color="bg-[#7C5CFC]" 
-          trend={{ val: "Total", pos: true }}
-          href="/customer/orders"
-        />
-        <StatCard 
-          label="Active Tasks" 
-          value={statsData ? (statsData.active_accepted_count || 0).toString().padStart(2, '0') : "00"} 
-          icon={Activity} 
-          color="bg-[#4F46E5]" 
-          trend={{ val: "Accepted", pos: true }}
-          href="/customer/orders?status=active"
-        />
-        <StatCard 
-          label="Completed Tasks" 
-          value={statsData ? (statsData.completed_tasks_count || 0).toString().padStart(2, '0') : "00"} 
-          icon={CheckCircle2} 
-          color="bg-emerald-500" 
-          trend={{ val: "+20.0%", pos: true }}
-          href="/customer/orders"
-        />
-        <StatCard 
-          label="Weekly Spending" 
-          value={statsData ? `$${statsData.spending_this_week.toFixed(2)}` : "$0.00"} 
-          icon={Wallet} 
-          color="bg-amber-500" 
-          trend={{ val: "-6.2%", pos: false }}
-          href="/customer/payments"
-        />
+      {/* ── Stats ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Posted Tasks" value={statsData ? (statsData.total_posted_count || 0).toString().padStart(2,'0') : "00"}
+          icon={FileText} gradient="linear-gradient(135deg, oklch(0.62 0.22 265), oklch(0.52 0.26 280))"
+          trend={{ val: "Total", pos: true }} href="/customer/orders" />
+        <StatCard label="Active Tasks" value={statsData ? (statsData.active_accepted_count || 0).toString().padStart(2,'0') : "00"}
+          icon={Activity} gradient="linear-gradient(135deg, oklch(0.55 0.22 240), oklch(0.48 0.24 260))"
+          trend={{ val: "Accepted", pos: true }} href="/customer/orders" />
+        <StatCard label="Completed" value={statsData ? (statsData.completed_tasks_count || 0).toString().padStart(2,'0') : "00"}
+          icon={CheckCircle2} gradient="linear-gradient(135deg, oklch(0.65 0.18 145), oklch(0.55 0.2 160))"
+          trend={{ val: "+20%", pos: true }} href="/customer/orders" />
+        <StatCard label="Weekly Spend" value={statsData ? `$${statsData.spending_this_week.toFixed(2)}` : "$0.00"}
+          icon={Wallet} gradient="linear-gradient(135deg, oklch(0.78 0.16 70), oklch(0.68 0.18 55))"
+          trend={{ val: "-6.2%", pos: false }} href="/customer/payments" />
       </div>
 
-      {/* ── Main Dashboard Grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left 2 Columns */}
-        <div className="lg:col-span-2 space-y-8">
-          
-          {/* Performance Overview Analytics */}
-          <PremiumCard 
-            title="Performance Overview" 
-            subtitle="Monthly breakdown of project investments"
-            action={
-              <select className="glass px-4.5 py-2.5 rounded-xl text-[11px] font-bold outline-none border border-white/10 dark:border-white/5 cursor-pointer bg-slate-50 dark:bg-slate-900 select-none">
+      {/* ── Main Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Left — chart + table */}
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* Spending chart */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-[14px] font-bold text-foreground">Performance Overview</h3>
+                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Monthly investment breakdown</p>
+              </div>
+              <select className="text-[11px] font-semibold outline-none rounded-xl px-3 py-1.5 cursor-pointer"
+                style={{ background: "oklch(0 0 0 / 0.04)", border: "1px solid oklch(0.88 0.018 260 / 0.5)", color: "inherit" }}>
                 <option>This Month</option>
                 <option>Last Month</option>
               </select>
-            }
-          >
-            <div className="h-[280px] flex items-end justify-between gap-4 pt-10 pb-2 relative px-4">
+            </div>
+            <div className="h-[220px] flex items-end gap-2">
               {(() => {
-                const data = statsData?.monthly_data || [
-                  {month: 'Jan', value: 0}, {month: 'Feb', value: 0}, {month: 'Mar', value: 0},
-                  {month: 'Apr', value: 0}, {month: 'May', value: 0}, {month: 'Jun', value: 0},
-                  {month: 'Jul', value: 0}, {month: 'Aug', value: 0}, {month: 'Sep', value: 0},
-                  {month: 'Oct', value: 0}, {month: 'Nov', value: 0}, {month: 'Dec', value: 0}
-                ];
+                const data = statsData?.monthly_data || Array(12).fill(null).map((_, i) => ({ month: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i], value: 0 }));
                 const maxVal = Math.max(...data.map((m: any) => m.value), 5);
-                
                 return data.map((item: any, i: number) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-3.5 h-full group">
+                  <div key={i} className="flex-1 flex flex-col items-center gap-2 group" style={{ height: "100%" }}>
                     <div className="relative w-full flex-1 flex items-end justify-center">
-                      {/* background tracking capsule */}
-                      <div className="w-2.5 bg-slate-200/40 dark:bg-slate-900/30 rounded-t-full absolute inset-y-0 mx-auto" />
-                      
-                      {/* glowing metric bar */}
-                      <div 
-                        className="w-2.5 bg-primary rounded-t-full shadow-[0_0_12px_rgba(var(--primary),0.3)] transition-all duration-700 relative z-10" 
-                        style={{ height: `${(item.value / maxVal) * 100}%` }}
-                      />
-                      {item.value > 0 && (
-                        <div className="absolute -top-8 bg-foreground text-background text-[9px] font-bold px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20 shadow-xl border border-white/10 select-none">
-                          ${item.value.toLocaleString()}
-                        </div>
-                      )}
+                      <div className="w-full rounded-t-lg absolute inset-0"
+                        style={{ background: "oklch(0.62 0.22 265 / 0.06)" }} />
+                      <div className="w-full rounded-t-lg absolute bottom-0 transition-all duration-500 group-hover:opacity-75"
+                        style={{
+                          height: `${(item.value / maxVal) * 100}%`,
+                          minHeight: item.value > 0 ? "4px" : "0px",
+                          background: "linear-gradient(180deg, oklch(0.62 0.22 265), oklch(0.52 0.26 280))",
+                          boxShadow: "0 0 12px oklch(0.62 0.22 265 / 0.2)"
+                        }} />
                     </div>
-                    <span className="text-[10px] font-bold text-muted-foreground/50 group-hover:text-primary transition-colors select-none">
-                      {item.month}
-                    </span>
+                    <span className="text-[9px] font-bold text-muted-foreground/40 group-hover:text-primary transition-colors">{item.month}</span>
                   </div>
                 ));
               })()}
             </div>
-          </PremiumCard>
+          </Card>
 
-          {/* Active Projects Table-like List */}
-          <PremiumCard 
-            title="Active Projects" 
-            subtitle="Real-time status of your ongoing tasks"
-            action={
-              <Link href="/customer/orders">
-                <button className="text-xs font-black text-primary hover:underline cursor-pointer select-none">View All</button>
-              </Link>
-            }
-            className="overflow-hidden p-0"
-          >
-            <div className="overflow-x-auto">
+          {/* Projects table */}
+          <Card>
+            <div className="flex items-center justify-between p-5 pb-0">
+              <div>
+                <h3 className="text-[14px] font-bold text-foreground">Active Projects</h3>
+                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Real-time status of your ongoing tasks</p>
+              </div>
+              <Link href="/customer/orders" className="text-[12px] font-bold text-primary hover:underline">View All</Link>
+            </div>
+            <div className="mt-4 overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-slate-50/20 dark:bg-slate-950/20 border-b border-white/5">
-                  <tr className="text-[10px] font-extrabold text-muted-foreground/60 uppercase tracking-widest select-none">
-                    <th className="px-6 py-4.5">Project Name</th>
-                    <th className="px-6 py-4.5">Status</th>
-                    <th className="px-6 py-4.5 text-right">Budget</th>
-                    <th className="px-6 py-4.5 text-right">Action</th>
+                <thead>
+                  <tr className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-[0.12em]"
+                    style={{ borderBottom: "1px solid oklch(0.88 0.018 260 / 0.4)" }}>
+                    <th className="px-5 py-3">Project</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3 text-right">Budget</th>
+                    <th className="px-5 py-3 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
-                  {statsData?.recent_activity?.length === 0 ? (
+                <tbody>
+                  {!statsData?.recent_activity?.length ? (
                     <tr>
-                      <td colSpan={4} className="py-20 text-center space-y-4">
-                        <div className="size-16 rounded-3xl glass mx-auto flex items-center justify-center opacity-40">
-                          <ShoppingBag className="size-8 text-muted-foreground" />
+                      <td colSpan={4} className="py-14 text-center">
+                        <div className="size-12 rounded-2xl mx-auto flex items-center justify-center mb-3 opacity-25"
+                          style={{ background: "oklch(0.88 0.018 260 / 0.5)" }}>
+                          <ShoppingBag className="size-6 text-muted-foreground" />
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-bold text-foreground">No active assignments found.</p>
-                          <p className="text-xs text-muted-foreground max-w-[280px] mx-auto leading-relaxed">
-                            Create a project proposal and publish it in our marketplace to receive expert bids.
-                          </p>
-                        </div>
+                        <p className="text-[13px] font-semibold text-muted-foreground">No projects yet.</p>
+                        <p className="text-[12px] text-muted-foreground/60 mt-1 max-w-[240px] mx-auto">Create your first project to get started.</p>
                       </td>
                     </tr>
-                  ) : (
-                    statsData.recent_activity.slice(0, 4).map((proj: any) => (
-                      <tr key={proj.id} className="group hover:bg-white/[0.01] transition-colors">
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-2xl glass flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
-                              <FileText className="size-5" />
-                            </div>
-                            <div className="min-w-0 max-w-[240px]">
-                              <p className="text-[13px] font-bold text-foreground truncate">{proj.title}</p>
-                              <p className="text-[10px] text-muted-foreground font-semibold">Academic Writing</p>
-                            </div>
+                  ) : statsData.recent_activity.slice(0, 5).map((proj: any) => (
+                    <tr key={proj.id} className="group transition-colors"
+                      style={{ borderBottom: "1px solid oklch(0.88 0.018 260 / 0.3)" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "oklch(0.62 0.22 265 / 0.03)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "")}>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="size-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105"
+                            style={{ background: "linear-gradient(135deg, oklch(0.62 0.22 265 / 0.1), oklch(0.52 0.26 280 / 0.08))", border: "1px solid oklch(0.58 0.22 265 / 0.15)" }}>
+                            <FileText className="size-4 text-primary" />
                           </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
-                              <div className={cn(
-                                "size-1.5 rounded-full", 
-                                proj.status === 'OPEN' ? 'bg-amber-500 animate-pulse' : 
-                                proj.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-indigo-500'
-                              )} />
-                              <span className={cn(
-                                "text-[10.5px] font-bold", 
-                                proj.status === 'OPEN' ? 'text-amber-500' : 
-                                proj.status === 'COMPLETED' ? 'text-emerald-500' : 'text-indigo-500'
-                              )}>
-                                {proj.status}
-                              </span>
-                            </div>
-                            <div className="w-24 h-1 bg-slate-200/50 dark:bg-slate-800/80 rounded-full overflow-hidden">
-                              <div className="h-full bg-primary" style={{ width: proj.status === 'OPEN' ? '20%' : proj.status === 'COMPLETED' ? '100%' : '60%' }} />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5 text-right font-bold text-[13px] text-foreground">
-                          ${parseFloat(proj.budget || 500).toFixed(2)}
-                        </td>
-                        <td className="px-6 py-5 text-right">
-                          <Link href={`/customer/orders`}>
-                            <Button variant="ghost" size="sm" className="h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider border border-white/10 hover:bg-white/10 hover:border-primary/30 transition-all cursor-pointer select-none">
-                              View
-                            </Button>
-                          </Link>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                          <p className="text-[13px] font-semibold text-foreground truncate max-w-[200px] group-hover:text-primary transition-colors">{proj.title}</p>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4"><StatusBadge status={proj.status} /></td>
+                      <td className="px-5 py-4 text-right text-[13px] font-bold text-foreground">${parseFloat(proj.budget || 500).toFixed(2)}</td>
+                      <td className="px-5 py-4 text-right">
+                        <Link href="/customer/orders">
+                          <button className="text-[11px] font-bold text-primary hover:underline px-3 py-1.5 rounded-lg transition-colors hover:bg-primary/5">
+                            View →
+                          </button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
-          </PremiumCard>
+          </Card>
         </div>
 
-        {/* ── Right Sidebar Column ── */}
-        <div className="space-y-8">
-          
-          {/* Project Pipeline */}
-          <PremiumCard title="Project Pipeline">
-            <div className="space-y-5">
+        {/* Right column */}
+        <div className="space-y-6">
+
+          {/* Pipeline */}
+          <Card className="p-5">
+            <h3 className="text-[14px] font-bold text-foreground mb-4">Project Pipeline</h3>
+            <div className="space-y-4">
               {[
-                { label: 'Posted Tasks', count: statsData?.total_posted_count ?? 0, color: 'bg-indigo-500' },
-                { 
-                  label: 'Bidding Status', 
-                  count: statsData?.pipeline_bidding ?? statsData?.pipeline?.bidding ?? (statsData?.recent_activity?.filter((a: any) => a.status === 'OPEN').length || 0), 
-                  color: 'bg-amber-500' 
-                },
-                { 
-                  label: 'In Progress', 
-                  count: statsData?.pipeline_in_progress ?? statsData?.pipeline?.in_progress ?? (statsData?.recent_activity?.filter((a: any) => ['ASSIGNED', 'IN_PROGRESS', 'REVISION_REQUESTED', 'SUBMITTED', 'PENDING_PAYMENT'].includes(a.status)).length || 0), 
-                  color: 'bg-primary' 
-                },
-                { label: 'Completed Deliveries', count: statsData?.completed_tasks_count ?? 0, color: 'bg-emerald-500' },
-              ].map((item, i) => (
-                <div key={i} className="space-y-2 select-none">
+                { label: 'Posted Tasks', count: statsData?.total_posted_count ?? 0, color: "oklch(0.62 0.22 265)", bg: "linear-gradient(90deg, oklch(0.62 0.22 265), oklch(0.52 0.26 280))" },
+                { label: 'Bidding', count: statsData?.pipeline_bidding ?? 0, color: "oklch(0.72 0.16 70)", bg: "linear-gradient(90deg, oklch(0.72 0.16 70), oklch(0.68 0.18 55))" },
+                { label: 'In Progress', count: statsData?.pipeline_in_progress ?? 0, color: "oklch(0.55 0.22 240)", bg: "linear-gradient(90deg, oklch(0.58 0.22 240), oklch(0.5 0.24 260))" },
+                { label: 'Completed', count: statsData?.completed_tasks_count ?? 0, color: "oklch(0.55 0.2 145)", bg: "linear-gradient(90deg, oklch(0.65 0.18 145), oklch(0.55 0.2 160))" },
+              ].map((item) => (
+                <div key={item.label} className="space-y-1.5">
                   <div className="flex justify-between text-[11px] font-bold">
                     <span className="text-muted-foreground">{item.label}</span>
                     <span className="text-foreground">{item.count}</span>
                   </div>
-                  <div className="h-2 rounded-full bg-slate-200/50 dark:bg-slate-800/80 overflow-hidden">
-                    <div 
-                      className={cn("h-full rounded-full transition-all duration-1000", item.color)} 
-                      style={{ width: `${((statsData?.total_posted_count ?? 0) > 0) ? (item.count / (statsData?.total_posted_count ?? 1)) * 100 : 0}%` }} 
-                    />
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "oklch(0.88 0.018 260 / 0.4)" }}>
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${(statsData?.total_posted_count ?? 0) > 0 ? (item.count / (statsData?.total_posted_count ?? 1)) * 100 : 0}%`, background: item.bg }} />
                   </div>
                 </div>
               ))}
             </div>
-          </PremiumCard>
+          </Card>
 
-          {/* Success Rate Progress Circle */}
-          <PremiumCard title="Success Rate">
-            <div className="flex items-center justify-center py-4 select-none">
-              <div className="relative size-36">
+          {/* Success Rate */}
+          <Card className="p-5">
+            <h3 className="text-[14px] font-bold text-foreground mb-4">Success Rate</h3>
+            <div className="flex items-center justify-center py-2">
+              <div className="relative size-32">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-200/40 dark:text-slate-800/40" />
-                  <circle 
-                    cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="8" 
-                    className="text-primary drop-shadow-[0_0_8px_rgba(var(--primary),0.5)] transition-all duration-1000" 
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/60" />
+                  <circle cx="50" cy="50" r="40" fill="none" strokeWidth="8"
+                    stroke="url(#grad)"
                     strokeDasharray="251.2"
                     strokeDashoffset={251.2 * (1 - (statsData?.total_posted_count > 0 ? (statsData?.completed_tasks_count / statsData?.total_posted_count) : 0))}
-                    strokeLinecap="round"
-                  />
+                    strokeLinecap="round" className="transition-all duration-1000" />
+                  <defs>
+                    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="oklch(0.62 0.22 265)" />
+                      <stop offset="100%" stopColor="oklch(0.52 0.26 280)" />
+                    </linearGradient>
+                  </defs>
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-black text-foreground">
-                    {statsData?.total_posted_count > 0 
-                      ? Math.round((statsData?.completed_tasks_count / statsData?.total_posted_count) * 100) 
-                      : 0}%
+                  <span className="text-[28px] font-black text-foreground leading-none">
+                    {statsData?.total_posted_count > 0 ? Math.round((statsData?.completed_tasks_count / statsData?.total_posted_count) * 100) : 0}%
                   </span>
-                  <div className="flex items-center gap-1 text-[10px] text-emerald-500 font-bold mt-1">
-                    <TrendingUp className="size-3.5" />
-                    +{(statsData?.completed_tasks_count || 0) > 0 ? "5.2%" : "0%"}
+                  <div className="flex items-center gap-1 mt-1">
+                    <TrendingUp className="size-3 text-emerald-500" />
+                    <span className="text-[10px] font-bold text-emerald-500">+5.2%</span>
                   </div>
                 </div>
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground text-center leading-relaxed font-medium select-none">
-              Your project success rate is calculated based on <span className="text-foreground font-bold">completed</span> tasks vs total posted.
+            <p className="text-[11px] text-muted-foreground text-center leading-relaxed mt-3">
+              Based on <span className="text-foreground font-semibold">completed</span> vs total posted tasks.
             </p>
-          </PremiumCard>
+          </Card>
 
-          {/* Quick Action grid */}
-          <PremiumCard title="Quick Actions">
-            <div className="grid grid-cols-2 gap-3.5">
+          {/* Quick Actions */}
+          <Card className="p-5">
+            <h3 className="text-[14px] font-bold text-foreground mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'New Project', icon: PlusCircle, color: 'text-primary', bg: 'bg-primary/10', href: '/customer/create-task' },
-                { label: 'Messages', icon: MessageSquare, color: 'text-indigo-500', bg: 'bg-indigo-500/10', href: '/customer/messages' },
-                { label: 'Add Funds', icon: Wallet, color: 'text-emerald-500', bg: 'bg-emerald-500/10', href: '/customer/payments' },
-                { label: 'Reports Feed', icon: TrendingUp, color: 'text-amber-500', bg: 'bg-amber-500/10', href: '/customer/dashboard' },
-              ].map((action, i) => (
-                <Link key={i} href={action.href}>
-                  <div className="glass bg-white/5 border border-white/5 p-4 rounded-2xl flex flex-col items-center gap-3 group hover:bg-white/10 hover:shadow-md transition-all text-center cursor-pointer select-none">
-                    <div className={cn("size-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform", action.bg)}>
-                      <action.icon className={cn("size-5", action.color)} />
+                { label: 'New Project', icon: PlusCircle, color: "oklch(0.58 0.22 265)", bg: "oklch(0.62 0.22 265 / 0.1)", href: '/customer/create-task' },
+                { label: 'Messages', icon: MessageSquare, color: "oklch(0.52 0.22 240)", bg: "oklch(0.55 0.22 240 / 0.1)", href: '/customer/messages' },
+                { label: 'Add Funds', icon: Wallet, color: "oklch(0.52 0.2 145)", bg: "oklch(0.65 0.18 145 / 0.1)", href: '/customer/payments' },
+                { label: 'Analytics', icon: TrendingUp, color: "oklch(0.65 0.18 70)", bg: "oklch(0.72 0.16 70 / 0.1)", href: '/customer/dashboard' },
+              ].map((action) => (
+                <Link key={action.label} href={action.href}>
+                  <div className="p-3.5 rounded-xl flex flex-col items-center gap-2.5 group hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+                    style={{ background: action.bg, border: `1px solid ${action.color}20` }}>
+                    <div className="size-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
+                      style={{ background: action.color + "20" }}>
+                      <action.icon className="size-4.5" style={{ color: action.color }} />
                     </div>
-                    <span className="text-[10.5px] font-black text-foreground uppercase tracking-wider">{action.label}</span>
+                    <span className="text-[11px] font-bold text-foreground text-center">{action.label}</span>
                   </div>
                 </Link>
               ))}
             </div>
-          </PremiumCard>
+          </Card>
 
-          {/* Recent Activity feed */}
-          <PremiumCard title="Recent Activity" action={<button className="text-[11px] font-bold text-primary hover:underline cursor-pointer select-none">View All</button>}>
-            <div className="space-y-6">
+          {/* Recent Activity */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[14px] font-bold text-foreground">Recent Activity</h3>
+              <button className="text-[11px] font-bold text-primary hover:underline">View All</button>
+            </div>
+            <div className="space-y-4">
               {statsData?.recent_activity?.slice(0, 3).map((act: any) => (
-                <Link key={act.id} href={`/customer/orders`} className="block">
-                  <div className="flex gap-4 relative group cursor-pointer">
-                    <div className="absolute left-[15px] top-8 bottom-[-24px] w-0.5 bg-slate-200/20 dark:bg-slate-800/20 last:hidden" />
-                    <div className="size-8.5 rounded-full glass border border-white/10 flex items-center justify-center flex-shrink-0 z-10 group-hover:scale-110 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
-                      <Zap className="size-3.5 text-primary group-hover:text-white transition-colors" />
+                <Link key={act.id} href="/customer/orders">
+                  <div className="flex gap-3 group cursor-pointer">
+                    <div className="size-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-all group-hover:scale-110"
+                      style={{ background: "linear-gradient(135deg, oklch(0.62 0.22 265 / 0.12), oklch(0.52 0.26 280 / 0.08))", border: "1px solid oklch(0.58 0.22 265 / 0.15)" }}>
+                      <Zap className="size-3.5 text-primary" />
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-[12px] font-bold text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-1">
-                        {act.title}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
+                    <div>
+                      <p className="text-[12px] font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-1">{act.title}</p>
+                      <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5">
                         <Clock className="size-3" />
                         {formatDistanceToNow(new Date(act.updated_at), { addSuffix: true })}
                       </p>
@@ -508,10 +440,10 @@ export default function CustomerDashboard() {
                 </Link>
               ))}
               {(!statsData?.recent_activity || statsData.recent_activity.length === 0) && (
-                <p className="text-[11px] text-muted-foreground italic text-center py-4 select-none">No recent activity logged.</p>
+                <p className="text-[12px] text-muted-foreground text-center py-3">No recent activity.</p>
               )}
             </div>
-          </PremiumCard>
+          </Card>
         </div>
       </div>
     </div>

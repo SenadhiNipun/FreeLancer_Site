@@ -352,12 +352,12 @@ export default function OrderDetails() {
                     <Card key={bid.id} className="border-border/50 shadow-sm hover:border-[#7C5CFC]/40 transition-all bg-white group overflow-hidden rounded-2xl">
                       <div className="p-6 flex flex-col sm:flex-row gap-6">
                         <div className="flex-1 space-y-4">
-                          <div className="flex items-center gap-4">
+                          <Link href={`/profile/${bid.writer_id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity group">
                             <div className="size-12 rounded-xl bg-violet-100 flex items-center justify-center text-[#7C5CFC] font-bold text-lg">
                               {bid.writer?.first_name?.[0] || "W"}
                             </div>
                             <div>
-                              <h3 className="font-bold text-[#1a1033]">
+                              <h3 className="font-bold text-[#1a1033] group-hover:underline">
                                 {bid.writer?.first_name} {bid.writer?.last_name?.charAt(0)}.
                               </h3>
                               <div className="flex items-center gap-2 text-[11px] text-[#9490a8]">
@@ -366,7 +366,7 @@ export default function OrderDetails() {
                                 <span>• {format(new Date(bid.created_at), "h:mm a")}</span>
                               </div>
                             </div>
-                          </div>
+                          </Link>
                           <p className="text-sm text-[#6b6880] leading-relaxed italic">
                             "{bid.message || "I am highly interested in this project and have relevant experience in this academic field."}"
                           </p>
@@ -735,32 +735,46 @@ export default function OrderDetails() {
                 <CardTitle className="text-lg text-[#1a1033]">Assigned Expert</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-violet-100 flex items-center justify-center text-xl font-bold text-[#7C5CFC] border border-[#7C5CFC]/20 uppercase overflow-hidden">
-                    {task.writer?.profile_image_url ? (
-                      <img 
-                        src={getFileUrl(task.writer.profile_image_url)} 
-                        alt="Avatar" 
-                        className="w-full h-full object-cover rounded-2xl" 
-                      />
-                    ) : (
-                      task.writer && task.writer.first_name ? task.writer.first_name[0] : (task.writer?.email ? task.writer.email[0] : "W")
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-base text-[#1a1033]">
-                      {task.writer 
-                        ? ((task.writer.first_name || task.writer.last_name) 
+                {task.writer ? (
+                  <Link href={`/profile/${task.writer.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity group">
+                    <div className="h-14 w-14 rounded-2xl bg-violet-100 flex items-center justify-center text-xl font-bold text-[#7C5CFC] border border-[#7C5CFC]/20 uppercase overflow-hidden">
+                      {task.writer.profile_image_url ? (
+                        <img 
+                          src={getFileUrl(task.writer.profile_image_url)} 
+                          alt="Avatar" 
+                          className="w-full h-full object-cover rounded-2xl" 
+                        />
+                      ) : (
+                        task.writer.first_name ? task.writer.first_name[0] : (task.writer.email ? task.writer.email[0] : "W")
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-base text-[#1a1033] group-hover:underline">
+                        {((task.writer.first_name || task.writer.last_name) 
                             ? `${task.writer.first_name || ""} ${task.writer.last_name || ""}`.trim() 
-                            : task.writer.email.split("@")[0]) 
-                        : "Unallocated"}
-                    </h3>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="flex items-center gap-0.5 text-amber-500 font-bold">★ 4.9</span>
-                      <span className="text-[#9490a8]">• Expert Writer</span>
+                            : task.writer.email.split("@")[0])}
+                      </h3>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="flex items-center gap-0.5 text-amber-500 font-bold">★ 4.9</span>
+                        <span className="text-[#9490a8]">• Expert Writer</span>
+                      </div>
+                    </div>
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-2xl bg-violet-100 flex items-center justify-center text-xl font-bold text-[#7C5CFC] border border-[#7C5CFC]/20 uppercase overflow-hidden">
+                      W
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-base text-[#1a1033]">
+                        Unallocated
+                      </h3>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-[#9490a8]">• Expert Writer</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
                 <Button 
                   variant="outline" 
                   onClick={() => task.writer && handleChatWithWriter(task.writer.id)}

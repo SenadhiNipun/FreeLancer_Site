@@ -13,7 +13,8 @@ import {
   User,
   LifeBuoy,
   LogOut,
-  LayoutGrid
+  LayoutGrid,
+  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authService } from "@/services/auth.service";
@@ -31,7 +32,6 @@ export function CustomerSidebar() {
         const first = user.first_name || "";
         const last = user.last_name || "";
         setUserName(`${first} ${last}`.trim() || "Premium Client");
-        
         const fChar = first.charAt(0) || "C";
         const lChar = last.charAt(0) || "S";
         setUserInitials((fChar + lChar).toUpperCase());
@@ -73,57 +73,78 @@ export function CustomerSidebar() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-[280px] glass border-r border-white/20 flex flex-col hidden lg:flex overflow-hidden">
-      {/* Premium Ambient Background Glows */}
-      <div className="absolute -top-12 -left-12 size-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 -right-24 size-48 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+    <aside className="fixed left-0 top-0 z-40 h-screen w-[272px] flex flex-col hidden lg:flex overflow-hidden"
+      style={{
+        background: "linear-gradient(180deg, oklch(0.985 0.006 260 / 0.95) 0%, oklch(0.97 0.012 265 / 0.95) 100%)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderRight: "1px solid oklch(0.88 0.018 260 / 0.5)",
+        boxShadow: "4px 0 24px oklch(0 0 0 / 0.04), inset -1px 0 0 oklch(1 0 0 / 0.6)"
+      }}>
 
-      {/* Brand logo container */}
-      <div className="flex items-center gap-3 px-7 py-7 border-b border-white/10 relative z-10">
+      {/* Ambient glow */}
+      <div className="absolute -top-16 -left-16 size-56 rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(circle, oklch(0.58 0.22 265 / 0.08) 0%, transparent 70%)" }} />
+
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-6 py-6 relative z-10"
+        style={{ borderBottom: "1px solid oklch(0.88 0.018 260 / 0.4)" }}>
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="size-10 rounded-2xl bg-primary flex items-center justify-center shadow-xl shadow-primary/30 group-hover:scale-[1.05] transition-transform duration-300">
-            <LayoutGrid className="size-5.5 text-white" strokeWidth={2.5} />
+          <div className="size-9 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:rotate-3"
+            style={{ background: "linear-gradient(135deg, oklch(0.62 0.22 265), oklch(0.52 0.26 280))", boxShadow: "0 6px 16px oklch(0.58 0.22 265 / 0.3)" }}>
+            <LayoutGrid className="size-4.5 text-white" strokeWidth={2.5} />
           </div>
           <div>
-            <span className="block text-[15px] font-black text-foreground tracking-tight leading-none">
+            <span className="block text-[14px] font-black text-foreground tracking-tight leading-none">
               Project<span className="text-primary">Hub</span>
             </span>
-            <span className="block text-[10px] text-muted-foreground/80 font-black uppercase tracking-widest mt-1.5 leading-none">
+            <span className="block text-[9px] text-muted-foreground/60 font-bold uppercase tracking-[0.18em] mt-1 leading-none">
               Academic Portal
             </span>
           </div>
         </Link>
       </div>
 
-      {/* Grouped sidebar navigation */}
-      <nav className="flex-1 overflow-y-auto px-4.5 py-6 space-y-6 relative z-10 custom-scrollbar">
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6 relative z-10 custom-scrollbar">
         {menuGroups.map((group, idx) => (
-          <div key={idx} className="space-y-1.5">
-            <p className="px-3 text-[10px] font-extrabold text-muted-foreground/50 uppercase tracking-[0.2em] mb-2.5">
+          <div key={idx} className="space-y-1">
+            <p className="px-3 text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.18em] mb-2">
               {group.title}
             </p>
             {group.items.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-bold transition-all duration-300 group hover:translate-x-0.5 cursor-pointer select-none",
-                    isActive 
-                      ? "bg-primary text-white shadow-lg shadow-primary/30" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/5 dark:hover:bg-white/[0.02]"
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all duration-200 group relative",
+                    isActive
+                      ? "text-white"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
+                  style={isActive ? {
+                    background: "linear-gradient(135deg, oklch(0.62 0.22 265), oklch(0.52 0.26 280))",
+                    boxShadow: "0 4px 12px oklch(0.58 0.22 265 / 0.25), inset 0 1px 0 oklch(1 0 0 / 0.15)"
+                  } : undefined}
                 >
-                  <item.icon className={cn(
-                    "size-4.5 transition-all duration-300", 
-                    isActive 
-                      ? "text-white scale-110" 
-                      : "text-muted-foreground/55 group-hover:text-primary group-hover:scale-110"
-                  )} strokeWidth={2} />
-                  {item.label}
+                  {!isActive && (
+                    <span className="absolute inset-0 rounded-xl bg-foreground/0 group-hover:bg-foreground/[0.04] transition-colors duration-200" />
+                  )}
+                  <item.icon
+                    className={cn(
+                      "size-4 flex-shrink-0 transition-all duration-200 relative z-10",
+                      isActive ? "text-white" : "text-muted-foreground/50 group-hover:text-primary"
+                    )}
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
+                  <span className="relative z-10 flex-1">{item.label}</span>
                   {isActive && (
-                    <div className="ml-auto size-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)] animate-pulse" />
+                    <span className="relative z-10 size-1.5 rounded-full bg-white/80 animate-pulse" />
+                  )}
+                  {!isActive && (
+                    <ChevronRight className="relative z-10 size-3.5 text-muted-foreground/25 group-hover:text-muted-foreground/50 transition-colors" />
                   )}
                 </Link>
               );
@@ -132,26 +153,25 @@ export function CustomerSidebar() {
         ))}
       </nav>
 
-      {/* Account Info Profile tray at the bottom */}
-      <div className="p-4.5 border-t border-white/10 glass bg-white/5 dark:bg-slate-900/10 space-y-2 relative z-10">
-        <Link href="/customer/profile" className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/5 transition-all group">
-          <div className="size-10 rounded-xl bg-gradient-to-br from-primary to-[#8B5CF6] flex items-center justify-center text-white text-[13px] font-black flex-shrink-0 shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
+      {/* Profile tray */}
+      <div className="p-3 relative z-10"
+        style={{ borderTop: "1px solid oklch(0.88 0.018 260 / 0.4)" }}>
+        <Link href="/customer/profile"
+          className="flex items-center gap-3 p-2.5 rounded-xl transition-all duration-200 group hover:bg-foreground/[0.04]">
+          <div className="size-9 rounded-xl flex items-center justify-center text-white text-[12px] font-black flex-shrink-0 shadow-md transition-transform group-hover:scale-105"
+            style={{ background: "linear-gradient(135deg, oklch(0.62 0.22 265), oklch(0.65 0.2 310))", boxShadow: "0 4px 10px oklch(0.58 0.22 265 / 0.2)" }}>
             {userInitials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-bold text-foreground truncate leading-none">
-              {userName}
-            </p>
-            <p className="text-[9px] text-muted-foreground/75 font-black uppercase tracking-wider mt-1.5">
-              Premium Client
-            </p>
+            <p className="text-[13px] font-bold text-foreground truncate leading-none">{userName}</p>
+            <p className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider mt-1">Premium Client</p>
           </div>
         </Link>
         <button
           onClick={() => authService.logout()}
-          className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-[12px] font-bold text-muted-foreground/60 hover:text-rose-500 hover:bg-rose-500/10 transition-all duration-200 group"
+          className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-[12px] font-semibold text-muted-foreground/50 hover:text-rose-500 hover:bg-rose-500/8 transition-all duration-200 group mt-1"
         >
-          <LogOut className="size-4 flex-shrink-0 group-hover:translate-x-1 transition-transform" strokeWidth={2.5} />
+          <LogOut className="size-3.5 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
           Sign Out
         </button>
       </div>
