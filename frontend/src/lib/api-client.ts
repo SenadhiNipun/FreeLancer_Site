@@ -48,7 +48,7 @@ function onTokenRefreshed(token: string) {
   refreshSubscribers = [];
 }
 
-export async function apiClient(endpoint: string, options: RequestInit = {}) {
+export async function apiClient(endpoint: string, options: RequestInit = {}): Promise<any> {
   const isClient = typeof window !== 'undefined';
   let token = isClient ? localStorage.getItem('token') : null;
 

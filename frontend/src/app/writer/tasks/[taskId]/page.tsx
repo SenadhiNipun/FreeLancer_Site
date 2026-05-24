@@ -432,6 +432,91 @@ export default function WriterTaskDetails() {
             )
           )}
 
+          {/* ── Writer Submissions Section ── */}
+          {task.submissions && task.submissions.length > 0 && (
+            <div className="glass rounded-[2rem] overflow-hidden border-white/5 shadow-2xl space-y-6 p-8">
+              <div className="flex items-center justify-between border-b border-white/5 pb-5">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <CheckCircle2 className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">Main Submissions</h3>
+                    <p className="text-[10px] text-muted-foreground font-medium">Work submitted by you</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-primary/10 text-primary">
+                  {task.submissions.length} Submissions
+                </span>
+              </div>
+
+              <div className="space-y-6">
+                {[...task.submissions].reverse().map((sub: any, idx: number) => (
+                  <div key={sub.id} className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-300 space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4">
+                        <div className="size-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-sm shrink-0">
+                          {task.submissions.length - idx}
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold text-foreground leading-snug">
+                            {sub.submission_note || "No note provided."}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                            Submitted on {format(new Date(sub.submitted_at), "MMM dd, yyyy · h:mm a")}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <span className={cn(
+                        "shrink-0 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border",
+                        sub.submission_status === "FINAL_SUBMISSION"
+                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                          : "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                      )}>
+                        {sub.submission_status.replace("_", " ")}
+                      </span>
+                    </div>
+
+                    {/* Attached files */}
+                    {sub.files && sub.files.length > 0 && (
+                      <div className="pt-2 border-t border-white/5">
+                        <p className="text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-1.5">
+                          <Paperclip className="size-3 text-primary" /> Attached Files ({sub.files.length})
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {sub.files.map((file: any) => (
+                            <div
+                              key={file.id}
+                              className="group/file flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-primary/30 transition-all duration-300"
+                            >
+                              <div className="flex items-center gap-3 truncate">
+                                <div className="size-9 rounded-lg bg-white/5 flex items-center justify-center text-primary group-hover/file:scale-105 transition-all">
+                                  <FileText className="size-4" />
+                                </div>
+                                <div className="flex flex-col truncate">
+                                  <span className="text-[12px] font-bold text-foreground truncate">{file.file_name}</span>
+                                  <span className="text-[9px] text-muted-foreground font-bold uppercase">
+                                    {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : "Unknown size"}
+                                  </span>
+                                </div>
+                              </div>
+                              <a href={getFileUrl(file.file_url)} target="_blank" rel="noopener noreferrer">
+                                <button className="size-8 rounded-lg glass border-white/10 text-primary hover:bg-primary hover:text-white transition-all shadow-lg flex items-center justify-center">
+                                  <Download className="size-3.5" />
+                                </button>
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Revision History Section ── */}
           {task.revisions && task.revisions.length > 0 && (
             <div id="revision-history" className="glass rounded-[2rem] overflow-hidden border-white/5 shadow-2xl space-y-6 p-8">

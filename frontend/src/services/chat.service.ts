@@ -54,4 +54,11 @@ export const chatService = {
     })) as any;
     return response.results;
   },
+
+  initializeChat: async (taskId: number, writerId: number): Promise<{ id: number }> => {
+    const response = (await apiClient(`/api/v1/chat/sessions/initialize?task_id=${taskId}&writer_id=${writerId}`, {
+      method: 'POST',
+    })) as any;
+    return response.results;
+  },
 };

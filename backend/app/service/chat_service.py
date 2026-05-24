@@ -50,6 +50,15 @@ class ChatService:
             
             if not bid:
                 raise ValidationException(detail="You must have placed a bid on this task to request a change")
+            
+            # Check if any bid has been accepted for this task
+            accepted_bid = db.query(TaskBidEntity).filter(
+                TaskBidEntity.task_id == session.task_id,
+                TaskBidEntity.bid_status == "ACCEPTED"
+            ).first()
+            
+            if accepted_bid:
+                raise ValidationException(detail="Cannot change bid after a bid has been accepted for this task")
                 
             proposed_amount = request.proposed_amount
             bid_change_status = "PENDING"
@@ -145,6 +154,14 @@ class ChatService:
             else:
                 resp.other_party_name = f"{s.customer.first_name} {s.customer.last_name}" if s.customer else "Customer"
                 resp.other_party_profile_image_url = s.customer.profile_image_url if s.customer else None
+            
+            # Check if any bid on this task has been accepted
+            from app.entity.task_bid_entity import TaskBidEntity
+            any_accepted = db.query(TaskBidEntity).filter(
+                TaskBidEntity.task_id == s.task_id,
+                TaskBidEntity.bid_status == "ACCEPTED"
+            ).first() is not None
+            resp.is_bid_accepted = any_accepted
                 
             results.append(resp)
         return results

@@ -55,6 +55,7 @@ class ChatSessionResponse(BaseModel):
     task_title: Optional[str] = None
     other_party_name: Optional[str] = None
     other_party_profile_image_url: Optional[str] = None
+    is_bid_accepted: Optional[bool] = False
 
 class ChatSessionListResponse(BaseModel):
     sessions: List[ChatSessionResponse]

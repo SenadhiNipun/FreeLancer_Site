@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { taskService } from "@/services/task.service";
+import { chatService } from "@/services/chat.service";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getFileUrl } from "@/lib/api-client";
@@ -41,6 +42,21 @@ export default function OrderDetails() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isAccepting, setIsAccepting] = React.useState<number | null>(null);
   const [isApproving, setIsApproving] = React.useState(false);
+  const [isInitializingChat, setIsInitializingChat] = React.useState<number | null>(null);
+
+  const handleChatWithWriter = async (writerId: number) => {
+    if (!taskIdParam) return;
+    setIsInitializingChat(writerId);
+    try {
+      const taskId = parseInt(taskIdParam);
+      const session = await chatService.initializeChat(taskId, writerId);
+      router.push(`/customer/messages?session=${session.id}`);
+    } catch (error: any) {
+      alert(error.message || "Failed to open chat with writer");
+    } finally {
+      setIsInitializingChat(null);
+    }
+  };
 
   // Revision modal state
   const [showRevisionModal, setShowRevisionModal] = React.useState(false);
@@ -361,15 +377,19 @@ export default function OrderDetails() {
                             <p className="text-2xl font-black text-[#1a1033]">${parseFloat(bid.bid_amount).toFixed(2)}</p>
                           </div>
                           <div className="flex flex-col sm:flex-row w-full gap-2">
-                            <Link href="/customer/messages" className="flex-1">
-                              <Button 
-                                variant="outline"
-                                className="w-full border-border/50 hover:bg-violet-50 hover:text-[#7C5CFC] rounded-xl h-10 font-bold gap-2 text-xs transition-colors"
-                              >
+                            <Button 
+                              variant="outline"
+                              onClick={() => handleChatWithWriter(bid.writer_id)}
+                              disabled={isInitializingChat !== null}
+                              className="flex-1 border-border/50 hover:bg-violet-50 hover:text-[#7C5CFC] rounded-xl h-10 font-bold gap-2 text-xs transition-colors"
+                            >
+                              {isInitializingChat === bid.writer_id ? (
+                                <Clock className="size-3.5 animate-spin" />
+                              ) : (
                                 <MessageSquare className="size-3.5" />
-                                Chat
-                              </Button>
-                            </Link>
+                              )}
+                              Chat
+                            </Button>
                             <Button 
                               onClick={() => handleAcceptBid(bid.id)}
                               disabled={isAccepting !== null}
@@ -741,11 +761,19 @@ export default function OrderDetails() {
                     </div>
                   </div>
                 </div>
-                <Link href="/customer/messages" className="w-full">
-                  <Button variant="outline" className="w-full rounded-xl gap-2 h-11 border-border/50 hover:bg-violet-50 hover:text-[#7C5CFC] transition-colors font-bold text-xs">
-                    <MessageSquare className="size-4" /> Open Secure Channel
-                  </Button>
-                </Link>
+                <Button 
+                  variant="outline" 
+                  onClick={() => task.writer && handleChatWithWriter(task.writer.id)}
+                  disabled={isInitializingChat !== null}
+                  className="w-full rounded-xl gap-2 h-11 border-border/50 hover:bg-violet-50 hover:text-[#7C5CFC] transition-colors font-bold text-xs"
+                >
+                  {isInitializingChat === task.writer?.id ? (
+                    <Clock className="size-4 animate-spin" />
+                  ) : (
+                    <MessageSquare className="size-4" />
+                  )}
+                  Open Secure Channel
+                </Button>
               </CardContent>
             </Card>
           )}

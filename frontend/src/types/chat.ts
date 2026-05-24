@@ -32,6 +32,7 @@ export interface ChatSession {
   task_title?: string;
   other_party_name?: string;
   other_party_profile_image_url?: string;
+  is_bid_accepted?: boolean;
 }
 
 export interface SendMessageRequest {

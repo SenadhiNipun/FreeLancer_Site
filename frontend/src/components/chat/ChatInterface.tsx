@@ -189,6 +189,12 @@ export default function ChatInterface() {
     try {
       const data = await chatService.getSessions();
       setSessions(data);
+      // Synchronize activeSession with the latest data from fetchSessions
+      setActiveSession(prev => {
+        if (!prev) return null;
+        const updated = data.find(s => s.id === prev.id);
+        return updated || prev;
+      });
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
     } finally {
@@ -520,7 +526,7 @@ export default function ChatInterface() {
 
               {/* Utility action headers */}
               <div className="flex items-center gap-2 relative">
-                {isWriter && activeSession.is_active !== false && (
+                {isWriter && activeSession.is_active !== false && !activeSession.is_bid_accepted && (
                   <Button
                     onClick={() => setShowBidChangeModal(true)}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2 px-4 text-xs font-bold shadow-sm shadow-emerald-600/10 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
