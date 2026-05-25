@@ -21,6 +21,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { taskService } from "@/services/task.service";
 import { formatDistanceToNow } from "date-fns";
+import { userService } from "@/services/user.service";
 
 /* ─── Card ─── */
 function Card({ className, children }: { className?: string; children: React.ReactNode }) {
@@ -96,6 +97,26 @@ export default function CustomerDashboard() {
       try {
         const response = await taskService.getDashboardStats();
         setStatsData(response.results);
+      } catch (error) {
+        console.error("Failed to fetch dashboard stats:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+
+    // Fetch user info for name display
+    userService.getMyProfile()
+      .then((res: any) => {
+        if (res?.results) {
+          const first = res.results.first_name || "";
+          const last = res.results.last_name || "";
+          const full = `${first} ${last}`.trim();
+          setUserName(full && first !== "Academic" ? full : first || "Client");
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch profile for dashboard:", err);
         const userStr = localStorage.getItem('user');
         if (userStr) {
           try {
@@ -106,13 +127,7 @@ export default function CustomerDashboard() {
             setUserName(full && first !== "Academic" ? full : first || "Client");
           } catch { /* ignore */ }
         }
-      } catch (error) {
-        console.error("Failed to fetch dashboard stats:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+      });
   }, []);
 
   const activeProjectsCount = statsData?.active_projects_count ?? statsData?.active_accepted_count ?? 0;
