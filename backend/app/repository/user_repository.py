@@ -6,6 +6,7 @@ from app.entity.user_profile_entity import UserProfileEntity
 from app.entity.writer_profile_entity import WriterProfileEntity
 from app.entity.user_role_entity import UserRoleEntity
 from app.entity.writer_field_entity import WriterFieldEntity
+from app.entity.role_entity import RoleEntity
 
 
 class UserRepository:
@@ -74,3 +75,23 @@ class UserRepository:
     def save_writer_qualifications(db: Session, qualifications: List[any]):
         db.add_all(qualifications)
         db.flush()
+
+    @staticmethod
+    def get_all_users_by_role(db: Session, role_name: str) -> List[UserEntity]:
+        return (
+            db.query(UserEntity)
+            .join(RoleEntity, UserEntity.role_id == RoleEntity.id)
+            .filter(RoleEntity.role_name == role_name)
+            .filter(UserEntity.is_delete == False)
+            .order_by(UserEntity.id.desc())
+            .all()
+        )
+
+    @staticmethod
+    def get_all_users(db: Session) -> List[UserEntity]:
+        return (
+            db.query(UserEntity)
+            .filter(UserEntity.is_delete == False)
+            .order_by(UserEntity.id.desc())
+            .all()
+        )
