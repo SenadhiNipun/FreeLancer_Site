@@ -1,136 +1,103 @@
 "use client";
 
 import React from "react";
-import { 
-  Wallet, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Download, 
-  CreditCard,
-  Plus,
-  History,
-  Info
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui";
+import { Wallet, ArrowUpRight, ArrowDownLeft, Download, CreditCard, Plus, History } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const transactions = [
-  { id: "TXN-9021", date: "22 Apr 2026", task: "Quantum Mechanics Paper", amount: "-$120.00", type: "Payment", status: "Escrow" },
-  { id: "TXN-9018", date: "20 Apr 2026", task: "Wallet Deposit", amount: "+$500.00", type: "Deposit", status: "Completed" },
-  { id: "TXN-8995", date: "15 Apr 2026", task: "Modern Poetry Analysis", amount: "-$60.00", type: "Payment", status: "Completed" },
-  { id: "TXN-8980", date: "10 Apr 2026", task: "Law Case Study", amount: "-$85.00", type: "Payment", status: "Completed" },
+  { id: "TXN-9021", date: "22 Apr 2026", task: "Quantum Mechanics Paper",  amount: "-$120.00", type: "Payment", credit: false, status: "Escrow" },
+  { id: "TXN-9018", date: "20 Apr 2026", task: "Wallet Deposit",           amount: "+$500.00", type: "Deposit", credit: true,  status: "Completed" },
+  { id: "TXN-8995", date: "15 Apr 2026", task: "Modern Poetry Analysis",   amount: "-$60.00",  type: "Payment", credit: false, status: "Completed" },
+  { id: "TXN-8980", date: "10 Apr 2026", task: "Law Case Study",           amount: "-$85.00",  type: "Payment", credit: false, status: "Completed" },
 ];
 
 export default function Payments() {
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 pb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Payments</h1>
-          <p className="text-muted-foreground mt-1">Manage your funds, view history, and download invoices.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Payments</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage your funds, view history, and download invoices.</p>
         </div>
-        <Button className="rounded-xl shadow-lg shadow-primary/20 gap-2 h-11 px-6">
+        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity">
           <Plus className="size-4" /> Add Funds
-        </Button>
+        </button>
       </div>
 
-      {/* Payment Stats */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="border-border/50 shadow-sm bg-primary text-white overflow-hidden relative group">
-           <div className="absolute -right-8 -top-8 size-40 bg-white/10 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-700" />
-           <CardHeader className="pb-2">
-             <CardTitle className="text-sm font-medium text-white/80 uppercase tracking-widest">Available Balance</CardTitle>
-           </CardHeader>
-           <CardContent>
-             <div className="text-4xl font-bold">$380.00</div>
-             <p className="text-xs text-white/60 mt-2 flex items-center gap-1 italic"><Info className="size-3" /> Ready for new tasks</p>
-           </CardContent>
-        </Card>
-
-        <Card className="border-border/50 shadow-sm border-orange-500/20 bg-orange-500/5">
-           <CardHeader className="pb-2">
-             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest">Held in Escrow</CardTitle>
-           </CardHeader>
-           <CardContent>
-             <div className="text-4xl font-bold text-orange-600">$205.00</div>
-             <p className="text-xs text-muted-foreground mt-2">Allocated to 2 active tasks</p>
-           </CardContent>
-        </Card>
-
-        <Card className="border-border/50 shadow-sm">
-           <CardHeader className="pb-2">
-             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest">Total Spent</CardTitle>
-           </CardHeader>
-           <CardContent>
-             <div className="text-4xl font-bold">$1,420.00</div>
-             <p className="text-xs text-muted-foreground mt-2">Since joining June 2025</p>
-           </CardContent>
-        </Card>
-      </div>
-
-      {/* Transaction History */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <History className="size-5" /> Transaction History
-          </h2>
-          <Button variant="outline" size="sm" className="rounded-xl border-border/50 h-9">
-            Export CSV
-          </Button>
+      {/* Stats */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        <div className="bg-primary rounded-xl p-5 text-white">
+          <p className="text-xs font-medium text-white/70 mb-2">Available Balance</p>
+          <p className="text-3xl font-semibold">$380.00</p>
+          <p className="text-xs text-white/60 mt-2">Ready for new tasks</p>
         </div>
+        <div className="bg-white border border-orange-200 bg-orange-50/30 rounded-xl p-5">
+          <p className="text-xs text-muted-foreground mb-2">Held in Escrow</p>
+          <p className="text-3xl font-semibold text-orange-600">$205.00</p>
+          <p className="text-xs text-muted-foreground mt-2">Allocated to 2 active tasks</p>
+        </div>
+        <div className="bg-white border border-border rounded-xl p-5">
+          <p className="text-xs text-muted-foreground mb-2">Total Spent</p>
+          <p className="text-3xl font-semibold text-foreground">$1,420.00</p>
+          <p className="text-xs text-muted-foreground mt-2">Since joining June 2025</p>
+        </div>
+      </div>
 
-        <Card className="border-border/50 overflow-hidden">
-           <div className="overflow-x-auto">
-             <table className="w-full text-left border-collapse">
-               <thead>
-                 <tr className="border-b border-border/50 bg-muted/20">
-                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Transaction Details</th>
-                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Type</th>
-                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Date</th>
-                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-right">Amount</th>
-                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-right">Status</th>
-                 </tr>
-               </thead>
-               <tbody className="divide-y divide-border/50">
-                 {transactions.map((txn) => (
-                   <tr key={txn.id} className="hover:bg-muted/30 transition-colors group">
-                     <td className="px-6 py-6">
-                       <div className="space-y-1">
-                         <p className="font-bold text-foreground">{txn.task}</p>
-                         <p className="text-xs text-muted-foreground">ID: {txn.id}</p>
-                       </div>
-                     </td>
-                     <td className="px-6 py-6">
-                        <div className="flex items-center gap-2">
-                           {txn.type === 'Deposit' ? (
-                             <ArrowDownLeft className="size-4 text-green-500" />
-                           ) : (
-                             <ArrowUpRight className="size-4 text-orange-500" />
-                           )}
-                           <span className="text-sm font-medium">{txn.type}</span>
-                        </div>
-                     </td>
-                     <td className="px-6 py-6 text-sm text-muted-foreground">
-                       {txn.date}
-                     </td>
-                     <td className={`px-6 py-6 text-right font-bold ${txn.amount.startsWith('+') ? 'text-green-600' : 'text-foreground'}`}>
-                       {txn.amount}
-                     </td>
-                     <td className="px-6 py-6 text-right">
-                        <Badge variant="outline" className={`uppercase text-[10px] font-bold ${
-                          txn.status === 'Completed' ? 'bg-green-500/10 text-green-600 border-green-500/20' : 
-                          'bg-orange-500/10 text-orange-600 border-orange-500/20'
-                        }`}>
-                          {txn.status}
-                        </Badge>
-                     </td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>
-        </Card>
+      {/* Transaction history */}
+      <div className="bg-white border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="font-semibold text-foreground flex items-center gap-2">
+            <History className="size-4 text-primary" /> Transaction History
+          </h2>
+          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/50 transition-colors">
+            <Download className="size-3.5" /> Export CSV
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Transaction</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Type</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Date</th>
+                <th className="px-5 py-3 text-right text-xs font-medium text-muted-foreground">Amount</th>
+                <th className="px-5 py-3 text-right text-xs font-medium text-muted-foreground">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((txn) => (
+                <tr key={txn.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                  <td className="px-5 py-4">
+                    <p className="font-medium text-foreground">{txn.task}</p>
+                    <p className="text-xs text-muted-foreground">{txn.id}</p>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-1.5 text-sm">
+                      {txn.credit
+                        ? <ArrowDownLeft className="size-3.5 text-green-600" />
+                        : <ArrowUpRight className="size-3.5 text-orange-500" />
+                      }
+                      {txn.type}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-muted-foreground">{txn.date}</td>
+                  <td className={cn("px-5 py-4 text-right font-semibold", txn.credit ? "text-green-600" : "text-foreground")}>
+                    {txn.amount}
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                      txn.status === "Completed"
+                        ? "bg-green-50 text-green-700 border border-green-200"
+                        : "bg-amber-50 text-amber-700 border border-amber-200"
+                    )}>
+                      {txn.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

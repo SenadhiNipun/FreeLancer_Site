@@ -1,384 +1,222 @@
 "use client";
 
-import React from "react";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Camera, 
-  Lock, 
-  Bell, 
-  ShieldCheck,
-  CreditCard,
-  Loader2
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui";
+import React, { useEffect, useState } from "react";
+import { Camera, Mail, Phone, MapPin, Lock, Bell, CreditCard, ShieldCheck, Loader2 } from "lucide-react";
 import { userService } from "@/services/user.service";
 import { getFileUrl } from "@/lib/api-client";
 import { toast } from "react-toastify";
 
-export default function Profile() {
-  const [profile, setProfile] = React.useState<any>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState("General Information");
+const TABS = [
+  { label: "General",    icon: ShieldCheck },
+  { label: "Security",   icon: Lock },
+  { label: "Notifications", icon: Bell },
+  { label: "Payments",   icon: CreditCard },
+];
 
-  // States for editable fields
-  const [firstName, setFirstName] = React.useState("");
-  const [lastName, setLastName] = React.useState("");
-  const [phone, setPhone] = React.useState("");
-  const [location, setLocation] = React.useState("");
-  const [profileImageUrl, setProfileImageUrl] = React.useState("");
+const inputCls = "w-full h-10 px-3 rounded-lg border border-border bg-white text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-muted/30 disabled:text-muted-foreground";
 
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+export default function CustomerProfile() {
+  const [profile, setProfile]       = useState<any>(null);
+  const [loading, setLoading]       = useState(true);
+  const [saving, setSaving]         = useState(false);
+  const [activeTab, setActiveTab]   = useState("General");
+  const fileInputRef                = React.useRef<HTMLInputElement>(null);
 
-  const fetchProfile = async () => {
-    try {
-      const res = await userService.getMyProfile();
-      const data = res.results;
-      setProfile(data);
-      setFirstName(data.first_name || "");
-      setLastName(data.last_name || "");
-      setPhone(data.phone || "");
-      setProfileImageUrl(data.profile_image_url || "");
-      
-      // Location is constructed from city and country
-      if (data.city && data.country) {
-        setLocation(`${data.city}, ${data.country}`);
-      } else if (data.city) {
-        setLocation(data.city);
-      } else if (data.country) {
-        setLocation(data.country);
-      } else {
-        setLocation("");
-      }
-    } catch (error) {
-      console.error("Failed to load profile:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  const [firstName, setFirstName]   = useState("");
+  const [lastName, setLastName]     = useState("");
+  const [phone, setPhone]           = useState("");
+  const [location, setLocation]     = useState("");
+  const [imageUrl, setImageUrl]     = useState("");
+
+  const load = async () => {
+    const res = await userService.getMyProfile();
+    const d = res.results;
+    setProfile(d);
+    setFirstName(d.first_name || ""); setLastName(d.last_name || "");
+    setPhone(d.phone || ""); setImageUrl(d.profile_image_url || "");
+    if (d.city && d.country) setLocation(`${d.city}, ${d.country}`);
+    else setLocation(d.city || d.country || "");
   };
 
-  React.useEffect(() => {
-    fetchProfile();
-  }, []);
+  useEffect(() => { load().catch(console.error).finally(() => setLoading(false)); }, []);
 
-  const handleSaveChanges = async () => {
-    setIsSaving(true);
+  const handleSave = async () => {
+    setSaving(true);
     try {
-      // Split location into city and country
-      let city = "";
-      let country = "";
-      if (location) {
-        const parts = location.split(",");
-        if (parts.length >= 2) {
-          city = parts[0].trim();
-          country = parts[1].trim();
-        } else {
-          city = location.trim();
-        }
-      }
-
-      const payload = {
-        first_name: firstName,
-        last_name: lastName,
-        phone: phone,
-        city: city,
-        country: country
-      };
-
-      await userService.updateMyProfile(payload);
+      const parts = location.split(",");
+      const city    = parts[0]?.trim() || "";
+      const country = parts[1]?.trim() || "";
+      await userService.updateMyProfile({ first_name: firstName, last_name: lastName, phone, city, country });
       toast.success("Profile updated successfully!");
-      fetchProfile();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update profile changes");
-    } finally {
-      setIsSaving(false);
-    }
+      load();
+    } catch (err) { toast.error((err as Error).message || "Failed to update profile."); }
+    finally { setSaving(false); }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       const res = await userService.uploadProfilePicture(file);
-      const newUrl = res.results.profile_image_url;
-      setProfileImageUrl(newUrl);
-      toast.success("Profile picture uploaded successfully!");
-      fetchProfile();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to upload profile picture");
-    }
+      setImageUrl(res.results.profile_image_url);
+      toast.success("Profile picture uploaded!");
+      load();
+    } catch (err) { toast.error((err as Error).message || "Failed to upload picture."); }
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[50vh] gap-3">
+      <Loader2 className="size-5 animate-spin text-primary" />
+    </div>
+  );
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <div className="size-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Loading profile data...</p>
-      </div>
-    );
-  }
-
-  // Generate initials for avatar fallback
-  const initials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "JD";
+  const initials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "U";
 
   return (
-    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Profile Settings</h1>
-        <p className="text-muted-foreground">Manage your account information and preferences.</p>
+    <div className="max-w-3xl mx-auto space-y-5 pb-10">
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">Profile Settings</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Manage your account information and preferences.</p>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Navigation Sidebar */}
-        <div className="space-y-2">
-          {[
-            { label: "General Information", icon: User },
-            { label: "Security & Password", icon: Lock },
-            { label: "Notifications", icon: Bell },
-            { label: "Payment Methods", icon: CreditCard },
-            { label: "Privacy & Data", icon: ShieldCheck },
-          ].map((item, i) => {
-            const isActive = activeTab === item.label;
-            return (
-              <Button 
-                key={i} 
-                onClick={() => setActiveTab(item.label)}
-                variant={isActive ? "secondary" : "ghost"} 
-                className={`w-full justify-start gap-3 rounded-xl h-11 px-4 ${isActive ? 'bg-primary/10 text-primary hover:bg-primary/15' : 'text-muted-foreground'}`}
-              >
-                <item.icon className="size-4" />
-                {item.label}
-              </Button>
-            );
-          })}
+      <div className="grid lg:grid-cols-4 gap-5">
+        {/* Tab nav */}
+        <div className="lg:col-span-1">
+          <nav className="space-y-0.5">
+            {TABS.map(({ label, icon: Icon }) => (
+              <button key={label} onClick={() => setActiveTab(label)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
+                  activeTab === label ? "bg-violet-50 text-violet-700 font-medium" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}>
+                <Icon className={`size-4 flex-shrink-0 ${activeTab === label ? "text-violet-600" : "text-slate-400"}`} strokeWidth={1.75} />
+                {label}
+              </button>
+            ))}
+          </nav>
         </div>
 
-        {/* Content Area */}
-        <div className="lg:col-span-2 space-y-8">
-          {activeTab === "General Information" && (
+        {/* Content */}
+        <div className="lg:col-span-3 space-y-5">
+          {activeTab === "General" && (
             <>
-              {/* Profile Header */}
-              <Card className="border-border/50 shadow-sm overflow-hidden">
-                <div className="h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent" />
-                <CardContent className="relative pt-0">
-                   <div className="flex flex-col sm:flex-row items-end gap-6 -mt-10 px-4">
-                      <div className="relative group cursor-pointer" onClick={triggerFileInput}>
-                        <div className="h-24 w-24 rounded-2xl bg-white p-1 shadow-xl border border-border/50 overflow-hidden">
-                          {profileImageUrl ? (
-                            <img 
-                              src={getFileUrl(profileImageUrl)} 
-                              alt="Avatar" 
-                              className="h-full w-full object-cover rounded-xl"
-                            />
-                          ) : (
-                            <div className="h-full w-full rounded-xl bg-primary/10 flex items-center justify-center text-3xl font-bold text-primary">
-                              {initials}
-                            </div>
-                          )}
+              {/* Avatar card */}
+              <div className="bg-white border border-border rounded-xl overflow-hidden">
+                <div className="h-20 bg-gradient-to-r from-violet-100 to-violet-50" />
+                <div className="px-5 pb-5 -mt-10">
+                  <div className="relative inline-block cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
+                    <div className="size-20 rounded-2xl bg-white p-1 shadow-md border border-border overflow-hidden">
+                      {imageUrl ? (
+                        <img src={getFileUrl(imageUrl)} alt="Avatar" className="w-full h-full object-cover rounded-xl" />
+                      ) : (
+                        <div className="w-full h-full rounded-xl bg-violet-100 flex items-center justify-center text-2xl font-semibold text-violet-700">
+                          {initials}
                         </div>
-                        <button className="absolute -bottom-2 -right-2 h-8 w-8 bg-primary text-white rounded-lg flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
-                          <Camera className="size-4" />
-                        </button>
-                        <input 
-                          type="file" 
-                          ref={fileInputRef} 
-                          onChange={handleImageUpload} 
-                          className="hidden" 
-                          accept="image/*"
-                        />
-                      </div>
-                      <div className="pb-2 space-y-1">
-                        <h2 className="text-xl font-bold">{firstName} {lastName}</h2>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Mail className="size-3" /> {profile?.email}
-                        </p>
-                      </div>
-                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Form Sections */}
-              <Card className="border-border/50 shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg">Personal Information</CardTitle>
-                  <CardDescription>Update your basic contact details.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input 
-                        id="firstName" 
-                        value={firstName} 
-                        onChange={(e) => setFirstName(e.target.value)} 
-                        className="rounded-xl h-11 bg-muted/30 border-none" 
-                      />
+                      )}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input 
-                        id="lastName" 
-                        value={lastName} 
-                        onChange={(e) => setLastName(e.target.value)} 
-                        className="rounded-xl h-11 bg-muted/30 border-none" 
-                      />
+                    <div className="absolute -bottom-1 -right-1 size-7 rounded-lg bg-primary text-white flex items-center justify-center shadow-md">
+                      <Camera className="size-3.5" />
+                    </div>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  </div>
+                  <div className="mt-3">
+                    <h2 className="font-semibold text-foreground">{firstName} {lastName}</h2>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <Mail className="size-3.5" /> {profile?.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form card */}
+              <div className="bg-white border border-border rounded-xl p-5 space-y-4">
+                <h3 className="font-semibold text-foreground">Personal Information</h3>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-foreground">First Name</label>
+                    <input value={firstName} onChange={e => setFirstName(e.target.value)} className={inputCls} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-foreground">Last Name</label>
+                    <input value={lastName} onChange={e => setLastName(e.target.value)} className={inputCls} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-foreground">Email Address</label>
+                  <input value={profile?.email || ""} disabled className={inputCls} />
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-foreground">Phone Number</label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      <input value={phone} onChange={e => setPhone(e.target.value)} className={inputCls + " pl-9"} placeholder="Phone number" />
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input 
-                      id="email" 
-                      value={profile?.email || ""} 
-                      disabled 
-                      className="rounded-xl h-11 bg-muted/50 border-none" 
-                    />
-                  </div>
-
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                        <Input 
-                          id="phone" 
-                          value={phone} 
-                          onChange={(e) => setPhone(e.target.value)} 
-                          className="pl-10 rounded-xl h-11 bg-muted/30 border-none" 
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                        <Input 
-                          id="location" 
-                          value={location} 
-                          onChange={(e) => setLocation(e.target.value)} 
-                          placeholder="e.g. New York, USA"
-                          className="pl-10 rounded-xl h-11 bg-muted/30 border-none" 
-                        />
-                      </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-foreground">Location</label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      <input value={location} onChange={e => setLocation(e.target.value)} className={inputCls + " pl-9"} placeholder="City, Country" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* Preferences */}
-              <Card className="border-border/50 shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg">Account Preferences</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between p-4 rounded-xl border border-border/50">
-                     <div className="space-y-1">
-                        <p className="text-sm font-bold">Email Notifications</p>
-                        <p className="text-xs text-muted-foreground">Receive updates about your tasks and messages.</p>
-                     </div>
-                     <Switch defaultChecked />
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-xl border border-border/50">
-                     <div className="space-y-1">
-                        <p className="text-sm font-bold">Public Profile</p>
-                        <p className="text-xs text-muted-foreground">Allow others to see your reviews and feedback.</p>
-                     </div>
-                     <Switch />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="flex justify-end gap-4">
-                <Button 
-                  variant="ghost" 
-                  onClick={fetchProfile} 
-                  disabled={isSaving} 
-                  className="rounded-xl px-6"
-                >
-                  Discard Changes
-                </Button>
-                <Button 
-                  onClick={handleSaveChanges} 
-                  disabled={isSaving} 
-                  className="rounded-xl px-8 shadow-lg shadow-primary/20 flex items-center gap-2"
-                >
-                  {isSaving && <Loader2 className="size-4 animate-spin" />}
-                  Save Profile
-                </Button>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button onClick={() => load()} disabled={saving} className="px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
+                    Discard
+                  </button>
+                  <button onClick={handleSave} disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60">
+                    {saving && <Loader2 className="size-4 animate-spin" />}
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </>
           )}
 
-          {activeTab === "Security & Password" && (
-            <Card className="border-border/50 shadow-sm animate-in fade-in slide-in-from-bottom-2">
-              <CardHeader>
-                <CardTitle className="text-lg">Security & Password</CardTitle>
-                <CardDescription>Manage your password and security preferences.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input id="currentPassword" type="password" placeholder="••••••••" className="rounded-xl h-11 bg-muted/30 border-none" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <Input id="newPassword" type="password" placeholder="••••••••" className="rounded-xl h-11 bg-muted/30 border-none" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                    <Input id="confirmPassword" type="password" placeholder="••••••••" className="rounded-xl h-11 bg-muted/30 border-none" />
-                  </div>
-                </div>
-                <div className="flex justify-end pt-4">
-                  <Button 
-                    onClick={() => {
-                      const newPass = (document.getElementById("newPassword") as HTMLInputElement).value;
-                      const confirmPass = (document.getElementById("confirmPassword") as HTMLInputElement).value;
-                      if (newPass && newPass !== confirmPass) {
-                        toast.error("Passwords do not match!");
-                        return;
-                      }
-                      toast.success("Password updated successfully!");
-                      (document.getElementById("currentPassword") as HTMLInputElement).value = "";
-                      (document.getElementById("newPassword") as HTMLInputElement).value = "";
-                      (document.getElementById("confirmPassword") as HTMLInputElement).value = "";
-                    }} 
-                    className="rounded-xl px-8 shadow-lg shadow-primary/20"
-                  >
-                    Update Password
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          {activeTab === "Security" && (
+            <div className="bg-white border border-border rounded-xl p-5 space-y-4">
+              <h3 className="font-semibold text-foreground">Change Password</h3>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">Current Password</label>
+                <input id="currentPassword" type="password" placeholder="••••••••" className={inputCls} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">New Password</label>
+                <input id="newPassword" type="password" placeholder="••••••••" className={inputCls} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">Confirm New Password</label>
+                <input id="confirmPassword" type="password" placeholder="••••••••" className={inputCls} />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    const np = (document.getElementById("newPassword") as HTMLInputElement)?.value;
+                    const cp = (document.getElementById("confirmPassword") as HTMLInputElement)?.value;
+                    if (np && np !== cp) { toast.error("Passwords do not match!"); return; }
+                    toast.success("Password updated successfully!");
+                    ["currentPassword","newPassword","confirmPassword"].forEach(id => {
+                      const el = document.getElementById(id) as HTMLInputElement;
+                      if (el) el.value = "";
+                    });
+                  }}
+                  className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity">
+                  Update Password
+                </button>
+              </div>
+            </div>
           )}
 
-          {["Notifications", "Payment Methods", "Privacy & Data"].includes(activeTab) && (
-            <Card className="border-border/50 shadow-sm animate-in fade-in slide-in-from-bottom-2">
-              <CardHeader>
-                <CardTitle className="text-lg">{activeTab}</CardTitle>
-                <CardDescription>This section is under construction.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="py-12 flex flex-col items-center justify-center text-center opacity-50">
-                  <ShieldCheck className="size-12 mb-4 text-muted-foreground" />
-                  <p className="text-sm font-medium">Coming soon in a future update.</p>
-                </div>
-              </CardContent>
-            </Card>
+          {["Notifications","Payments"].includes(activeTab) && (
+            <div className="bg-white border border-border rounded-xl p-5">
+              <h3 className="font-semibold text-foreground mb-2">{activeTab}</h3>
+              <div className="py-8 flex flex-col items-center justify-center text-center opacity-50">
+                <ShieldCheck className="size-10 mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">This section is coming in a future update.</p>
+              </div>
+            </div>
           )}
         </div>
       </div>

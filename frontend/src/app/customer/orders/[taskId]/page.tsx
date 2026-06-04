@@ -1,929 +1,537 @@
 "use client";
 
-import React from "react";
-import { 
-  ArrowLeft, 
-  Clock, 
-  User, 
-  FileText, 
-  Download, 
-  MessageSquare, 
-  RotateCcw,
-  CheckCircle2,
-  DollarSign,
-  AlertTriangle,
-  Gavel,
-  Check,
-  Info,
-  Upload,
-  X,
-  Paperclip,
-  Activity,
-  Star
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft, Clock, FileText, Download, MessageSquare,
+  CheckCircle2, RotateCcw, Gavel, Star, Upload, X, Paperclip, Activity,
+} from "lucide-react";
 import { taskService } from "@/services/task.service";
 import { chatService } from "@/services/chat.service";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 import { getFileUrl } from "@/lib/api-client";
+import { useParams, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { toast } from "react-toastify";
 
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    OPEN:               "status-open",  PENDING_PAYMENT: "status-open",
+    PENDING_ASSIGNMENT: "status-open",  ASSIGNED: "status-in-progress",
+    IN_PROGRESS:        "status-in-progress", SUBMITTED: "status-submitted",
+    REVISION_REQUESTED: "status-revision", COMPLETED: "status-completed",
+    CANCELLED:          "status-cancelled",
+  };
+  const labels: Record<string, string> = {
+    OPEN:"Bidding", PENDING_PAYMENT:"Payment Due", PENDING_ASSIGNMENT:"Assigning",
+    ASSIGNED:"In Progress", IN_PROGRESS:"In Progress", SUBMITTED:"Submitted",
+    REVISION_REQUESTED:"Revision Requested", COMPLETED:"Completed", CANCELLED:"Cancelled",
+  };
+  return <span className={map[status] || "status-cancelled"}>{labels[status] || status.replace(/_/g," ")}</span>;
+}
+
 export default function OrderDetails() {
-  const params = useParams();
-  const router = useRouter();
+  const params      = useParams();
+  const router      = useRouter();
   const taskIdParam = params.taskId as string;
 
-  const [task, setTask] = React.useState<any>(null);
-  const [bids, setBids] = React.useState<any[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isAccepting, setIsAccepting] = React.useState<number | null>(null);
-  const [isApproving, setIsApproving] = React.useState(false);
-  const [isInitializingChat, setIsInitializingChat] = React.useState<number | null>(null);
+  const [task, setTask]           = useState<any>(null);
+  const [bids, setBids]           = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [accepting, setAccepting] = useState<number | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [chatting, setChatting]   = useState<number | null>(null);
 
-  const handleChatWithWriter = async (writerId: number) => {
-    if (!taskIdParam) return;
-    setIsInitializingChat(writerId);
-    try {
-      const taskId = parseInt(taskIdParam);
-      const session = await chatService.initializeChat(taskId, writerId);
-      router.push(`/customer/messages?session=${session.id}`);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to open chat with writer");
-    } finally {
-      setIsInitializingChat(null);
-    }
+  // Revision modal
+  const [showRevision, setShowRevision]   = useState(false);
+  const [revNote, setRevNote]             = useState("");
+  const [revFiles, setRevFiles]           = useState<File[]>([]);
+  const [submittingRev, setSubmittingRev] = useState(false);
+  const revFileRef                        = useRef<HTMLInputElement>(null);
+
+  // Review
+  const [rating, setRating]       = useState(0);
+  const [hoverRating, setHover]   = useState(0);
+  const [feedback, setFeedback]   = useState("");
+  const [submittingReview, setSR] = useState(false);
+
+  // File upload for project docs
+  const fileUploadRef = useRef<HTMLInputElement>(null);
+
+  const loadData = async (id: number) => {
+    const [tRes, bRes] = await Promise.all([taskService.getTaskDetails(id), taskService.getTaskBids(id)]);
+    setTask(tRes.results);
+    setBids(bRes.results || []);
   };
 
-  // Revision modal state
-  const [showRevisionModal, setShowRevisionModal] = React.useState(false);
-  const [revisionNote, setRevisionNote] = React.useState("");
-  const [revisionFiles, setRevisionFiles] = React.useState<File[]>([]);
-  const [isSubmittingRevision, setIsSubmittingRevision] = React.useState(false);
-  const revisionFileInputRef = React.useRef<HTMLInputElement>(null);
-
-  React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (!taskIdParam) return;
-        const taskId = parseInt(taskIdParam);
-        const [taskRes, bidsRes] = await Promise.all([
-          taskService.getTaskDetails(taskId),
-          taskService.getTaskBids(taskId)
-        ]);
-        setTask(taskRes.results);
-        setBids(bidsRes.results || []);
-      } catch (error) {
-        console.error("Failed to fetch order details:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (taskIdParam) fetchData();
+  useEffect(() => {
+    if (!taskIdParam) return;
+    const id = parseInt(taskIdParam);
+    loadData(id).catch(console.error).finally(() => setLoading(false));
   }, [taskIdParam]);
 
-  const handleRequestRevision = async () => {
-    if (!revisionNote.trim()) {
-      toast.warning("Please provide a revision message.");
-      return;
-    }
-    if (!taskIdParam) return;
-    setIsSubmittingRevision(true);
+  const handleChat = async (writerId: number) => {
+    setChatting(writerId);
     try {
-      const taskId = parseInt(taskIdParam);
-      await taskService.requestRevision(taskId, {
-        revision_note: revisionNote,
-        files: revisionFiles,
-      });
-      // Refetch task data
-      const taskRes = await taskService.getTaskDetails(taskId);
-      setTask(taskRes.results);
-      setShowRevisionModal(false);
-      setRevisionNote("");
-      setRevisionFiles([]);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit revision request");
-    } finally {
-      setIsSubmittingRevision(false);
-    }
+      const s = await chatService.initializeChat(parseInt(taskIdParam), writerId);
+      router.push(`/customer/messages?session=${s.id}`);
+    } catch (err: any) { toast.error(err.message || "Failed to open chat."); }
+    finally { setChatting(null); }
   };
 
   const handleAcceptBid = async (bidId: number) => {
-    if (!taskIdParam) return;
-    setIsAccepting(bidId);
+    setAccepting(bidId);
     try {
-      const taskId = parseInt(taskIdParam);
-      await taskService.acceptBid(taskId, bidId);
-      router.refresh();
-      // Refetch data
-      const taskRes = await taskService.getTaskDetails(taskId);
-      setTask(taskRes.results);
-      setBids([]); // Bids are closed
-    } catch (error: any) {
-      toast.error(error.message || "Failed to accept bid");
-    } finally {
-      setIsAccepting(null);
-    }
+      await taskService.acceptBid(parseInt(taskIdParam), bidId);
+      await loadData(parseInt(taskIdParam));
+    } catch (err: any) { toast.error(err.message || "Failed to accept bid."); }
+    finally { setAccepting(null); }
   };
 
-  const handleApproveTask = async () => {
-    if (!taskIdParam) return;
-    if (!confirm("Are you sure you want to approve the work and release the payment? This action is irreversible.")) {
-      return;
-    }
-    setIsApproving(true);
+  const handleApprove = async () => {
+    if (!confirm("Approve and release payment? This is irreversible.")) return;
+    setApproving(true);
     try {
-      const taskId = parseInt(taskIdParam);
-      await taskService.approveTask(taskId);
-      toast.success("Project approved and payment released successfully!");
-      // Refetch task data
-      const taskRes = await taskService.getTaskDetails(taskId);
-      setTask(taskRes.results);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to approve task");
-    } finally {
-      setIsApproving(false);
-    }
+      await taskService.approveTask(parseInt(taskIdParam));
+      toast.success("Project approved and payment released!");
+      await loadData(parseInt(taskIdParam));
+    } catch (err: any) { toast.error(err.message || "Failed to approve."); }
+    finally { setApproving(false); }
   };
 
-  // Review states
-  const [reviewRating, setReviewRating] = React.useState(0);
-  const [hoverRating, setHoverRating] = React.useState(0);
-  const [reviewFeedback, setReviewFeedback] = React.useState("");
-  const [isSubmittingReview, setIsSubmittingReview] = React.useState(false);
-
-  const handleSubmitReview = async () => {
-    if (reviewRating === 0) {
-      toast.warning("Please select a star rating.");
-      return;
-    }
-    if (!taskIdParam) return;
-    setIsSubmittingReview(true);
+  const handleRequestRevision = async () => {
+    if (!revNote.trim()) { toast.warning("Please provide a revision message."); return; }
+    setSubmittingRev(true);
     try {
-      const taskId = parseInt(taskIdParam);
-      await taskService.submitReview(taskId, reviewRating, reviewFeedback);
-      toast.success("Thank you for your feedback! Review submitted successfully.");
-      // Refetch task data
-      const taskRes = await taskService.getTaskDetails(taskId);
-      setTask(taskRes.results);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit review");
-    } finally {
-      setIsSubmittingReview(false);
-    }
+      await taskService.requestRevision(parseInt(taskIdParam), { revision_note: revNote, files: revFiles });
+      await loadData(parseInt(taskIdParam));
+      setShowRevision(false); setRevNote(""); setRevFiles([]);
+    } catch (err: any) { toast.error(err.message || "Failed to submit revision."); }
+    finally { setSubmittingRev(false); }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <div className="size-8 border-[3px] border-[#7C5CFC] border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-[#9490a8] uppercase tracking-widest">Loading project details...</p>
-      </div>
-    );
-  }
+  const handleReview = async () => {
+    if (rating === 0) { toast.warning("Please select a star rating."); return; }
+    setSR(true);
+    try {
+      await taskService.submitReview(parseInt(taskIdParam), rating, feedback);
+      toast.success("Review submitted successfully!");
+      await loadData(parseInt(taskIdParam));
+    } catch (err: any) { toast.error(err.message || "Failed to submit review."); }
+    finally { setSR(false); }
+  };
 
-  if (!task) return <div className="text-center py-20">Task not found</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[50vh] gap-3">
+      <div className="size-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <span className="text-sm text-muted-foreground">Loading project…</span>
+    </div>
+  );
 
-  const isBiddingPhase = task.task_status === "OPEN";
+  if (!task) return <div className="text-center py-16 text-muted-foreground">Task not found.</div>;
+
+  const isBidding = task.task_status === "OPEN";
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex items-center gap-4">
+    <div className="space-y-5 pb-10">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2">
         <Link href="/customer/orders">
-          <Button variant="ghost" size="icon" className="rounded-xl border border-border/50">
-            <ArrowLeft className="size-4" />
-          </Button>
+          <button className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="size-4" /> Orders
+          </button>
         </Link>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1a1033]">{task.title}</h1>
-          <div className="flex items-center gap-3 mt-1">
-            <Badge variant="outline" className={cn(
-              "uppercase text-[10px] font-bold border-none px-2.5 py-0.5 rounded-full",
-              isBiddingPhase ? "bg-violet-100 text-violet-700" : "bg-emerald-100 text-emerald-700"
-            )}>
-              {task.task_status.replace('_', ' ')}
-            </Badge>
-            <span className="text-xs text-[#9490a8]">Project ID: {task.id.toString().padStart(6, '0')}</span>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-sm font-medium text-foreground truncate">{task.title}</span>
+      </div>
+
+      {/* Header */}
+      <div className="bg-white border border-border rounded-xl p-5">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <StatusBadge status={task.task_status} />
+              <span className="text-xs text-muted-foreground">#{task.id.toString().padStart(4,"0")}</span>
+            </div>
+            <h1 className="text-xl font-semibold text-foreground">{task.title}</h1>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="text-xs text-muted-foreground">
+              {isBidding ? "Budget (awaiting bids)" : "Agreed Budget"}
+            </p>
+            <p className="text-lg font-semibold text-foreground">
+              {isBidding ? "Awaiting Bids" : `$${parseFloat(task.budget).toFixed(2)}`}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Left Column: Details & Content */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Order Description & Documents */}
-          <div className="space-y-6">
-            <Card className="border-border/50 shadow-sm overflow-hidden rounded-2xl bg-white/80 backdrop-blur-sm">
-              <CardHeader className="bg-muted/10 border-b border-border/50">
-                <CardTitle className="text-lg text-[#1a1033]">Project Description</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <p className="text-[#1a1033]/80 leading-relaxed text-sm whitespace-pre-wrap">
-                  {task.description}
+      <div className="grid lg:grid-cols-3 gap-5">
+        {/* Left */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Description */}
+          <div className="bg-white border border-border rounded-xl p-5">
+            <h2 className="font-semibold text-foreground mb-1">Project Description</h2>
+            <div className="grid grid-cols-3 gap-4 mb-4 mt-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Category</p>
+                <p className="font-medium">{task.academic_category?.name || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Deadline</p>
+                <p className="font-medium flex items-center gap-1">
+                  <Clock className="size-3.5 text-orange-500" />
+                  {format(new Date(task.deadline), "dd MMM yyyy")}
                 </p>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-6 border-t border-border/50">
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest">Category</p>
-                    <p className="text-sm font-bold text-[#1a1033]">{task.academic_category?.name || "N/A"}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest">Deadline</p>
-                    <p className="text-sm font-bold text-[#1a1033] flex items-center gap-2">
-                      <Clock className="size-3.5 text-orange-500" /> 
-                      {format(new Date(task.deadline), "dd MMM yyyy")}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest">Budget</p>
-                    <p className="text-sm font-bold text-[#7C5CFC]">
-                      {isBiddingPhase ? "Awaiting Bids" : `$${parseFloat(task.budget).toFixed(2)}`}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Project Documents Section */}
-            <Card className="border-border/50 shadow-sm overflow-hidden rounded-2xl bg-white">
-              <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b border-border/50">
-                <div>
-                  <CardTitle className="text-sm font-bold uppercase tracking-widest text-[#1a1033]">Project Documents</CardTitle>
-                  <CardDescription className="text-[10px]">Reference materials and guidelines</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    id="file-upload"
-                    multiple
-                    className="hidden"
-                    onChange={async (e) => {
-                      const files = e.target.files;
-                      if (!files || files.length === 0 || !taskIdParam) return;
-                      
-                      setIsLoading(true);
-                      try {
-                        const taskId = parseInt(taskIdParam);
-                        const fileList = Array.from(files);
-                        await taskService.addFilesToTask(taskId, fileList);
-                        
-                        // Refetch data
-                        const taskRes = await taskService.getTaskDetails(taskId);
-                        setTask(taskRes.results);
-                        toast.success("Files uploaded successfully!");
-                      } catch (err: any) {
-                        toast.error(err.message || "Failed to upload files");
-                      } finally {
-                        setIsLoading(false);
-                      }
-                    }}
-                  />
-                  <Button 
-                    onClick={() => document.getElementById('file-upload')?.click()}
-                    size="sm" 
-                    className="h-9 px-4 rounded-xl bg-[#7C5CFC] hover:bg-[#6d4ef0] text-white font-bold text-xs gap-2"
-                  >
-                    <Download className="size-3.5 rotate-180" /> Add Files
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border/50">
-                  {task.files && task.files.length > 0 ? (
-                    task.files.map((file: any) => (
-                      <div key={file.id} className="p-4 flex items-center justify-between hover:bg-violet-50/30 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="size-9 rounded-xl bg-violet-100 flex items-center justify-center text-[#7C5CFC]">
-                            <FileText className="size-4.5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-[#1a1033]">{file.file_name}</p>
-                            <p className="text-[10px] text-[#9490a8] font-bold uppercase tracking-tighter">
-                              {(file.file_size / 1024).toFixed(1)} KB • {file.file_type.replace('_', ' ')}
-                            </p>
-                          </div>
-                        </div>
-                        <a href={getFileUrl(file.file_url)} target="_blank" rel="noopener noreferrer">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-[#9490a8] hover:text-[#7C5CFC]">
-                            <Download className="size-4" />
-                          </Button>
-                        </a>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-10 text-center space-y-2">
-                      <div className="size-12 rounded-full bg-muted/30 flex items-center justify-center mx-auto opacity-40">
-                        <FileText className="size-6" />
-                      </div>
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">No documents attached</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Budget</p>
+                <p className="font-medium text-primary">{isBidding ? "Open" : `$${parseFloat(task.budget).toFixed(2)}`}</p>
+              </div>
+            </div>
+            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{task.description}</p>
           </div>
 
-          {/* Bids Section (Only if in bidding phase) */}
-          {isBiddingPhase && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-[#1a1033] flex items-center gap-2">
-                   <Gavel className="size-5 text-[#7C5CFC]" /> Writer Bids ({bids.length})
+          {/* Project files */}
+          <div className="bg-white border border-border rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div>
+                <h2 className="font-semibold text-foreground">Project Documents</h2>
+                <p className="text-xs text-muted-foreground">Reference materials</p>
+              </div>
+              <div>
+                <input ref={fileUploadRef} type="file" multiple className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (!files.length) return;
+                    setLoading(true);
+                    try {
+                      await taskService.addFilesToTask(parseInt(taskIdParam), files);
+                      await loadData(parseInt(taskIdParam));
+                      toast.success("Files uploaded successfully!");
+                    } catch (err: any) { toast.error(err.message || "Failed to upload files."); }
+                    finally { setLoading(false); }
+                  }}
+                />
+                <button onClick={() => fileUploadRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:opacity-90 transition-opacity">
+                  <Upload className="size-3.5" /> Add Files
+                </button>
+              </div>
+            </div>
+            <div>
+              {!task.files?.length ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">No documents attached yet.</div>
+              ) : (
+                <div className="divide-y divide-border/50">
+                  {task.files.map((f: any) => (
+                    <div key={f.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+                      <div className="size-8 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center flex-shrink-0">
+                        <FileText className="size-4 text-violet-600" strokeWidth={1.75} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{f.file_name}</p>
+                        <p className="text-xs text-muted-foreground">{(f.file_size / 1024).toFixed(1)} KB</p>
+                      </div>
+                      <a href={getFileUrl(f.file_url)} target="_blank" rel="noopener noreferrer">
+                        <button className="size-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors">
+                          <Download className="size-3.5" />
+                        </button>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bids */}
+          {isBidding && (
+            <div className="bg-white border border-border rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-border">
+                <h2 className="font-semibold text-foreground flex items-center gap-2">
+                  <Gavel className="size-4 text-primary" /> Writer Bids ({bids.length})
                 </h2>
               </div>
-              
               {bids.length === 0 ? (
-                <div className="bg-white/50 border-2 border-dashed border-border/50 rounded-2xl p-12 text-center space-y-3">
-                  <div className="size-12 rounded-full bg-violet-100 flex items-center justify-center mx-auto text-[#7C5CFC]">
-                    <Clock className="size-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-[#1a1033]">Finding the best writers...</h3>
-                    <p className="text-xs text-[#9490a8]">Writers in your field are reviewing your task. Bids will appear here shortly.</p>
-                  </div>
+                <div className="py-10 text-center">
+                  <Clock className="size-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Waiting for bids…</p>
                 </div>
               ) : (
-                <div className="grid gap-4">
+                <div className="divide-y divide-border/50">
                   {bids.map((bid) => (
-                    <Card key={bid.id} className="border-border/50 shadow-sm hover:border-[#7C5CFC]/40 transition-all bg-white group overflow-hidden rounded-2xl">
-                      <div className="p-6 flex flex-col sm:flex-row gap-6">
-                        <div className="flex-1 space-y-4">
-                          <Link href={`/profile/${bid.writer_id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity group">
-                            <div className="size-12 rounded-xl bg-violet-100 flex items-center justify-center text-[#7C5CFC] font-bold text-lg">
-                              {bid.writer?.first_name?.[0] || "W"}
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-[#1a1033] group-hover:underline">
-                                {bid.writer?.first_name} {bid.writer?.last_name?.charAt(0)}.
-                              </h3>
-                              <div className="flex items-center gap-2 text-[11px] text-[#9490a8]">
-                                <span className="flex items-center gap-0.5 text-amber-500 font-bold">★ 4.9</span>
-                                <span>• Academic Expert</span>
-                                <span>• {format(new Date(bid.created_at), "h:mm a")}</span>
-                              </div>
-                            </div>
-                          </Link>
-                          <p className="text-sm text-[#6b6880] leading-relaxed italic">
-                            "{bid.message || "I am highly interested in this project and have relevant experience in this academic field."}"
-                          </p>
-                        </div>
-                        <div className="sm:w-48 flex flex-col justify-center items-center sm:items-end gap-3 sm:pl-6 sm:border-l border-border/50">
-                          <div className="text-center sm:text-right">
-                            <p className="text-[10px] uppercase font-bold text-[#9490a8] tracking-widest mb-1">Proposed Fee</p>
-                            <p className="text-2xl font-black text-[#1a1033]">${parseFloat(bid.bid_amount).toFixed(2)}</p>
+                    <div key={bid.id} className="px-5 py-4">
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <Link href={`/profile/${bid.writer_id}`} className="flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity">
+                          <div className="size-10 rounded-full bg-violet-100 text-violet-700 font-semibold text-sm flex items-center justify-center flex-shrink-0">
+                            {bid.writer?.first_name?.[0] || "W"}
                           </div>
-                          <div className="flex flex-col sm:flex-row w-full gap-2">
-                            <Button 
-                              variant="outline"
-                              onClick={() => handleChatWithWriter(bid.writer_id)}
-                              disabled={isInitializingChat !== null}
-                              className="flex-1 border-border/50 hover:bg-violet-50 hover:text-[#7C5CFC] rounded-xl h-10 font-bold gap-2 text-xs transition-colors"
-                            >
-                              {isInitializingChat === bid.writer_id ? (
-                                <Clock className="size-3.5 animate-spin" />
-                              ) : (
-                                <MessageSquare className="size-3.5" />
-                              )}
-                              Chat
-                            </Button>
-                            <Button 
-                              onClick={() => handleAcceptBid(bid.id)}
-                              disabled={isAccepting !== null}
-                              className="flex-[2] bg-[#7C5CFC] hover:bg-[#6d4ef0] text-white rounded-xl h-10 shadow-lg shadow-violet-400/20 font-bold gap-2 text-xs"
-                            >
-                              {isAccepting === bid.id ? (
-                                <Clock className="size-3.5 animate-spin" />
-                              ) : (
-                                <Check className="size-3.5" />
-                              )}
-                              Accept Bid
-                            </Button>
+                          <div>
+                            <p className="font-medium text-foreground">{bid.writer?.first_name} {bid.writer?.last_name?.charAt(0)}.</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(bid.created_at), "h:mm a")}</p>
                           </div>
+                        </Link>
+                        {bid.message && (
+                          <p className="text-sm text-muted-foreground italic flex-1 line-clamp-2">"{bid.message}"</p>
+                        )}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">Proposed fee</p>
+                            <p className="font-semibold text-foreground">${parseFloat(bid.bid_amount).toFixed(2)}</p>
+                          </div>
+                          <button onClick={() => handleChat(bid.writer_id)} disabled={chatting !== null}
+                            className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50">
+                            {chatting === bid.writer_id ? <Activity className="size-3.5 animate-spin" /> : <MessageSquare className="size-3.5" />}
+                          </button>
+                          <button onClick={() => handleAcceptBid(bid.id)} disabled={accepting !== null}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+                            {accepting === bid.id ? <Activity className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+                            Accept
+                          </button>
                         </div>
                       </div>
-                    </Card>
+                    </div>
                   ))}
                 </div>
               )}
             </div>
           )}
 
-          {/* Submissions Section (If assigned/completed) */}
-          {!isBiddingPhase && task.submissions?.length > 0 && (
-            <div id="expert-submissions" className="space-y-4">
-              <h2 className="text-xl font-bold flex items-center gap-2 text-[#1a1033]">
-                 <CheckCircle2 className="size-5 text-emerald-500" /> Expert Deliveries ({task.submissions.length})
-              </h2>
-              <div className="space-y-4">
+          {/* Submissions */}
+          {!isBidding && task.submissions?.length > 0 && (
+            <div className="bg-white border border-border rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-border">
+                <h2 className="font-semibold text-foreground flex items-center gap-2">
+                  <CheckCircle2 className="size-4 text-green-600" /> Expert Deliveries ({task.submissions.length})
+                </h2>
+              </div>
+              <div className="divide-y divide-border/50">
                 {[...task.submissions].reverse().map((sub: any) => (
-                  <Card key={sub.id} className="border-emerald-500/10 shadow-sm bg-white rounded-2xl overflow-hidden">
-                    <div className="p-6 border-b border-emerald-500/5 bg-emerald-500/[0.02] flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                          {sub.submission_status.replace("_", " ")}
-                        </span>
-                        <p className="text-[10px] text-[#9490a8] font-bold mt-1.5 uppercase tracking-wider">
-                          Delivered on {format(new Date(sub.submitted_at), "MMM dd, yyyy · h:mm a")}
-                        </p>
-                      </div>
+                  <div key={sub.id} className="px-5 py-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="status-submitted">{sub.submission_status.replace(/_/g," ")}</span>
+                      <p className="text-xs text-muted-foreground">{format(new Date(sub.submitted_at), "MMM dd, yyyy · h:mm a")}</p>
                     </div>
-                    <div className="p-6 space-y-4">
-                      {sub.submission_note && (
-                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-sm text-[#1a1033] leading-relaxed italic">
-                          "{sub.submission_note}"
-                        </div>
-                      )}
-
-                      {sub.files && sub.files.length > 0 ? (
-                        <div className="space-y-2">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-[#9490a8] flex items-center gap-1.5">
-                            <Paperclip className="size-3.5 text-emerald-500" /> Delivered Files ({sub.files.length})
-                          </p>
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            {sub.files.map((file: any) => (
-                              <div
-                                key={file.id}
-                                className="group flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/70 hover:border-emerald-500/30 transition-all duration-300"
-                              >
-                                <div className="flex items-center gap-3 truncate">
-                                  <div className="size-9 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-emerald-600 shrink-0">
-                                    <FileText className="size-4.5" />
-                                  </div>
-                                  <div className="flex flex-col truncate">
-                                    <span className="text-[12px] font-bold text-[#1a1033] truncate">{file.file_name}</span>
-                                    <span className="text-[9px] text-[#9490a8] font-bold uppercase">
-                                      {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : "Unknown size"}
-                                    </span>
-                                  </div>
-                                </div>
-                                <a href={getFileUrl(file.file_url)} target="_blank" rel="noopener noreferrer">
-                                  <Button variant="outline" size="sm" className="size-8 p-0 rounded-lg border-emerald-500/20 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center">
-                                    <Download className="size-4" />
-                                  </Button>
-                                </a>
-                              </div>
-                            ))}
+                    {sub.submission_note && (
+                      <p className="text-sm text-foreground/80 italic mb-3">"{sub.submission_note}"</p>
+                    )}
+                    {sub.files?.length > 0 && (
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        {sub.files.map((f: any) => (
+                          <div key={f.id} className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-muted/20">
+                            <FileText className="size-3.5 text-muted-foreground flex-shrink-0" />
+                            <span className="text-xs text-foreground truncate flex-1">{f.file_name}</span>
+                            <a href={getFileUrl(f.file_url)} target="_blank" rel="noopener noreferrer">
+                              <Download className="size-3.5 text-muted-foreground hover:text-primary transition-colors" />
+                            </a>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="text-center p-6 border border-dashed border-slate-200 rounded-xl">
-                          <p className="text-xs font-bold text-[#9490a8] uppercase">No physical files attached to this submission</p>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
-              
-              <div className="flex flex-wrap gap-4 pt-4">
-                 <Button 
-                   onClick={handleApproveTask}
-                   disabled={isApproving || task.task_status === "COMPLETED"}
-                   className="rounded-xl flex-1 h-12 shadow-lg shadow-[#7C5CFC]/20 bg-[#7C5CFC] hover:bg-[#6d4ef0] gap-2 font-bold flex items-center justify-center text-white"
-                 >
-                   {isApproving ? (
-                     <Activity className="size-4 animate-spin" />
-                   ) : task.task_status === "COMPLETED" ? (
-                     "Approved & Completed"
-                   ) : (
-                     "Approve & Release Payment"
-                   )}
-                 </Button>
-                 <Button
-                   variant="outline"
-                   disabled={task.task_status === "COMPLETED"}
-                   onClick={() => setShowRevisionModal(true)}
-                   className="rounded-xl flex-1 h-12 border-orange-500/20 text-orange-600 hover:bg-orange-500/10 gap-2 font-bold"
-                 >
+              {task.task_status !== "COMPLETED" && (
+                <div className="px-5 py-4 border-t border-border flex gap-3">
+                  <button onClick={handleApprove} disabled={approving}
+                    className="flex-1 flex items-center justify-center gap-2 h-10 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60">
+                    {approving ? <Activity className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+                    Approve & Release Payment
+                  </button>
+                  <button onClick={() => setShowRevision(true)}
+                    className="flex items-center gap-2 px-4 h-10 rounded-lg border border-orange-200 text-orange-600 text-sm font-medium hover:bg-orange-50 transition-colors">
                     <RotateCcw className="size-4" /> Request Revision
-                 </Button>
-              </div>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
-          {/* ── Revision History Section ── */}
-          {!isBiddingPhase && task.revisions?.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold flex items-center gap-2 text-[#1a1033]">
-                <RotateCcw className="size-5 text-orange-500" /> Revision History
-                <span className="ml-1 text-sm font-semibold text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full">
-                  {task.revisions.length}
-                </span>
-              </h2>
-
-              <div className="space-y-3">
-                {[...task.revisions].reverse().map((rev: any, idx: number) => (
-                  <Card key={rev.id} className="border-orange-200/60 bg-orange-50/30 rounded-2xl overflow-hidden shadow-sm">
-                    {/* Revision header */}
-                    <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
-                      <div className="flex items-start gap-3">
-                        {/* Step number bubble */}
-                        <div className="size-8 rounded-full bg-orange-100 border border-orange-200 flex items-center justify-center text-orange-600 font-black text-xs shrink-0 mt-0.5">
-                          {task.revisions.length - idx}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold text-[#1a1033] leading-snug">
-                            {rev.revision_note}
-                          </p>
-                          <p className="text-[11px] text-[#9490a8]">
-                            Requested on {format(new Date(rev.requested_at), "dd MMM yyyy · h:mm a")}
-                          </p>
-                        </div>
-                      </div>
-                      {/* Status badge */}
-                      <span className={cn(
-                        "shrink-0 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border",
-                        rev.revision_status === "REQUESTED"
-                          ? "bg-orange-100 text-orange-600 border-orange-200"
-                          : rev.revision_status === "IN_PROGRESS"
-                          ? "bg-blue-100 text-blue-600 border-blue-200"
-                          : rev.revision_status === "COMPLETED"
-                          ? "bg-emerald-100 text-emerald-600 border-emerald-200"
-                          : "bg-red-100 text-red-600 border-red-200"
+          {/* Revision history */}
+          {!isBidding && task.revisions?.length > 0 && (
+            <div className="bg-white border border-border rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-border">
+                <h2 className="font-semibold text-foreground flex items-center gap-2">
+                  <RotateCcw className="size-4 text-orange-500" /> Revision History
+                </h2>
+              </div>
+              <div className="divide-y divide-border/50">
+                {[...task.revisions].reverse().map((rev: any) => (
+                  <div key={rev.id} className="px-5 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm text-foreground">{rev.revision_note}</p>
+                      <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0",
+                        rev.revision_status === "COMPLETED" ? "bg-green-50 text-green-700 border border-green-200" : "bg-orange-50 text-orange-700 border border-orange-200"
                       )}>
-                        {rev.revision_status.replace("_", " ")}
+                        {rev.revision_status.replace(/_/g," ")}
                       </span>
                     </div>
-
-                    {/* Attached files */}
-                    {rev.files && rev.files.length > 0 && (
-                      <div className="px-5 pb-4 pt-1">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#9490a8] mb-2 flex items-center gap-1.5">
-                          <Paperclip className="size-3" /> Attached Files ({rev.files.length})
-                        </p>
-                        <div className="grid gap-2">
-                          {rev.files.map((file: any) => (
-                            <div
-                              key={file.id}
-                              className="flex items-center justify-between gap-3 bg-white border border-orange-100 rounded-xl px-3 py-2"
-                            >
-                              <div className="flex items-center gap-2.5 overflow-hidden">
-                                <div className="size-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shrink-0">
-                                  <FileText className="size-3.5" />
-                                </div>
-                                <div className="overflow-hidden">
-                                  <p className="text-xs font-semibold text-[#1a1033] truncate">{file.file_name}</p>
-                                  <p className="text-[10px] text-[#9490a8]">
-                                    {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : "Unknown size"}
-                                  </p>
-                                </div>
-                              </div>
-                              <a href={getFileUrl(file.file_url)} target="_blank" rel="noopener noreferrer">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 rounded-lg text-[#9490a8] hover:text-orange-500 hover:bg-orange-50"
-                                >
-                                  <Download className="size-3.5" />
-                                </Button>
-                              </a>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* No files indicator */}
-                    {(!rev.files || rev.files.length === 0) && (
-                      <div className="px-5 pb-4">
-                        <p className="text-[11px] text-[#9490a8] italic flex items-center gap-1.5">
-                          <Paperclip className="size-3 opacity-50" /> No files attached
-                        </p>
-                      </div>
-                    )}
-                  </Card>
+                    <p className="text-xs text-muted-foreground mt-1">{format(new Date(rev.requested_at), "MMM dd, yyyy · h:mm a")}</p>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* ── Writer Feedback & Review Section ── */}
+          {/* Review section */}
           {task.task_status === "COMPLETED" && (
-            <div className="space-y-4 pt-6 border-t border-slate-100">
-              <h2 className="text-xl font-bold flex items-center gap-2 text-[#1a1033]">
-                <Star className="size-5 text-amber-500 fill-amber-500/20" /> Expert Performance Review
+            <div className="bg-white border border-border rounded-xl p-5">
+              <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Star className="size-4 text-amber-500" /> Expert Performance Review
               </h2>
-
               {task.review ? (
-                /* Static submitted review display */
-                <Card className="border-emerald-100 bg-emerald-50/10 rounded-2xl overflow-hidden shadow-sm p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star
-                          key={s}
-                          className={cn(
-                            "size-5 transition-all duration-300",
-                            s <= task.review.rating
-                              ? "text-amber-500 fill-amber-500"
-                              : "text-slate-200 fill-transparent"
-                          )}
-                        />
-                      ))}
-                      <span className="ml-2 text-sm font-bold text-[#1a1033]">{task.review.rating}.0 / 5.0</span>
-                    </div>
-                    <span className="text-[11px] text-[#9490a8] font-semibold bg-white border border-slate-100 px-2.5 py-1 rounded-full shadow-xs">
-                      Submitted {format(new Date(task.review.created_at), "dd MMM yyyy")}
-                    </span>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-1">
+                    {[1,2,3,4,5].map(s => (
+                      <Star key={s} className={cn("size-5", s <= task.review.rating ? "text-amber-500 fill-amber-500" : "text-slate-200")} />
+                    ))}
+                    <span className="text-sm font-medium text-foreground ml-2">{task.review.rating}/5</span>
                   </div>
-                  
                   {task.review.feedback && (
-                    <div className="relative p-4 rounded-xl bg-white border border-slate-100/80 shadow-xs">
-                      <p className="text-sm italic text-[#1a1033]/80 leading-relaxed">
-                        "{task.review.feedback}"
-                      </p>
-                    </div>
+                    <p className="text-sm text-foreground/80 italic leading-relaxed">"{task.review.feedback}"</p>
                   )}
-                  
-                  <div className="flex items-center gap-2.5 text-xs text-[#9490a8] font-bold">
-                    <CheckCircle2 className="size-4 text-emerald-500" />
-                    <span>Your rating and feedback have been sent to {task.writer?.first_name || 'the writer'}</span>
-                  </div>
-                </Card>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <CheckCircle2 className="size-3.5 text-green-500" /> Submitted {format(new Date(task.review.created_at), "dd MMM yyyy")}
+                  </p>
+                </div>
               ) : (
-                /* Interactive review submission form */
-                <Card className="border-violet-100 bg-white rounded-2xl overflow-hidden shadow-md p-6 space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Rate {task.writer?.first_name || "the writer"}</p>
+                    <div className="flex items-center gap-1">
+                      {[1,2,3,4,5].map(s => (
+                        <button key={s} type="button"
+                          onMouseEnter={() => setHover(s)} onMouseLeave={() => setHover(0)}
+                          onClick={() => setRating(s)}
+                          className="focus:outline-none">
+                          <Star className={cn("size-7 transition-colors cursor-pointer",
+                            s <= (hoverRating || rating) ? "text-amber-500 fill-amber-400" : "text-slate-200"
+                          )} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="space-y-1.5">
-                    <h3 className="font-bold text-base text-[#1a1033]">
-                      How was your experience with {task.writer?.first_name || "the writer"}?
-                    </h3>
-                    <p className="text-xs text-[#9490a8] leading-relaxed">
-                      Your rating and feedback help maintain the highest standards of academic help on our platform.
-                    </p>
+                    <label className="block text-sm font-medium text-foreground">Feedback (optional)</label>
+                    <textarea value={feedback} onChange={e => setFeedback(e.target.value)} rows={3} maxLength={1000}
+                      placeholder="Share your experience…"
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors resize-none placeholder:text-muted-foreground/50" />
                   </div>
-
-                  {/* Star Rating Selector */}
-                  <div className="flex flex-col gap-2">
-                    <span className="text-xs uppercase font-bold text-[#9490a8] tracking-widest">Select Rating</span>
-                    <div className="flex items-center gap-2 pt-1">
-                      {[1, 2, 3, 4, 5].map((s) => {
-                        const isStarred = s <= (hoverRating || reviewRating);
-                        return (
-                          <button
-                            key={s}
-                            type="button"
-                            onMouseEnter={() => setHoverRating(s)}
-                            onMouseLeave={() => setHoverRating(0)}
-                            onClick={() => setReviewRating(s)}
-                            className="focus:outline-none transition-transform hover:scale-125 duration-200"
-                          >
-                            <Star
-                              className={cn(
-                                "size-8 transition-colors duration-200 cursor-pointer",
-                                isStarred
-                                  ? "text-amber-500 fill-amber-400 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]"
-                                  : "text-slate-200 fill-transparent"
-                              )}
-                            />
-                          </button>
-                        );
-                      })}
-                      {reviewRating > 0 && (
-                        <span className="ml-3 text-sm font-black text-amber-500 uppercase tracking-wider animate-pulse">
-                          {reviewRating === 5 ? "Excellent! 5/5" : 
-                           reviewRating === 4 ? "Great! 4/5" : 
-                           reviewRating === 3 ? "Good! 3/5" : 
-                           reviewRating === 2 ? "Fair 2/5" : "Poor 1/5"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Feedback Textarea */}
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs uppercase font-bold text-[#9490a8] tracking-widest">Share more details (Optional)</span>
-                      <span className="text-[10px] text-[#9490a8]">Maximum 1000 characters</span>
-                    </div>
-                    <textarea
-                      value={reviewFeedback}
-                      onChange={(e) => setReviewFeedback(e.target.value)}
-                      placeholder="Share your experience here... (e.g. communication speed, understanding of instructions, depth of analysis)"
-                      maxLength={1000}
-                      rows={4}
-                      className="w-full text-sm rounded-xl border border-slate-200 p-4 outline-none focus:border-[#7C5CFC]/80 focus:ring-1 focus:ring-[#7C5CFC]/20 transition-all placeholder:text-[#9490a8]/60"
-                    />
-                  </div>
-
-                  <Button
-                    onClick={handleSubmitReview}
-                    disabled={isSubmittingReview || reviewRating === 0}
-                    className="w-full rounded-xl h-12 shadow-lg shadow-[#7C5CFC]/20 bg-[#7C5CFC] hover:bg-[#6d4ef0] font-bold text-white flex items-center justify-center gap-2"
-                  >
-                    {isSubmittingReview ? (
-                      <Activity className="size-4 animate-spin" />
-                    ) : (
-                      "Submit Feedback"
-                    )}
-                  </Button>
-                </Card>
+                  <button onClick={handleReview} disabled={submittingReview || rating === 0}
+                    className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2">
+                    {submittingReview ? <Activity className="size-4 animate-spin" /> : null}
+                    Submit Review
+                  </button>
+                </div>
               )}
             </div>
           )}
         </div>
 
-        {/* Right Column: Writer & Stats */}
-        <div className="space-y-8">
-          {/* Expert Info */}
-          {!isBiddingPhase && (
-            <Card className="border-border/50 shadow-sm rounded-2xl bg-white/80 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-lg text-[#1a1033]">Assigned Expert</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {task.writer ? (
-                  <Link href={`/profile/${task.writer.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity group">
-                    <div className="h-14 w-14 rounded-2xl bg-violet-100 flex items-center justify-center text-xl font-bold text-[#7C5CFC] border border-[#7C5CFC]/20 uppercase overflow-hidden">
+        {/* Right sidebar */}
+        <div className="space-y-4">
+          {/* Assigned writer */}
+          {!isBidding && (
+            <div className="bg-white border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Assigned Expert</h3>
+              {task.writer ? (
+                <>
+                  <Link href={`/profile/${task.writer.id}`} className="flex items-center gap-3 mb-4 hover:opacity-80 transition-opacity group">
+                    <div className="size-10 rounded-full bg-violet-100 text-violet-700 font-semibold text-sm flex items-center justify-center overflow-hidden flex-shrink-0">
                       {task.writer.profile_image_url ? (
-                        <img 
-                          src={getFileUrl(task.writer.profile_image_url)} 
-                          alt="Avatar" 
-                          className="w-full h-full object-cover rounded-2xl" 
-                        />
-                      ) : (
-                        task.writer.first_name ? task.writer.first_name[0] : (task.writer.email ? task.writer.email[0] : "W")
-                      )}
+                        <img src={getFileUrl(task.writer.profile_image_url)} alt="" className="w-full h-full object-cover" />
+                      ) : (task.writer.first_name?.[0] || "W")}
                     </div>
-                    <div className="space-y-1">
-                      <h3 className="font-bold text-base text-[#1a1033] group-hover:underline">
-                        {((task.writer.first_name || task.writer.last_name) 
-                            ? `${task.writer.first_name || ""} ${task.writer.last_name || ""}`.trim() 
-                            : task.writer.email.split("@")[0])}
-                      </h3>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="flex items-center gap-0.5 text-amber-500 font-bold">★ 4.9</span>
-                        <span className="text-[#9490a8]">• Expert Writer</span>
-                      </div>
+                    <div>
+                      <p className="font-medium text-foreground group-hover:underline">
+                        {task.writer.first_name} {task.writer.last_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Expert Writer</p>
                     </div>
                   </Link>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 rounded-2xl bg-violet-100 flex items-center justify-center text-xl font-bold text-[#7C5CFC] border border-[#7C5CFC]/20 uppercase overflow-hidden">
-                      W
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="font-bold text-base text-[#1a1033]">
-                        Unallocated
-                      </h3>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-[#9490a8]">• Expert Writer</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <Button 
-                  variant="outline" 
-                  onClick={() => task.writer && handleChatWithWriter(task.writer.id)}
-                  disabled={isInitializingChat !== null}
-                  className="w-full rounded-xl gap-2 h-11 border-border/50 hover:bg-violet-50 hover:text-[#7C5CFC] transition-colors font-bold text-xs"
-                >
-                  {isInitializingChat === task.writer?.id ? (
-                    <Clock className="size-4 animate-spin" />
-                  ) : (
-                    <MessageSquare className="size-4" />
-                  )}
-                  Open Secure Channel
-                </Button>
-              </CardContent>
-            </Card>
+                  <button onClick={() => task.writer && handleChat(task.writer.id)} disabled={chatting !== null}
+                    className="w-full flex items-center justify-center gap-2 h-9 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
+                    <MessageSquare className="size-4" /> Message Writer
+                  </button>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">No writer assigned yet.</p>
+              )}
+            </div>
           )}
 
-          {/* Payment Summary */}
-          {!isBiddingPhase && (
-            <Card className="border-border/50 shadow-sm bg-muted/20 rounded-2xl overflow-hidden">
-              <CardHeader>
-                <CardTitle className="text-lg text-[#1a1033]">Financial Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="p-6 space-y-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#9490a8]">Agreed Budget</span>
-                    <span className="font-bold text-[#1a1033]">${parseFloat(task.budget).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#9490a8]">Status</span>
-                    <span className={cn(
-                      "font-bold italic",
-                      task.payment_status === "PAID" ? "text-emerald-600" : "text-orange-600"
-                    )}>
-                      {task.payment_status === "PAID" ? "Paid" : "Held in Escrow"}
-                    </span>
-                  </div>
+          {/* Payment */}
+          {!isBidding && (
+            <div className="bg-white border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Payment</h3>
+              <div className="space-y-2.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Budget</span>
+                  <span className="font-medium">${parseFloat(task.budget).toFixed(2)}</span>
                 </div>
-                <div className="p-4 bg-orange-500/5 border-t border-orange-500/10 flex gap-3 text-[10px] text-orange-700 leading-relaxed">
-                  <AlertTriangle className="size-4 shrink-0" />
-                  <p>Funds will only be released after your explicit approval of the submitted project files.</p>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className={cn("font-medium", task.payment_status === "PAID" ? "text-green-600" : "text-orange-600")}>
+                    {task.payment_status === "PAID" ? "Released" : "In Escrow"}
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+                Funds are released only after you approve the submitted work.
+              </p>
+            </div>
           )}
-          
-          {/* Bidding Info Card */}
-          {isBiddingPhase && (
-            <Card className="border-[#7C5CFC]/20 shadow-sm bg-violet-50/50 rounded-2xl overflow-hidden">
-               <CardHeader className="bg-[#7C5CFC]/5 border-b border-[#7C5CFC]/10">
-                  <CardTitle className="text-sm font-bold text-[#7C5CFC] flex items-center gap-2">
-                     <Info className="size-4" /> Bidding Guidelines
-                  </CardTitle>
-               </CardHeader>
-               <CardContent className="p-5 space-y-4">
-                  <div className="space-y-3">
-                     <p className="text-[11px] text-[#6b6880] leading-relaxed">
-                        • You can accept only <strong>one</strong> bid. Accepting a bid will close the project to other writers.
-                     </p>
-                     <p className="text-[11px] text-[#6b6880] leading-relaxed">
-                        • After accepting a bid, you will be redirected to complete the payment into <strong>escrow</strong>.
-                     </p>
-                     <p className="text-[11px] text-[#6b6880] leading-relaxed">
-                        • Once paid, your expert will begin working on the project immediately.
-                     </p>
-                  </div>
-               </CardContent>
-            </Card>
+
+          {/* Bidding info */}
+          {isBidding && (
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-violet-800 mb-2">How Bidding Works</h3>
+              <div className="space-y-2 text-xs text-violet-700 leading-relaxed">
+                <p>• You can accept only <strong>one</strong> bid. Accepting closes bidding.</p>
+                <p>• After accepting, complete payment into escrow.</p>
+                <p>• Payment is released when you approve the work.</p>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* ── Revision Request Modal ── */}
-      {showRevisionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-border/50 bg-orange-50/50">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-500">
-                  <RotateCcw className="size-5" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-[#1a1033] text-base">Request a Revision</h2>
-                  <p className="text-[11px] text-[#9490a8]">Describe what changes you need</p>
-                </div>
-              </div>
-              <button
-                onClick={() => { setShowRevisionModal(false); setRevisionNote(""); setRevisionFiles([]); }}
-                className="size-8 rounded-xl hover:bg-orange-100 flex items-center justify-center text-[#9490a8] hover:text-orange-500 transition-colors"
-              >
-                <X className="size-4" />
+      {/* Revision Modal */}
+      {showRevision && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h2 className="font-semibold text-foreground flex items-center gap-2">
+                <RotateCcw className="size-4 text-orange-500" /> Request Revision
+              </h2>
+              <button onClick={() => { setShowRevision(false); setRevNote(""); setRevFiles([]); }}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                <X className="size-4 text-muted-foreground" />
               </button>
             </div>
-
-            {/* Body */}
-            <div className="p-6 space-y-5">
-              {/* Message */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-[#9490a8]">Revision Message <span className="text-red-400">*</span></label>
-                <textarea
-                  value={revisionNote}
-                  onChange={(e) => setRevisionNote(e.target.value)}
-                  placeholder="Explain clearly what needs to be changed or corrected..."
-                  rows={4}
-                  className="w-full rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-[#1a1033] placeholder:text-[#9490a8]/60 focus:outline-none focus:ring-2 focus:ring-orange-400/40 focus:border-orange-400/60 resize-none transition-all"
-                />
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">Revision Message *</label>
+                <textarea value={revNote} onChange={e => setRevNote(e.target.value)} rows={4}
+                  placeholder="Describe what needs to be changed…"
+                  className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors resize-none placeholder:text-muted-foreground/50" />
               </div>
 
-              {/* File attachments */}
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-[#9490a8]">Attach Files <span className="text-[#9490a8] font-normal lowercase">(optional)</span></label>
-                <input
-                  type="file"
-                  multiple
-                  ref={revisionFileInputRef}
-                  className="hidden"
-                  onChange={(e) => {
-                    const newFiles = Array.from(e.target.files || []);
-                    setRevisionFiles((prev) => [...prev, ...newFiles]);
-                    if (revisionFileInputRef.current) revisionFileInputRef.current.value = "";
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => revisionFileInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-orange-300/60 bg-orange-50/30 py-4 text-orange-500 hover:border-orange-400 hover:bg-orange-50 transition-all text-sm font-semibold"
-                >
-                  <Paperclip className="size-4" />
-                  Click to attach files
+              <div>
+                <input ref={revFileRef} type="file" multiple className="hidden"
+                  onChange={e => { setRevFiles(p => [...p, ...Array.from(e.target.files || [])]); if (revFileRef.current) revFileRef.current.value = ""; }} />
+                <button type="button" onClick={() => revFileRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 h-9 rounded-lg border-2 border-dashed border-orange-200 text-orange-600 text-sm hover:border-orange-400 hover:bg-orange-50 transition-colors">
+                  <Paperclip className="size-4" /> Attach Files (optional)
                 </button>
-
-                {revisionFiles.length > 0 && (
-                  <div className="space-y-2">
-                    {revisionFiles.map((file, idx) => (
-                      <div key={idx} className="flex items-center justify-between gap-3 bg-orange-50/60 border border-orange-100 rounded-xl px-3 py-2">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <div className="size-7 rounded-lg bg-orange-100 flex items-center justify-center text-orange-500 shrink-0">
-                            <FileText className="size-3.5" />
-                          </div>
-                          <span className="text-xs font-medium text-[#1a1033] truncate">{file.name}</span>
-                          <span className="text-[10px] text-[#9490a8] shrink-0">{(file.size / 1024).toFixed(1)} KB</span>
-                        </div>
-                        <button
-                          onClick={() => setRevisionFiles((prev) => prev.filter((_, i) => i !== idx))}
-                          className="size-6 rounded-lg hover:bg-red-100 flex items-center justify-center text-[#9490a8] hover:text-red-500 transition-colors shrink-0"
-                        >
+                {revFiles.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {revFiles.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-muted/20 text-xs">
+                        <FileText className="size-3.5 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate flex-1">{f.name}</span>
+                        <button onClick={() => setRevFiles(p => p.filter((_,j)=>j!==i))} className="text-muted-foreground hover:text-red-500 transition-colors">
                           <X className="size-3" />
                         </button>
                       </div>
@@ -931,29 +539,18 @@ export default function OrderDetails() {
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Footer */}
-            <div className="flex items-center gap-3 px-6 py-4 border-t border-border/50 bg-muted/10">
-              <Button
-                variant="outline"
-                onClick={() => { setShowRevisionModal(false); setRevisionNote(""); setRevisionFiles([]); }}
-                className="flex-1 rounded-xl h-10 border-border/60 text-[#9490a8] hover:bg-muted/30 font-bold text-xs"
-                disabled={isSubmittingRevision}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleRequestRevision}
-                disabled={isSubmittingRevision || !revisionNote.trim()}
-                className="flex-[2] rounded-xl h-10 bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-400/20 font-bold gap-2 text-xs"
-              >
-                {isSubmittingRevision ? (
-                  <><Clock className="size-3.5 animate-spin" /> Submitting...</>
-                ) : (
-                  <><RotateCcw className="size-3.5" /> Submit Revision Request</>
-                )}
-              </Button>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => { setShowRevision(false); setRevNote(""); setRevFiles([]); }}
+                  className="flex-1 h-10 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
+                  Cancel
+                </button>
+                <button onClick={handleRequestRevision} disabled={submittingRev || !revNote.trim()}
+                  className="flex-1 h-10 rounded-lg bg-orange-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2">
+                  {submittingRev ? <Activity className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
+                  Submit Request
+                </button>
+              </div>
             </div>
           </div>
         </div>

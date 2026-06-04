@@ -1,122 +1,116 @@
 "use client";
 
-import React from "react";
-import { 
-  LifeBuoy, 
-  MessageCircle, 
-  Mail, 
-  FileQuestion, 
-  AlertCircle,
-  ChevronRight,
-  ShieldAlert
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui";
-import { Label } from "@/components/ui/label";
+import React, { useState } from "react";
+import { LifeBuoy, MessageCircle, Mail, ShieldAlert, ChevronDown, Loader2, CheckCircle, ArrowLeft, FileQuestion } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export default function Support() {
+const FAQS = [
+  { q: "How do I request a refund?", a: "Refunds are handled through our dispute resolution center. If you're unsatisfied with the delivered work, you can request a revision first. If unresolved, open a dispute case and our team will review the submission." },
+  { q: "How can I change my assigned writer?", a: "If a writer accepts your bid but you're not satisfied with their progress, you can request a reassignment through the order details page or by contacting support." },
+  { q: "What happens if I miss a deadline?", a: "Task deadlines are agreed upon at bid acceptance. If you need an extension, contact your writer directly through the messaging system to negotiate a new deadline." },
+  { q: "Is my payment information secure?", a: "Yes. All payments are processed through our secure escrow system. Your payment details are encrypted and never shared with writers or third parties." },
+];
+
+const inputCls = "w-full h-10 px-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors placeholder:text-muted-foreground/50";
+
+export default function CustomerSupportPage() {
+  const [subject, setSubject]       = useState("");
+  const [message, setMessage]       = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted]   = useState(false);
+  const [openFaq, setOpenFaq]       = useState<number | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    await new Promise(r => setTimeout(r, 1200));
+    setSubmitting(false); setSubmitted(true);
+    setSubject(""); setMessage("");
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Support & Help</h1>
-        <p className="text-muted-foreground">We're here to help you with any issues or questions.</p>
+    <div className="max-w-3xl mx-auto space-y-5 pb-10">
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">Support & Help</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">We&apos;re here to help with any questions or issues.</p>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Contact Options */}
-        <div className="space-y-6">
-           <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-              <CardContent className="p-6 space-y-4">
-                 <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                    <MessageCircle className="size-6" />
-                 </div>
-                 <div className="space-y-1">
-                    <h3 className="font-bold">Live Chat</h3>
-                    <p className="text-xs text-muted-foreground">Typical response time: 5 mins</p>
-                 </div>
-                 <Button variant="outline" className="w-full rounded-xl gap-2">Start Chat <ChevronRight className="size-3" /></Button>
-              </CardContent>
-           </Card>
+      <div className="grid sm:grid-cols-3 gap-3">
+        {[
+          { icon: MessageCircle, title: "Live Chat",       sub: "~5 min response",  color: "text-primary", bg: "bg-violet-50 border-violet-100", btn: "Start Chat" },
+          { icon: Mail,          title: "Email Support",   sub: "Within 24 hours",  color: "text-amber-600", bg: "bg-amber-50 border-amber-100", btn: "Send Email", href: "mailto:support@projecthub.com" },
+          { icon: ShieldAlert,   title: "Dispute Center",  sub: "Order & payment",  color: "text-red-600",   bg: "bg-red-50 border-red-100",   btn: "Open Case" },
+        ].map(({ icon: Icon, title, sub, color, bg, btn, href }) => (
+          <div key={title} className="bg-white border border-border rounded-xl p-4">
+            <div className={cn("size-9 rounded-lg border flex items-center justify-center mb-3", bg)}>
+              <Icon className={cn("size-4", color)} strokeWidth={1.75} />
+            </div>
+            <p className="text-sm font-medium text-foreground">{title}</p>
+            <p className="text-xs text-muted-foreground mb-3">{sub}</p>
+            {href ? (
+              <a href={href}><button className="w-full h-9 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/50 transition-colors">{btn}</button></a>
+            ) : (
+              <button className="w-full h-9 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/50 transition-colors">{btn}</button>
+            )}
+          </div>
+        ))}
+      </div>
 
-           <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-              <CardContent className="p-6 space-y-4">
-                 <div className="h-12 w-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
-                    <Mail className="size-6" />
-                 </div>
-                 <div className="space-y-1">
-                    <h3 className="font-bold">Email Support</h3>
-                    <p className="text-xs text-muted-foreground">Response within 24 hours</p>
-                 </div>
-                 <Button variant="outline" className="w-full rounded-xl gap-2">Send Email <ChevronRight className="size-3" /></Button>
-              </CardContent>
-           </Card>
+      {/* Ticket form */}
+      <div className="bg-white border border-border rounded-xl p-5">
+        <h2 className="font-semibold text-foreground mb-4">Create a Support Ticket</h2>
+        {submitted ? (
+          <div className="flex flex-col items-center py-8 text-center space-y-3">
+            <div className="size-12 rounded-full bg-green-100 border border-green-200 flex items-center justify-center">
+              <CheckCircle className="size-6 text-green-600" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Ticket submitted!</p>
+              <p className="text-sm text-muted-foreground">We&apos;ll get back to you within 24 hours.</p>
+            </div>
+            <button onClick={() => setSubmitted(false)} className="flex items-center gap-1.5 text-sm text-primary hover:underline">
+              <ArrowLeft className="size-3.5" /> Submit another
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-foreground">Subject</label>
+              <input required value={subject} onChange={e => setSubject(e.target.value)} placeholder="What is the issue?" className={inputCls} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-foreground">Message</label>
+              <textarea required value={message} onChange={e => setMessage(e.target.value)} rows={5}
+                placeholder="Describe your problem in detail…"
+                className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors resize-none placeholder:text-muted-foreground/50" />
+            </div>
+            <button type="submit" disabled={submitting || !subject.trim() || !message.trim()}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60">
+              {submitting && <Loader2 className="size-4 animate-spin" />}
+              {submitting ? "Submitting…" : "Submit Ticket"}
+            </button>
+          </form>
+        )}
+      </div>
 
-           <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-              <CardContent className="p-6 space-y-4">
-                 <div className="h-12 w-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-600 group-hover:scale-110 transition-transform">
-                    <ShieldAlert className="size-6" />
-                 </div>
-                 <div className="space-y-1">
-                    <h3 className="font-bold">Dispute Center</h3>
-                    <p className="text-xs text-muted-foreground">For order & payment issues</p>
-                 </div>
-                 <Button variant="outline" className="w-full rounded-xl gap-2">Open Case <ChevronRight className="size-3" /></Button>
-              </CardContent>
-           </Card>
-        </div>
-
-        {/* Support Ticket Form */}
-        <div className="lg:col-span-2">
-           <Card className="border-border/50 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-xl">Create a Support Ticket</CardTitle>
-                <CardDescription>If you can't find what you're looking for, please submit a ticket.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="subject">Subject</Label>
-                    <Input id="subject" placeholder="What is the issue?" className="rounded-xl h-11 bg-muted/30 border-none" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Input id="category" placeholder="Payment, Task, etc." className="rounded-xl h-11 bg-muted/30 border-none" />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="message">Message</Label>
-                  <Textarea 
-                    id="message" 
-                    placeholder="Describe your problem in detail..." 
-                    className="min-h-[150px] rounded-xl bg-muted/30 border-none resize-none p-4"
-                  />
-                </div>
-
-                <Button className="w-full h-12 rounded-xl shadow-lg shadow-primary/20 bg-primary gap-2">
-                  Submit Ticket
-                </Button>
-              </CardContent>
-           </Card>
-
-           <div className="mt-10 space-y-4">
-              <h2 className="text-xl font-bold flex items-center gap-2"><FileQuestion className="size-5" /> Frequently Asked Questions</h2>
-              <div className="grid gap-4">
-                 {[
-                   "How do I request a refund?",
-                   "How can I change my assigned writer?",
-                   "What happens if I miss a deadline?",
-                   "Is my payment information secure?"
-                 ].map((q, i) => (
-                   <div key={i} className="p-4 rounded-xl border border-border/50 hover:bg-muted/30 transition-colors flex items-center justify-between cursor-pointer group">
-                      <span className="text-sm font-medium">{q}</span>
-                      <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                   </div>
-                 ))}
-              </div>
-           </div>
+      {/* FAQ */}
+      <div className="space-y-3">
+        <h2 className="font-semibold text-foreground flex items-center gap-2">
+          <FileQuestion className="size-4 text-primary" /> Frequently Asked Questions
+        </h2>
+        <div className="space-y-2">
+          {FAQS.map((faq, i) => (
+            <div key={i} className="bg-white border border-border rounded-xl overflow-hidden">
+              <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                className="w-full flex items-center justify-between px-4 py-3.5 text-left">
+                <span className="text-sm font-medium text-foreground pr-4">{faq.q}</span>
+                <ChevronDown className={cn("size-4 text-muted-foreground transition-transform flex-shrink-0", openFaq === i && "rotate-180 text-primary")} />
+              </button>
+              {openFaq === i && (
+                <div className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed border-t border-border/50 pt-3">{faq.a}</div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

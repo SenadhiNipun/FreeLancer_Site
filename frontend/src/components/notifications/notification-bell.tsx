@@ -9,180 +9,132 @@ import { formatDistanceToNow } from "date-fns";
 
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+  const [unreadCount, setUnreadCount]     = useState(0);
+  const [isOpen, setIsOpen]               = useState(false);
+  const dropdownRef                        = useRef<HTMLDivElement>(null);
+  const router                             = useRouter();
 
   const fetchNotifications = async () => {
     try {
-      const response = await notificationService.getNotifications() as any;
-      if (!response.is_error) {
-        // Filter OUT message notifications
-        const generalNotifications = response.results.filter(
-          (n: any) => n.notification_type !== "NEW_MESSAGE"
-        );
-        setNotifications(generalNotifications);
-        setUnreadCount(generalNotifications.filter((n: any) => !n.is_read).length);
+      const r = await notificationService.getNotifications() as any;
+      if (!r.is_error) {
+        const general = (r.results || []).filter((n: any) => n.notification_type !== "NEW_MESSAGE");
+        setNotifications(general);
+        setUnreadCount(general.filter((n: any) => !n.is_read).length);
       }
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-    }
+    } catch {}
   };
 
   useEffect(() => {
     fetchNotifications();
-    // Refresh notifications every 10 seconds for a more responsive feel
-    const interval = setInterval(fetchNotifications, 10000);
-    return () => clearInterval(interval);
+    const iv = setInterval(fetchNotifications, 10000);
+    return () => clearInterval(iv);
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setIsOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleMarkAsRead = async (id: number) => {
-    try {
-      await notificationService.markAsRead(id);
-      setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error("Failed to mark as read:", error);
-    }
+  const markRead = async (id: number) => {
+    await notificationService.markAsRead(id).catch(() => {});
+    setNotifications(p => p.map(n => n.id === id ? { ...n, is_read: true } : n));
+    setUnreadCount(p => Math.max(0, p - 1));
   };
 
-  const getTypeStyles = (type: string) => {
-    switch (type) {
-      case "TASK_AVAILABLE":
-        return { icon: Zap, color: "text-amber-500", bg: "bg-amber-50" };
-      case "BID_ACCEPTED":
-        return { icon: Check, color: "text-green-500", bg: "bg-green-50" };
-      case "NEW_MESSAGE":
-        return { icon: MessageSquare, color: "text-[#7C5CFC]", bg: "bg-violet-50" };
-      case "BID_RECEIVED":
-        return { icon: Info, color: "text-indigo-500", bg: "bg-indigo-50" };
-      case "REVISION_REQUESTED":
-        return { icon: RotateCcw, color: "text-amber-500", bg: "bg-amber-50" };
-      case "REVISION_DELIVERED":
-        return { icon: Check, color: "text-emerald-500", bg: "bg-emerald-50" };
-      case "WORK_DELIVERED":
-        return { icon: Check, color: "text-emerald-500", bg: "bg-emerald-50" };
-      case "REVIEW_RECEIVED":
-        return { icon: Award, color: "text-amber-500", bg: "bg-amber-50" };
-      default:
-        return { icon: Info, color: "text-blue-500", bg: "bg-blue-50" };
-    }
+  const getIcon = (type: string) => {
+    const map: Record<string, { icon: any; cls: string }> = {
+      TASK_AVAILABLE:     { icon: Zap,           cls: "bg-amber-50 border-amber-100 text-amber-600" },
+      BID_ACCEPTED:       { icon: Check,         cls: "bg-green-50 border-green-100 text-green-600" },
+      BID_RECEIVED:       { icon: Info,          cls: "bg-blue-50 border-blue-100 text-blue-600" },
+      REVISION_REQUESTED: { icon: RotateCcw,     cls: "bg-orange-50 border-orange-100 text-orange-600" },
+      REVISION_DELIVERED: { icon: Check,         cls: "bg-green-50 border-green-100 text-green-600" },
+      WORK_DELIVERED:     { icon: Check,         cls: "bg-green-50 border-green-100 text-green-600" },
+      REVIEW_RECEIVED:    { icon: Award,         cls: "bg-amber-50 border-amber-100 text-amber-600" },
+      NEW_MESSAGE:        { icon: MessageSquare, cls: "bg-violet-50 border-violet-100 text-violet-600" },
+    };
+    return map[type] || { icon: Info, cls: "bg-blue-50 border-blue-100 text-blue-600" };
+  };
+
+  const handleNotifClick = async (n: any) => {
+    if (!n.is_read) await markRead(n.id);
+    setIsOpen(false);
+    const roles: string[] = JSON.parse(localStorage.getItem("user_roles") || "[]");
+    const isWriter = roles.includes("WRITER");
+    if (n.notification_type === "NEW_MESSAGE" && n.related_id) router.push(`${isWriter ? "/writer" : "/customer"}/messages?session=${n.related_id}`);
+    else if (n.notification_type === "BID_RECEIVED" && n.related_id) router.push(`/customer/orders/${n.related_id}`);
+    else if (n.notification_type === "BID_ACCEPTED" && n.related_id) router.push(`/writer/tasks/${n.related_id}`);
+    else if (n.notification_type === "REVISION_REQUESTED" && n.related_id) router.push(`/writer/tasks/${n.related_id}`);
+    else if ((n.notification_type === "WORK_DELIVERED" || n.notification_type === "REVISION_DELIVERED") && n.related_id) router.push(`/customer/orders/${n.related_id}`);
+    else if (n.notification_type === "TASK_AVAILABLE") router.push("/writer/tasks/available");
+    else if (n.notification_type === "REVIEW_RECEIVED" && n.related_id) router.push("/writer/tasks/completed");
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
+      <button onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "relative size-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-white/10 hover:border-red-500/30 hover:text-red-500 hover:shadow-[0_0_15px_rgba(239,68,68,0.15)]",
-          isOpen ? "bg-red-500/10 text-red-500 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)]" : "text-muted-foreground"
-        )}
-      >
-        <Bell className="size-[18px]" />
+          "relative size-8 rounded-lg flex items-center justify-center transition-colors",
+          isOpen ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+        )}>
+        <Bell className="size-4" strokeWidth={1.75} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 flex h-4.5 w-4.5 items-center justify-center">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-4.5 w-4.5 bg-red-500 border border-white text-[8px] font-black text-white flex items-center justify-center shadow-lg shadow-red-500/40">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
+          <span className="absolute -top-1 -right-1 size-4.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border border-white">
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-white/95 dark:bg-[#120B24]/95 border border-slate-200/50 dark:border-white/10 shadow-2xl shadow-black/10 backdrop-blur-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="p-4 border-b border-slate-200/50 dark:border-white/10 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-foreground">Notifications</h3>
+        <div className="absolute right-0 mt-2 w-80 bg-white border border-border rounded-xl shadow-xl overflow-hidden z-50">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
             {unreadCount > 0 && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider">
-                {unreadCount} New
-              </span>
+              <span className="px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-xs font-medium text-red-600">{unreadCount} new</span>
             )}
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto py-2">
+          <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-10 flex flex-col items-center text-center">
-                <div className="size-12 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
-                  <Bell className="size-6 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm text-muted-foreground">No notifications yet</p>
+              <div className="flex flex-col items-center py-10 text-center">
+                <Bell className="size-7 text-muted-foreground/30 mb-2" />
+                <p className="text-sm text-muted-foreground">No notifications</p>
               </div>
             ) : (
-              notifications.map((n) => {
-                const styles = getTypeStyles(n.notification_type);
-                const Icon = styles.icon;
-                return (
-                  <div
-                    key={n.id}
-                    onClick={async () => {
-                      if (!n.is_read) await handleMarkAsRead(n.id);
-                      setIsOpen(false);
-                      
-                      const rolesStr = localStorage.getItem("user_roles");
-                      const roles = rolesStr ? JSON.parse(rolesStr) : [];
-                      const isWriter = roles.includes("WRITER");
-
-                      if (n.notification_type === "NEW_MESSAGE" && n.related_id) {
-                        const basePath = isWriter ? "/writer" : "/customer";
-                        router.push(`${basePath}/messages?session=${n.related_id}`);
-                      } else if (n.notification_type === "BID_RECEIVED" && n.related_id) {
-                        router.push(`/customer/orders/${n.related_id}`);
-                      } else if (n.notification_type === "BID_ACCEPTED" && n.related_id) {
-                        router.push(`/writer/tasks/${n.related_id}`);
-                      } else if (n.notification_type === "REVISION_REQUESTED" && n.related_id) {
-                        router.push(`/writer/tasks/${n.related_id}#revision-history`);
-                      } else if ((n.notification_type === "WORK_DELIVERED" || n.notification_type === "REVISION_DELIVERED") && n.related_id) {
-                        router.push(`/customer/orders/${n.related_id}#expert-submissions`);
-                      } else if (n.notification_type === "TASK_AVAILABLE" && n.related_id) {
-                        router.push(`/writer/tasks/available`);
-                      } else if (n.notification_type === "REVIEW_RECEIVED" && n.related_id) {
-                        router.push(`/writer/tasks/completed#task-${n.related_id}`);
-                      }
-                    }}
-                    className={cn(
-                      "mx-2 my-1 p-3 flex gap-3.5 cursor-pointer rounded-xl transition-all duration-200",
-                      n.is_read 
-                        ? "opacity-50 hover:bg-slate-50 dark:hover:bg-white/5" 
-                        : "bg-primary/5 hover:bg-primary/10 border-l-2 border-primary"
-                    )}
-                  >
-                    <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm", styles.bg)}>
-                      <Icon className={cn("size-5.5", styles.color)} />
-                    </div>
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <p className="text-[13px] font-bold text-foreground leading-tight">{n.title}</p>
-                      <p className="text-[12px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</p>
-                      <div className="flex items-center gap-1.5 pt-1 text-[10px] text-muted-foreground/60 font-bold uppercase tracking-wider">
-                        <Clock className="size-3.5" />
-                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+              <div className="py-1">
+                {notifications.map(n => {
+                  const { icon: Icon, cls } = getIcon(n.notification_type);
+                  return (
+                    <div key={n.id} onClick={() => handleNotifClick(n)}
+                      className={cn(
+                        "flex gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/30",
+                        !n.is_read && "bg-violet-50/40"
+                      )}>
+                      <div className={cn("size-8 rounded-lg border flex items-center justify-center flex-shrink-0", cls)}>
+                        <Icon className="size-4" strokeWidth={1.75} />
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-sm leading-tight", n.is_read ? "text-foreground" : "font-medium text-foreground")}>{n.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                        <p className="text-xs text-muted-foreground/60 mt-1 flex items-center gap-1">
+                          <Clock className="size-3" />
+                          {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      {!n.is_read && <div className="size-2 rounded-full bg-primary flex-shrink-0 mt-1" />}
                     </div>
-                    {!n.is_read && (
-                      <div className="size-2 rounded-full bg-primary shrink-0 mt-2" />
-                    )}
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </div>
 
           {notifications.length > 0 && (
-            <div className="p-3 bg-muted/20 border-t border-border text-center">
-              <button className="text-[11px] font-bold text-primary hover:underline">
-                View all notifications
-              </button>
+            <div className="px-4 py-2.5 border-t border-border bg-muted/20 text-center">
+              <button className="text-xs font-medium text-primary hover:underline">View all</button>
             </div>
           )}
         </div>

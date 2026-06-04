@@ -1,155 +1,238 @@
 "use client";
 
-import React from "react";
-import { 
-  Clock, 
-  MessageSquare, 
-  Upload, 
-  MoreVertical,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
-  ArrowRight,
-  ChevronRight,
-  Info,
-  Zap
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { taskService } from "@/services/task.service";
-import { cn } from "@/lib/utils";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { format } from "date-fns";
-import { CountdownTimer } from "@/components/tasks/CountdownTimer";
-import { Badge } from "@/components/ui";
+import {
+  Clock, Briefcase, Zap, ArrowRight, MessageSquare, Upload,
+  User, FileText, AlertCircle, CheckCircle2, RotateCcw, CreditCard,
+} from "lucide-react";
+import { taskService } from "@/services/task.service";
+import { formatDistanceToNow, differenceInHours } from "date-fns";
+import { cn } from "@/lib/utils";
 
-export default function ActiveTasks() {
-  const [tasks, setTasks] = React.useState<any[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+const STATUS_CFG: Record<string, { label: string; cls: string; icon: any; dot: string }> = {
+  ASSIGNED:           { label: "In Progress",     cls: "bg-blue-50 text-blue-700 border-blue-200",     icon: Briefcase,   dot: "bg-blue-500"   },
+  IN_PROGRESS:        { label: "In Progress",     cls: "bg-blue-50 text-blue-700 border-blue-200",     icon: Briefcase,   dot: "bg-blue-500"   },
+  SUBMITTED:          { label: "Submitted",       cls: "bg-green-50 text-green-700 border-green-200",  icon: CheckCircle2,dot: "bg-green-500"  },
+  REVISION_REQUESTED: { label: "Needs Revision",  cls: "bg-orange-50 text-orange-700 border-orange-200",icon: RotateCcw,  dot: "bg-orange-500" },
+  PENDING_PAYMENT:    { label: "Pending Payment", cls: "bg-amber-50 text-amber-700 border-amber-200",  icon: CreditCard,  dot: "bg-amber-500"  },
+  PENDING_ASSIGNMENT: { label: "Assigning",       cls: "bg-slate-50 text-slate-600 border-slate-200",  icon: AlertCircle, dot: "bg-slate-400"  },
+};
 
-  React.useEffect(() => {
-    const fetchActiveTasks = async () => {
-      try {
-        const response = await taskService.getWriterTasks();
-        setTasks(response.results || []);
-      } catch (error) {
-        console.error("Failed to fetch active tasks:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CFG[status] || { label: status.replace(/_/g," "), cls: "bg-slate-50 text-slate-600 border-slate-200", icon: AlertCircle, dot: "bg-slate-400" };
+  const Icon = cfg.icon;
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border", cfg.cls)}>
+      <Icon className="size-3" strokeWidth={2} />
+      {cfg.label}
+    </span>
+  );
+}
 
-    fetchActiveTasks();
-  }, []);
+function DeadlineTag({ deadline }: { deadline: string }) {
+  const hoursLeft = differenceInHours(new Date(deadline), new Date());
+  const isOverdue  = hoursLeft <= 0;
+  const isUrgent   = hoursLeft > 0 && hoursLeft <= 24;
+  const isWarning  = hoursLeft > 24 && hoursLeft <= 72;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <span className={cn(
+      "inline-flex items-center gap-1 text-xs font-medium",
+      isOverdue ? "text-red-600" : isUrgent ? "text-orange-600" : isWarning ? "text-amber-600" : "text-muted-foreground"
+    )}>
+      <Clock className={cn("size-3", isOverdue && "animate-pulse")} />
+      {isOverdue ? "Overdue" : formatDistanceToNow(new Date(deadline), { addSuffix: true })}
+    </span>
+  );
+}
+
+export default function ActiveTasks() {
+  const [tasks, setTasks]     = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    taskService.getWriterTasks()
+      .then(r => setTasks(r.results || []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const active = tasks.filter(t => !["COMPLETED", "CANCELLED"].includes(t.task_status));
+
+  // Group by urgency for sorting
+  const sorted = [...active].sort((a, b) => {
+    const hoursA = differenceInHours(new Date(a.deadline), new Date());
+    const hoursB = differenceInHours(new Date(b.deadline), new Date());
+    return hoursA - hoursB;
+  });
+
+  const counts = {
+    inProgress: active.filter(t => ["ASSIGNED","IN_PROGRESS"].includes(t.task_status)).length,
+    submitted:  active.filter(t => t.task_status === "SUBMITTED").length,
+    revision:   active.filter(t => t.task_status === "REVISION_REQUESTED").length,
+    payment:    active.filter(t => t.task_status === "PENDING_PAYMENT").length,
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] gap-3">
+        <div className="size-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm text-muted-foreground">Loading tasks…</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5 pb-10">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#1a1033]">Active Work</h1>
-          <p className="text-sm text-[#9490a8] mt-1">Manage ongoing tasks, collaborate with clients, and submit your work.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Active Work</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {active.length} task{active.length !== 1 ? "s" : ""} in progress
+          </p>
         </div>
+        <Link href="/writer/tasks/available">
+          <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity">
+            <Zap className="size-4" /> Browse More Tasks
+          </button>
+        </Link>
       </div>
 
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <div className="size-8 border-[3px] border-[#7C5CFC] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs font-bold text-[#9490a8] uppercase tracking-widest">Retrieving assignments...</p>
+      {/* Status summary strip */}
+      {active.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "In Progress", count: counts.inProgress, color: "border-l-blue-500",   bg: "bg-blue-50"   },
+            { label: "Submitted",   count: counts.submitted,  color: "border-l-green-500",  bg: "bg-green-50"  },
+            { label: "Revision",    count: counts.revision,   color: "border-l-orange-500", bg: "bg-orange-50" },
+            { label: "Payment Due", count: counts.payment,    color: "border-l-amber-500",  bg: "bg-amber-50"  },
+          ].map(({ label, count, color, bg }) => (
+            <div key={label} className={cn("bg-white border border-border rounded-xl p-3 border-l-4 flex items-center gap-3", color)}>
+              <div className={cn("size-8 rounded-lg flex items-center justify-center flex-shrink-0", bg)}>
+                <span className="text-sm font-bold text-foreground">{count}</span>
+              </div>
+              <p className="text-xs font-medium text-muted-foreground">{label}</p>
+            </div>
+          ))}
         </div>
-      ) : tasks.length === 0 ? (
-        <div className="border-2 border-dashed border-border/50 rounded-3xl flex flex-col items-center justify-center p-20 text-center bg-white/50">
-           <div className="h-16 w-16 rounded-full bg-violet-100 flex items-center justify-center mb-6 text-[#7C5CFC]">
-              <AlertCircle className="size-8" />
-           </div>
-           <h3 className="text-lg font-bold text-[#1a1033]">No active tasks found</h3>
-           <p className="text-sm text-[#9490a8] mt-1 mb-8 max-w-sm mx-auto">Browse available projects in the marketplace and submit your best bids to start earning.</p>
-           <Link href="/writer/tasks/available">
-              <Button className="rounded-xl bg-[#7C5CFC] hover:bg-[#6d4ef0] font-bold h-11 px-8 gap-2 shadow-lg shadow-violet-400/20 transition-all">
-                Go to Marketplace <ChevronRight className="size-4" />
-              </Button>
-           </Link>
+      )}
+
+      {/* Tasks grid */}
+      {active.length === 0 ? (
+        <div className="bg-white border border-dashed border-border rounded-xl flex flex-col items-center justify-center py-20 text-center">
+          <div className="size-14 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Briefcase className="size-6 text-muted-foreground/50" strokeWidth={1.5} />
+          </div>
+          <h3 className="font-semibold text-foreground">No active tasks</h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-6 max-w-xs">
+            Browse available projects and place bids to start earning.
+          </p>
+          <Link href="/writer/tasks/available">
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity">
+              <Zap className="size-4" /> Browse Tasks <ArrowRight className="size-3.5" />
+            </button>
+          </Link>
         </div>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-2">
-          {tasks.filter(t => t.task_status !== 'COMPLETED' && t.task_status !== 'CANCELLED').map((task) => (
-            <Card key={task.id} className="border-border/50 shadow-sm hover:shadow-xl hover:shadow-violet-400/5 transition-all bg-white rounded-2xl overflow-hidden group">
-              <CardHeader className="border-b border-border/50 p-6 flex flex-row items-center justify-between bg-violet-50/30">
-                <div className="flex items-center gap-2">
-                  <span className={cn(
-                    "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                    task.task_status === "IN_PROGRESS" || task.task_status === "ASSIGNED" 
-                      ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                      : "bg-orange-100 text-orange-700 border-orange-200"
-                  )}>
-                    {task.task_status.replace('_', ' ')}
+        <div className="grid gap-4 lg:grid-cols-2">
+          {sorted.map((task) => {
+            const hoursLeft  = differenceInHours(new Date(task.deadline), new Date());
+            const isOverdue  = hoursLeft <= 0;
+            const isUrgent   = hoursLeft > 0 && hoursLeft <= 24;
+            const cfg        = STATUS_CFG[task.task_status];
+
+            return (
+              <div key={task.id}
+                className={cn(
+                  "bg-white border rounded-xl overflow-hidden hover:shadow-md transition-shadow",
+                  isOverdue ? "border-red-200" : isUrgent ? "border-orange-200" : "border-border"
+                )}>
+                {/* Card header */}
+                <div className={cn(
+                  "flex items-center justify-between px-5 py-3 border-b",
+                  isOverdue ? "bg-red-50 border-red-100" : isUrgent ? "bg-orange-50 border-orange-100" : "bg-muted/20 border-border/60"
+                )}>
+                  <StatusBadge status={task.task_status} />
+                  <span className="text-sm font-semibold text-foreground">
+                    ${parseFloat(task.budget || 0).toFixed(2)}
                   </span>
                 </div>
-                <button className="text-[#9490a8] hover:text-[#1a1033] transition-colors">
-                  <MoreVertical className="size-5" />
-                </button>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="p-6 space-y-6">
+
+                {/* Card body */}
+                <div className="p-5">
                   <Link href={`/writer/tasks/${task.id}`}>
-                    <h3 className="text-xl font-bold leading-tight text-[#1a1033] hover:text-[#7C5CFC] transition-colors cursor-pointer">
+                    <h3 className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer leading-snug mb-3">
                       {task.title}
                     </h3>
                   </Link>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-[#9490a8] font-medium italic">Project Status</span>
-                      <span className="font-bold text-[#1a1033]">{task.payment_status === "PAID" ? "100% Paid" : "Escrowed"}</span>
-                    </div>
-                    <Progress value={task.task_status === "SUBMITTED" ? 100 : 45} className="h-2 bg-violet-50 transition-all" />
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+                    <DeadlineTag deadline={task.deadline} />
+
+                    {task.customer && (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <User className="size-3" />
+                        {task.customer.first_name} {task.customer.last_name}
+                      </span>
+                    )}
+
+                    {task.files?.length > 0 && (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <FileText className="size-3" />
+                        {task.files.length} file{task.files.length !== 1 ? "s" : ""}
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="h-9 w-9 rounded-xl bg-violet-100 flex items-center justify-center text-[#7C5CFC] font-bold text-xs border border-violet-200 shadow-sm">
-                        {task.customer?.first_name?.[0] || "C"}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[#1a1033] text-xs">{task.customer?.first_name} {task.customer?.last_name}</span>
-                        <div className="flex items-center gap-2">
-                           <span className="text-[10px] text-[#9490a8] font-bold uppercase">Client</span>
-                           <div className="size-1 rounded-full bg-border" />
-                           <span className="text-[10px] text-[#7C5CFC] font-bold uppercase flex items-center gap-1">
-                              <FileText className="size-2.5" /> {task.files?.length || 0} Files
-                           </span>
-                        </div>
-                      </div>
+                  {/* Urgency bar */}
+                  {(isOverdue || isUrgent) && (
+                    <div className={cn(
+                      "mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium",
+                      isOverdue ? "bg-red-50 border border-red-200 text-red-700" : "bg-orange-50 border border-orange-200 text-orange-700"
+                    )}>
+                      <AlertCircle className="size-3.5 flex-shrink-0" />
+                      {isOverdue ? "This task is overdue — please submit or contact your client." : `Deadline in less than 24 hours!`}
                     </div>
-                    <CountdownTimer deadline={task.deadline} />
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex gap-2.5 mt-4">
+                    <Link href="/writer/messages" className="flex-1">
+                      <button className="w-full flex items-center justify-center gap-1.5 h-9 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
+                        <MessageSquare className="size-3.5" /> Message
+                      </button>
+                    </Link>
+                    <Link href={`/writer/tasks/${task.id}`} className="flex-[2]">
+                      <button className={cn(
+                        "w-full flex items-center justify-center gap-1.5 h-9 rounded-lg text-white text-sm font-medium transition-opacity hover:opacity-90",
+                        task.task_status === "REVISION_REQUESTED" ? "bg-orange-500" : "bg-primary"
+                      )}>
+                        <Upload className="size-3.5" />
+                        {task.task_status === "SUBMITTED" ? "View Submission" :
+                         task.task_status === "REVISION_REQUESTED" ? "Address Revision" :
+                         "View & Submit"}
+                      </button>
+                    </Link>
                   </div>
                 </div>
+              </div>
+            );
+          })}
 
-                {/* Action Footer */}
-                <div className="bg-muted/10 border-t border-border/50 p-4 grid grid-cols-2 gap-4">
-                  <Link href="/writer/messages" className="w-full">
-                    <Button variant="outline" className="h-11 w-full rounded-xl bg-white hover:bg-violet-50 text-[#6b6880] hover:text-[#7C5CFC] font-bold transition-all flex items-center gap-2 border-border/50">
-                       <MessageSquare className="size-4" /> Message
-                    </Button>
-                  </Link>
-                  <Link href={`/writer/tasks/${task.id}`} className="w-full">
-                    <Button className="h-11 w-full rounded-xl bg-[#7C5CFC] shadow-lg shadow-violet-400/20 font-bold hover:bg-[#6d4ef0] transition-all flex items-center gap-2 text-white">
-                       <Upload className="size-4" /> View & Submit
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {/* More Work Card */}
-          <Link href="/writer/tasks/available" className="border-2 border-dashed border-border/50 rounded-2xl flex flex-col items-center justify-center p-12 text-center text-[#9490a8] hover:bg-violet-50/50 hover:border-[#7C5CFC]/30 transition-all cursor-pointer group bg-white/40">
-             <div className="h-14 w-14 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform border border-border/50">
-                <Zap className="size-6 text-[#7C5CFC] fill-[#7C5CFC]/10" />
-             </div>
-             <p className="font-bold text-[#1a1033]">Need more work?</p>
-             <p className="text-[11px] max-w-[200px] mt-1">Browse available tasks and increase your earnings today.</p>
-             <div className="mt-4 text-[#7C5CFC] font-bold text-xs flex items-center gap-2">Go to Marketplace <ArrowRight className="size-3.5" /></div>
+          {/* Discover more card */}
+          <Link href="/writer/tasks/available">
+            <div className="border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center py-14 text-center hover:border-primary/30 hover:bg-violet-50/20 transition-colors cursor-pointer group">
+              <div className="size-12 rounded-xl bg-white border border-border shadow-sm flex items-center justify-center mb-3 group-hover:border-primary/30 transition-colors">
+                <Zap className="size-5 text-primary" strokeWidth={1.75} />
+              </div>
+              <p className="font-medium text-foreground">Need more work?</p>
+              <p className="text-sm text-muted-foreground mt-1">Browse available tasks in the marketplace.</p>
+              <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+                Browse marketplace <ArrowRight className="size-3.5" />
+              </span>
+            </div>
           </Link>
         </div>
       )}

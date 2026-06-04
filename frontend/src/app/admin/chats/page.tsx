@@ -2,145 +2,85 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { MessageSquare, Search, Clock, ChevronRight, Loader2 } from "lucide-react";
+import { Search, Loader2, MessageSquare, Clock, ChevronRight } from "lucide-react";
 import { adminService } from "@/services/admin.service";
 
 export default function AdminChatsPage() {
   const [sessions, setSessions] = useState<any[]>([]);
-  const [filtered, setFiltered] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [search, setSearch]     = useState("");
+  const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
-    adminService
-      .getAllChatSessions()
-      .then((res) => {
-        setSessions(res.results || []);
-        setFiltered(res.results || []);
-      })
+    adminService.getAllChatSessions()
+      .then(r => setSessions(r.results || []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      setFiltered(
-        sessions.filter(
-          (s) =>
-            s.task_title.toLowerCase().includes(q) ||
-            s.customer_name.toLowerCase().includes(q) ||
-            s.writer_name.toLowerCase().includes(q)
+  const filtered = search
+    ? sessions.filter(s =>
+        [s.task_title, s.customer_name, s.writer_name].some(v =>
+          v?.toLowerCase().includes(search.toLowerCase())
         )
-      );
-    } else {
-      setFiltered(sessions);
-    }
-  }, [sessions, search]);
+      )
+    : sessions;
 
   return (
-    <div className="space-y-7 pb-10 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-[24px] font-black text-foreground tracking-tight flex items-center gap-3">
-            <MessageSquare className="size-6 text-indigo-500" />
-            All Chat Sessions
-          </h1>
-          <p className="text-[13px] text-muted-foreground font-medium mt-1">
-            Monitor communication across {sessions.length} active tasks
-          </p>
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">All Chats</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Monitor communication across {sessions.length} chat sessions</p>
+      </div>
+
+      <div className="bg-white border border-border rounded-xl p-3">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks, clients, or writers…"
+            className="w-full h-9 pl-9 pr-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors placeholder:text-muted-foreground/50" />
         </div>
       </div>
 
-      {/* Search */}
-      <div
-        className="rounded-2xl p-4 flex flex-col sm:flex-row gap-3"
-        style={{
-          background: "oklch(1 0 0 / 0.9)",
-          border: "1px solid oklch(0.88 0.018 260 / 0.5)",
-        }}
-      >
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/40" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tasks, clients, or writers…"
-            className="w-full h-10 pl-9 pr-4 rounded-xl text-[13px] font-medium outline-none"
-            style={{
-              background: "oklch(0 0 0 / 0.04)",
-              border: "1px solid oklch(0.88 0.018 260 / 0.5)",
-            }}
-          />
-        </div>
-      </div>
-
-      {/* List */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{
-          background: "oklch(1 0 0 / 0.9)",
-          border: "1px solid oklch(0.88 0.018 260 / 0.5)",
-          boxShadow: "0 2px 8px oklch(0 0 0 / 0.04)",
-        }}
-      >
+      <div className="bg-white border border-border rounded-xl overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin text-indigo-500" />
-            <span className="text-[13px] font-semibold">Loading chats…</span>
+          <div className="flex items-center justify-center py-12 gap-2">
+            <Loader2 className="size-5 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Loading chats…</span>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/40">
-            <MessageSquare className="size-10 mb-3 text-muted-foreground/20" />
-            <p className="text-[14px] font-semibold">No chats found</p>
+          <div className="flex flex-col items-center justify-center py-12">
+            <MessageSquare className="size-8 text-muted-foreground/30 mb-2" />
+            <p className="text-sm text-muted-foreground">No chat sessions found.</p>
           </div>
         ) : (
-          <div className="divide-y divide-border/40">
-            {filtered.map((s) => (
+          <div className="divide-y divide-border/50">
+            {filtered.map((s: any) => (
               <Link key={s.id} href={`/admin/chats/${s.id}`}>
-                <div
-                  className="flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-4 hover:bg-indigo-50/40 transition-colors cursor-pointer group"
-                >
-                  <div
-                    className="size-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
-                    style={{
-                      background: "linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08))",
-                      border: "1px solid rgba(99,102,241,0.2)",
-                    }}
-                  >
-                    <MessageSquare className="size-4.5 text-indigo-500" />
+                <div className="flex items-center gap-4 px-5 py-4 hover:bg-muted/20 transition-colors group">
+                  <div className="size-9 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center flex-shrink-0">
+                    <MessageSquare className="size-4 text-violet-600" strokeWidth={1.75} />
                   </div>
-                  
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-[14px] font-bold text-foreground truncate group-hover:text-indigo-600 transition-colors">
-                      {s.task_title}
-                    </h3>
-                    <div className="flex items-center gap-3 mt-1">
-                      <p className="text-[12px] font-semibold text-muted-foreground">
-                        {s.customer_name} <span className="text-muted-foreground/40 font-normal mx-1">↔</span> {s.writer_name}
-                      </p>
-                      <span className="size-1 rounded-full bg-border" />
-                      <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                        <Clock className="size-3" />
-                        {s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}
-                      </p>
-                    </div>
+                    <p className="font-medium text-foreground group-hover:text-primary transition-colors truncate">{s.task_title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{s.customer_name} ↔ {s.writer_name}</p>
                   </div>
-
-                  <div className="flex items-center gap-4 sm:ml-auto">
-                    <div className="text-right">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
-                        {s.message_count} msgs
-                      </span>
-                    </div>
-                    <ChevronRight className="size-4.5 text-muted-foreground/30 group-hover:text-indigo-500 transition-colors hidden sm:block" />
+                  <div className="text-right flex-shrink-0">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-violet-50 border border-violet-100 text-xs font-medium text-violet-700">
+                      {s.message_count} msgs
+                    </span>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1 justify-end">
+                      <Clock className="size-3" />
+                      {s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}
+                    </p>
                   </div>
+                  <ChevronRight className="size-4 text-muted-foreground/30 group-hover:text-primary transition-colors" />
                 </div>
               </Link>
             ))}
           </div>
         )}
+        <div className="px-5 py-3 border-t border-border bg-muted/20">
+          <p className="text-xs text-muted-foreground">Showing {filtered.length} of {sessions.length}</p>
+        </div>
       </div>
     </div>
   );

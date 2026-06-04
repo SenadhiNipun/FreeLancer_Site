@@ -1,150 +1,103 @@
 import React from "react";
-import { LayoutGrid, CheckCircle2, Zap, Shield, Star } from "lucide-react";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { CheckCircle2, Users, FileText, Star } from "lucide-react";
 
-const trust = [
-  { icon: CheckCircle2, label: "99.9% uptime SLA" },
-  { icon: Zap,          label: "Sub-100ms responses" },
-  { icon: Shield,       label: "SOC 2 compliant" },
+const features = [
+  { icon: Users,       text: "5,000+ verified academic professionals" },
+  { icon: FileText,    text: "Secure escrow payment protection" },
+  { icon: CheckCircle2,text: "Expert writers across all disciplines" },
+  { icon: Star,        text: "4.9 average rating from 10,000+ reviews" },
 ];
 
-const testimonial = {
-  quote: "ProjectHub transformed how I manage my academic workload. Absolutely seamless.",
-  author: "Dr. Sarah Chen",
-  role: "Research Lead, Stanford",
-  rating: 5,
-};
-
-export default function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen w-full relative">
-      {/* Theme Toggle */}
-      <div className="absolute top-5 right-5 z-50">
-        <ThemeToggle />
-      </div>
+    <div className="min-h-screen flex">
+      {/* Left brand panel */}
+      <div className="hidden lg:flex w-[44%] flex-col bg-slate-900 relative overflow-hidden">
+        {/* Subtle grid */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)",
+          backgroundSize: "40px 40px",
+        }} />
+        {/* Accent gradient */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 to-violet-400" />
 
-      {/* ── Brand Panel ── */}
-      <div className="hidden lg:flex w-[46%] flex-col relative overflow-hidden"
-        style={{ background: "linear-gradient(145deg, #0a0a18 0%, #0f0f2a 50%, #0d0d22 100%)" }}>
-
-        {/* Grid overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, #818cf8 1px, transparent 1px), linear-gradient(to bottom, #818cf8 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
-          }}
-        />
-
-        {/* Gradient orbs */}
-        <div className="absolute -top-40 -left-40 size-[560px] rounded-full opacity-25 pointer-events-none"
-          style={{ background: "radial-gradient(circle, oklch(0.58 0.28 270) 0%, transparent 70%)", filter: "blur(80px)" }} />
-        <div className="absolute top-1/2 -right-32 size-[400px] rounded-full opacity-15 pointer-events-none"
-          style={{ background: "radial-gradient(circle, oklch(0.65 0.22 290) 0%, transparent 70%)", filter: "blur(60px)" }} />
-        <div className="absolute -bottom-32 left-16 size-[300px] rounded-full opacity-15 pointer-events-none"
-          style={{ background: "radial-gradient(circle, oklch(0.72 0.16 55) 0%, transparent 70%)", filter: "blur(60px)" }} />
-
-        <div className="relative flex h-full flex-col justify-between p-14">
+        <div className="relative flex flex-col justify-between h-full px-12 py-12">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group w-fit">
-            <div className="size-10 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-300 group-hover:scale-105 group-hover:rotate-3"
-              style={{ background: "linear-gradient(135deg, oklch(0.68 0.22 265), oklch(0.55 0.26 280))", boxShadow: "0 8px 24px oklch(0.58 0.22 265 / 0.4)" }}>
-              <LayoutGrid className="size-5 text-white" strokeWidth={2.5} />
+          <Link href="/" className="flex items-center gap-2.5 w-fit">
+            <div className="size-8 rounded-lg bg-violet-600 flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none" className="text-white">
+                <rect x="1" y="1" width="5" height="5" rx="1" fill="currentColor"/>
+                <rect x="8" y="1" width="5" height="5" rx="1" fill="currentColor" opacity="0.7"/>
+                <rect x="1" y="8" width="5" height="5" rx="1" fill="currentColor" opacity="0.7"/>
+                <rect x="8" y="8" width="5" height="5" rx="1" fill="currentColor"/>
+              </svg>
             </div>
-            <span className="text-[18px] font-bold text-white tracking-tight">
-              Project<span style={{ color: "oklch(0.78 0.18 265)" }}>Hub</span>
-            </span>
+            <span className="text-base font-semibold text-white">ProjectHub</span>
           </Link>
 
           {/* Main content */}
-          <div className="space-y-10">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5"
-              style={{ background: "oklch(0.68 0.22 265 / 0.15)", border: "1px solid oklch(0.68 0.22 265 / 0.3)" }}>
-              <span className="size-1.5 rounded-full animate-pulse" style={{ background: "oklch(0.78 0.18 265)" }} />
-              <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "oklch(0.82 0.14 265)" }}>
-                Trusted by 5,000+ professionals
-              </span>
-            </div>
-
-            {/* Headline */}
-            <div className="space-y-5">
-              <h2 className="text-[42px] font-black leading-[1.1] tracking-tight text-white">
-                Academic excellence,<br />
-                <span style={{ background: "linear-gradient(135deg, oklch(0.78 0.18 265), oklch(0.82 0.14 290))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                  delivered precisely.
-                </span>
+          <div className="space-y-8">
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-violet-400 uppercase tracking-widest">Academic Writing Platform</p>
+              <h2 className="text-3xl font-semibold text-white leading-snug">
+                Connect with expert writers.<br />
+                Deliver with confidence.
               </h2>
-              <p className="text-[15px] leading-relaxed max-w-[340px] font-medium"
-                style={{ color: "oklch(0.98 0.005 260 / 0.45)" }}>
-                A modern platform built for academic professionals. Streamline
-                your workflow, collaborate, and deliver outstanding results.
+              <p className="text-slate-400 text-sm leading-relaxed max-w-sm">
+                A professional marketplace connecting students and researchers with qualified academic writers.
               </p>
             </div>
 
-            {/* Trust items */}
-            <div className="space-y-3.5">
-              {trust.map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-center gap-3.5">
-                  <div className="size-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "oklch(0.68 0.22 265 / 0.15)", border: "1px solid oklch(0.68 0.22 265 / 0.25)" }}>
-                    <Icon className="size-4" style={{ color: "oklch(0.78 0.18 265)" }} strokeWidth={2.5} />
+            <div className="space-y-3">
+              {features.map(({ icon: Icon, text }) => (
+                <div key={text} className="flex items-center gap-3">
+                  <div className="size-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                    <Icon className="size-4 text-violet-400" strokeWidth={1.75} />
                   </div>
-                  <span className="text-[13px] font-semibold" style={{ color: "oklch(0.98 0.005 260 / 0.55)" }}>{label}</span>
+                  <span className="text-sm text-slate-300">{text}</span>
                 </div>
               ))}
             </div>
 
             {/* Testimonial */}
-            <div className="p-5 rounded-2xl"
-              style={{ background: "oklch(1 0 0 / 0.04)", border: "1px solid oklch(1 0 0 / 0.08)" }}>
-              <div className="flex gap-0.5 mb-3">
-                {[...Array(testimonial.rating)].map((_, i) => (
-                  <Star key={i} className="size-3.5 fill-current" style={{ color: "oklch(0.78 0.16 70)" }} />
+            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex gap-0.5 mb-2">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="size-3.5 fill-amber-400 text-amber-400" />
                 ))}
               </div>
-              <p className="text-[13px] leading-relaxed mb-3 font-medium italic"
-                style={{ color: "oklch(0.98 0.005 260 / 0.55)" }}>
-                "{testimonial.quote}"
+              <p className="text-sm text-slate-300 italic leading-relaxed">
+                "ProjectHub streamlined our entire research workflow. Outstanding quality every time."
               </p>
-              <div>
-                <p className="text-[12px] font-bold text-white">{testimonial.author}</p>
-                <p className="text-[11px] font-medium mt-0.5" style={{ color: "oklch(0.98 0.005 260 / 0.35)" }}>{testimonial.role}</p>
-              </div>
+              <p className="text-xs text-slate-500 mt-2">— Dr. Sarah Chen, Research Lead</p>
             </div>
           </div>
 
-          <p className="text-[11px] font-medium" style={{ color: "oklch(0.98 0.005 260 / 0.2)" }}>
-            © 2026 Project Hub Inc. All rights reserved.
-          </p>
+          <p className="text-xs text-slate-600">© 2026 ProjectHub Inc. All rights reserved.</p>
         </div>
       </div>
 
-      {/* ── Form Panel ── */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-background px-6 py-12 sm:px-14 relative">
-        {/* Subtle background gradient */}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse at 70% 30%, oklch(0.58 0.22 265 / 0.05) 0%, transparent 60%)" }} />
-
+      {/* Right form panel */}
+      <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 py-12 sm:px-10">
         {/* Mobile logo */}
-        <div className="mb-10 flex lg:hidden">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="size-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
-              <LayoutGrid className="size-4.5 text-white" strokeWidth={2.5} />
+        <div className="mb-8 lg:hidden">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="size-7 rounded-lg bg-primary flex items-center justify-center">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-white">
+                <rect x="1" y="1" width="5" height="5" rx="1" fill="currentColor"/>
+                <rect x="8" y="1" width="5" height="5" rx="1" fill="currentColor" opacity="0.7"/>
+                <rect x="1" y="8" width="5" height="5" rx="1" fill="currentColor" opacity="0.7"/>
+                <rect x="8" y="8" width="5" height="5" rx="1" fill="currentColor"/>
+              </svg>
             </div>
-            <span className="text-[16px] font-bold text-foreground tracking-tight">
-              Project<span className="text-primary">Hub</span>
-            </span>
+            <span className="text-sm font-semibold text-foreground">ProjectHub</span>
           </Link>
         </div>
 
-        <div className="w-full max-w-[420px] relative z-10">{children}</div>
+        <div className="w-full max-w-[400px]">
+          {children}
+        </div>
       </div>
     </div>
   );
