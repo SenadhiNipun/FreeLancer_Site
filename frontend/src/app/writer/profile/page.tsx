@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { userService } from "@/services/user.service";
 import { useRouter } from "next/navigation";
 import { getFileUrl } from "@/lib/api-client";
+import { toast } from "react-toastify";
 
 export default function WriterProfile() {
   const router = useRouter();
@@ -87,10 +88,10 @@ export default function WriterProfile() {
         experience_years: experienceYears
       };
       await userService.updateMyProfile(payload);
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
       fetchProfile();
     } catch (error: any) {
-      alert(error.message || "Failed to save profile changes");
+      toast.error(error.message || "Failed to save profile changes");
     } finally {
       setIsSaving(false);
     }
@@ -104,9 +105,9 @@ export default function WriterProfile() {
       const res = await userService.uploadProfilePicture(file);
       const newUrl = res.results.profile_image_url;
       setProfileImageUrl(newUrl);
-      alert("Profile picture uploaded successfully!");
+      toast.success("Profile picture uploaded successfully!");
     } catch (error: any) {
-      alert(error.message || "Failed to upload profile picture");
+      toast.error(error.message || "Failed to upload profile picture");
     }
   };
 

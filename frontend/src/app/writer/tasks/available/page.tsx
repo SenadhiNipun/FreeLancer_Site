@@ -26,6 +26,7 @@ import { taskService } from "@/services/task.service";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui";
+import { toast } from "react-toastify";
 
 export default function AvailableTasks() {
   const [tasks, setTasks] = React.useState<any[]>([]);
@@ -69,12 +70,12 @@ export default function AvailableTasks() {
     
     const amount = parseFloat(bidAmount);
     if (isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid bid amount greater than zero.");
+      toast.warning("Please enter a valid bid amount greater than zero.");
       return;
     }
 
     if (bidMessage.length > 1000) {
-      alert("Your pitch must be 1000 characters or less.");
+      toast.warning("Your pitch must be 1000 characters or less.");
       return;
     }
     
@@ -87,9 +88,9 @@ export default function AvailableTasks() {
       setIsBidding(false);
       // Refresh task list or show success
       fetchTasks();
-      alert("Bid placed successfully!");
+      toast.success("Bid placed successfully!");
     } catch (error: any) {
-      alert(error.message || "Failed to place bid");
+      toast.error(error.message || "Failed to place bid");
     } finally {
       setIsSubmitting(false);
     }

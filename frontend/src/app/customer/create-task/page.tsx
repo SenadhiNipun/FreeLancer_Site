@@ -21,6 +21,7 @@ import { academicService } from "@/services/academic.service";
 import { taskService } from "@/services/task.service";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { toast } from "react-toastify";
 
 /* ── Refined Custom Labels ── */
 const Label = ({ children, htmlFor, required }: { children: React.ReactNode; htmlFor?: string; required?: boolean }) => (
@@ -74,8 +75,8 @@ export default function CreateTask() {
     ];
     const maxSize = 10 * 1024 * 1024;
     const valid = Array.from(incoming).filter((f) => {
-      if (!allowed.includes(f.type)) { alert(`${f.name}: unsupported file type. Please upload PDF, DOCX, JPEG, or PNG.`); return false; }
-      if (f.size > maxSize) { alert(`${f.name}: exceeds 10 MB limit.`); return false; }
+      if (!allowed.includes(f.type)) { toast.warning(`${f.name}: unsupported file type. Please upload PDF, DOCX, JPEG, or PNG.`); return false; }
+      if (f.size > maxSize) { toast.warning(`${f.name}: exceeds 10 MB limit.`); return false; }
       return true;
     });
     setFiles((prev) => {
@@ -162,7 +163,7 @@ export default function CreateTask() {
           await taskService.addFilesToTask(createdTask.id, files);
         } catch (fileErr) {
           console.error("Failed to upload files:", fileErr);
-          alert("Task created, but files failed to upload. You can add them later in project details.");
+          toast.warning("Task created, but files failed to upload. You can add them later in project details.");
         }
       }
       

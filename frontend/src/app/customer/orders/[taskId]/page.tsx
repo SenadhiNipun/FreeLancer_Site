@@ -31,6 +31,7 @@ import { chatService } from "@/services/chat.service";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getFileUrl } from "@/lib/api-client";
+import { toast } from "react-toastify";
 
 export default function OrderDetails() {
   const params = useParams();
@@ -52,7 +53,7 @@ export default function OrderDetails() {
       const session = await chatService.initializeChat(taskId, writerId);
       router.push(`/customer/messages?session=${session.id}`);
     } catch (error: any) {
-      alert(error.message || "Failed to open chat with writer");
+      toast.error(error.message || "Failed to open chat with writer");
     } finally {
       setIsInitializingChat(null);
     }
@@ -88,7 +89,7 @@ export default function OrderDetails() {
 
   const handleRequestRevision = async () => {
     if (!revisionNote.trim()) {
-      alert("Please provide a revision message.");
+      toast.warning("Please provide a revision message.");
       return;
     }
     if (!taskIdParam) return;
@@ -106,7 +107,7 @@ export default function OrderDetails() {
       setRevisionNote("");
       setRevisionFiles([]);
     } catch (error: any) {
-      alert(error.message || "Failed to submit revision request");
+      toast.error(error.message || "Failed to submit revision request");
     } finally {
       setIsSubmittingRevision(false);
     }
@@ -124,7 +125,7 @@ export default function OrderDetails() {
       setTask(taskRes.results);
       setBids([]); // Bids are closed
     } catch (error: any) {
-      alert(error.message || "Failed to accept bid");
+      toast.error(error.message || "Failed to accept bid");
     } finally {
       setIsAccepting(null);
     }
@@ -139,12 +140,12 @@ export default function OrderDetails() {
     try {
       const taskId = parseInt(taskIdParam);
       await taskService.approveTask(taskId);
-      alert("Project approved and payment released successfully!");
+      toast.success("Project approved and payment released successfully!");
       // Refetch task data
       const taskRes = await taskService.getTaskDetails(taskId);
       setTask(taskRes.results);
     } catch (error: any) {
-      alert(error.message || "Failed to approve task");
+      toast.error(error.message || "Failed to approve task");
     } finally {
       setIsApproving(false);
     }
@@ -158,7 +159,7 @@ export default function OrderDetails() {
 
   const handleSubmitReview = async () => {
     if (reviewRating === 0) {
-      alert("Please select a star rating.");
+      toast.warning("Please select a star rating.");
       return;
     }
     if (!taskIdParam) return;
@@ -166,12 +167,12 @@ export default function OrderDetails() {
     try {
       const taskId = parseInt(taskIdParam);
       await taskService.submitReview(taskId, reviewRating, reviewFeedback);
-      alert("Thank you for your feedback! Review submitted successfully.");
+      toast.success("Thank you for your feedback! Review submitted successfully.");
       // Refetch task data
       const taskRes = await taskService.getTaskDetails(taskId);
       setTask(taskRes.results);
     } catch (error: any) {
-      alert(error.message || "Failed to submit review");
+      toast.error(error.message || "Failed to submit review");
     } finally {
       setIsSubmittingReview(false);
     }
@@ -274,9 +275,9 @@ export default function OrderDetails() {
                         // Refetch data
                         const taskRes = await taskService.getTaskDetails(taskId);
                         setTask(taskRes.results);
-                        alert("Files uploaded successfully!");
+                        toast.success("Files uploaded successfully!");
                       } catch (err: any) {
-                        alert(err.message || "Failed to upload files");
+                        toast.error(err.message || "Failed to upload files");
                       } finally {
                         setIsLoading(false);
                       }

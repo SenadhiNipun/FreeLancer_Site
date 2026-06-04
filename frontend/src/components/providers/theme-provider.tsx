@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { ToastContainer } from "react-toastify";
 
 type Theme = "dark" | "light" | "system";
 
@@ -42,6 +43,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
       {children}
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme={theme === "dark" ? "dark" : "light"}
+      />
     </ThemeContext.Provider>
   );
 }

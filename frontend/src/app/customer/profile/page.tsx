@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui";
 import { userService } from "@/services/user.service";
 import { getFileUrl } from "@/lib/api-client";
+import { toast } from "react-toastify";
 
 export default function Profile() {
   const [profile, setProfile] = React.useState<any>(null);
@@ -92,10 +93,10 @@ export default function Profile() {
       };
 
       await userService.updateMyProfile(payload);
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
       fetchProfile();
     } catch (error: any) {
-      alert(error.message || "Failed to update profile changes");
+      toast.error(error.message || "Failed to update profile changes");
     } finally {
       setIsSaving(false);
     }
@@ -109,10 +110,10 @@ export default function Profile() {
       const res = await userService.uploadProfilePicture(file);
       const newUrl = res.results.profile_image_url;
       setProfileImageUrl(newUrl);
-      alert("Profile picture uploaded successfully!");
+      toast.success("Profile picture uploaded successfully!");
       fetchProfile();
     } catch (error: any) {
-      alert(error.message || "Failed to upload profile picture");
+      toast.error(error.message || "Failed to upload profile picture");
     }
   };
 
@@ -348,10 +349,10 @@ export default function Profile() {
                       const newPass = (document.getElementById("newPassword") as HTMLInputElement).value;
                       const confirmPass = (document.getElementById("confirmPassword") as HTMLInputElement).value;
                       if (newPass && newPass !== confirmPass) {
-                        alert("Passwords do not match!");
+                        toast.error("Passwords do not match!");
                         return;
                       }
-                      alert("Password updated successfully!");
+                      toast.success("Password updated successfully!");
                       (document.getElementById("currentPassword") as HTMLInputElement).value = "";
                       (document.getElementById("newPassword") as HTMLInputElement).value = "";
                       (document.getElementById("confirmPassword") as HTMLInputElement).value = "";

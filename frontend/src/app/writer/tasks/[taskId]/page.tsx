@@ -30,6 +30,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { CountdownTimer } from "@/components/tasks/CountdownTimer";
 import { getFileUrl } from "@/lib/api-client";
+import { toast } from "react-toastify";
 
 export default function WriterTaskDetails() {
   const params = useParams();
@@ -83,14 +84,14 @@ export default function WriterTaskDetails() {
         is_final: true,
         files: selectedFiles
       });
-      alert("Work submitted successfully!");
+      toast.success("Work submitted successfully!");
       setSubmissionNote("");
       setSelectedFiles([]);
       // Refresh task
       const response = await taskService.getWriterTaskDetails(taskId);
       setTask(response.results);
     } catch (error: any) {
-      alert(error.message || "Failed to submit work");
+      toast.error(error.message || "Failed to submit work");
     } finally {
       setIsSubmitting(false);
     }
@@ -113,7 +114,7 @@ export default function WriterTaskDetails() {
     
     const amount = parseFloat(bidAmount);
     if (isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid bid amount.");
+      toast.warning("Please enter a valid bid amount.");
       return;
     }
 
@@ -124,12 +125,12 @@ export default function WriterTaskDetails() {
         bid_amount: amount,
         message: bidMessage
       });
-      alert("Bid placed successfully!");
+      toast.success("Bid placed successfully!");
       // Refresh task
       const response = await taskService.getWriterTaskDetails(taskId);
       setTask(response.results);
     } catch (error: any) {
-      alert(error.message || "Failed to place bid");
+      toast.error(error.message || "Failed to place bid");
     } finally {
       setIsSubmitting(false);
     }
