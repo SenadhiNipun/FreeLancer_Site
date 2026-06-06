@@ -180,7 +180,16 @@ class AuthService:
             user.status = "ACTIVE"
             user.verification_code = None
             user.verification_code_expires_at = None
-            db.commit()
+
+            if user.writer_profile and user.writer_profile.profile_status == "INCOMPLETE":
+                user.writer_profile.profile_status = "PENDING_APPROVAL"
+                db.commit()
+                from app.service.notification_service import NotificationService
+                writer_name = f"{user.first_name} {user.last_name}".strip() or user.email
+                NotificationService.notify_admins_new_writer(db, user.id, writer_name)
+            else:
+                db.commit()
+
             return True
         except Exception:
             db.rollback()
@@ -242,6 +251,18 @@ class AuthService:
 
         if not existing_user.is_email_verified:
             raise UnauthorizedException(detail="Email not verified. Please verify your email first.")
+
+        if (
+            existing_user.writer_profile is not None
+            and existing_user.writer_profile.profile_status not in ("APPROVED",)
+        ):
+            status = existing_user.writer_profile.profile_status
+            if status == "PENDING_APPROVAL":
+                raise UnauthorizedException(detail="Your writer application is pending approval. Please wait for an admin to review it.")
+            elif status == "REJECTED":
+                raise UnauthorizedException(detail="Your writer application was rejected. Please contact support.")
+            else:
+                raise UnauthorizedException(detail="Your writer profile is not yet approved.")
 
         if existing_user.is_delete:
             raise UnauthorizedException(detail="User account has been deleted")

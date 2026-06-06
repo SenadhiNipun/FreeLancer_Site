@@ -53,6 +53,21 @@ class NotificationService:
             .all()
 
     @staticmethod
+    def notify_admins_new_writer(db: Session, writer_user_id: int, writer_name: str):
+        from app.repository.user_repository import UserRepository
+        from app.enums.role_enum import RoleEnum
+        admins = UserRepository.get_all_users_by_role(db, RoleEnum.SUPER_ADMIN.value)
+        for admin in admins:
+            NotificationService.create_notification(
+                db,
+                user_id=admin.id,
+                title="New Writer Application",
+                message=f"{writer_name} has registered and is awaiting approval.",
+                notification_type="WRITER_REGISTRATION",
+                related_id=writer_user_id,
+            )
+
+    @staticmethod
     def mark_as_read(db: Session, user_id: int, notification_id: int):
         notification = db.query(NotificationEntity)\
             .filter(NotificationEntity.id == notification_id, NotificationEntity.user_id == user_id)\

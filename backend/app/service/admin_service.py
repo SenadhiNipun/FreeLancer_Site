@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.repository.user_repository import UserRepository
 from app.exceptions.exception import NotFoundException, ValidationException, UnauthorizedException
 from app.service.chat_service import ChatService
+from app.service.notification_service import NotificationService
 from app.enums.role_enum import RoleEnum
 
 
@@ -21,6 +22,8 @@ def _user_to_dict(user, include_writer_profile=False, task_count=0):
     }
     if include_writer_profile and user.writer_profile:
         wp = user.writer_profile
+        d["mobile_number"] = user.mobile_number
+        d["whatsapp_number"] = user.whatsapp_number
         d["writer_profile"] = {
             "profile_status": wp.profile_status,
             "bio": wp.bio,
@@ -29,6 +32,10 @@ def _user_to_dict(user, include_writer_profile=False, task_count=0):
             "country": wp.country,
             "institution_name": wp.institution_name,
             "academic_status": wp.academic_status,
+            "education_level": wp.education_level.name if wp.education_level else None,
+            "academic_category": wp.academic_category.name if wp.academic_category else None,
+            "specialization": wp.specialization.name if wp.specialization else None,
+            "qualifications": [q.qualification_name for q in wp.qualifications] if wp.qualifications else [],
         }
     return d
 
@@ -45,6 +52,14 @@ class AdminService:
 
         user.writer_profile.profile_status = "APPROVED"
         db.commit()
+        NotificationService.create_notification(
+            db,
+            user_id=writer_id,
+            title="Application Approved!",
+            message="Congratulations! Your writer application has been approved. You can now start accepting tasks.",
+            notification_type="WRITER_APPROVED",
+            related_id=writer_id,
+        )
         return True
 
     @staticmethod
@@ -55,6 +70,14 @@ class AdminService:
 
         user.writer_profile.profile_status = "REJECTED"
         db.commit()
+        NotificationService.create_notification(
+            db,
+            user_id=writer_id,
+            title="Application Not Approved",
+            message="Unfortunately, your writer application was not approved at this time. Please contact support for more information.",
+            notification_type="WRITER_REJECTED",
+            related_id=writer_id,
+        )
         return True
 
     @staticmethod
