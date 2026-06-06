@@ -39,6 +39,16 @@ Base = declarative_base()
 
 def init_db():
     try:
+        # Create the database if it doesn't exist
+        root_url = (
+            f"mysql+mysqlconnector://{MYSQL_USER}:{encoded_password}"
+            f"@{MYSQL_HOST}:{MYSQL_PORT}"
+        )
+        root_engine = create_engine(root_url)
+        with root_engine.connect() as conn:
+            conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{MYSQL_DB}`"))
+        root_engine.dispose()
+
         # Import entities here to avoid circular imports during registration
         from app.entity.user_entity import UserEntity
         from app.entity.role_entity import RoleEntity
