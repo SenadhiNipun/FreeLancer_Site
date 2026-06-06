@@ -30,6 +30,7 @@ os.makedirs("uploads/tasks", exist_ok=True)
 os.makedirs("uploads/revisions", exist_ok=True)
 os.makedirs("uploads/submissions", exist_ok=True)
 os.makedirs("uploads/chats", exist_ok=True)
+os.makedirs("uploads/profiles", exist_ok=True)
 
 # Mount static files
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -69,4 +70,5 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
