@@ -358,7 +358,7 @@ export default function ChatInterface() {
 
   if (isLoading && sessions.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[750px] bg-[#F4F7F8] rounded-[2rem] border border-slate-100">
+      <div className="flex items-center justify-center h-full bg-[#F4F7F8] rounded-[2rem] border border-slate-100">
         <div className="flex flex-col items-center gap-4">
           <div className="size-10 border-4 border-[#0D9488] border-t-transparent rounded-full animate-spin" />
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Initializing OChat Engine...</p>
@@ -368,7 +368,7 @@ export default function ChatInterface() {
   }
 
   return (
-    <div className="flex h-[750px] bg-white rounded-[2.5rem] border border-slate-150 shadow-xl overflow-hidden font-sans text-slate-800 animate-in fade-in duration-500">
+    <div className="flex h-full bg-white rounded-[2.5rem] border border-slate-150 shadow-xl overflow-hidden font-sans text-slate-800 animate-in fade-in duration-500">
       
       {/* ── Column B: Chat Session Inbox (Medium Sidebar) ──────────────── */}
       <div className={cn(
