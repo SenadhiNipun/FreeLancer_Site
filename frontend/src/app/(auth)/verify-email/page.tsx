@@ -9,6 +9,7 @@ function VerifyEmailForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const email        = searchParams.get("email") || "";
+  const role         = searchParams.get("role") || "";
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -20,7 +21,11 @@ function VerifyEmailForm() {
     setLoading(true); setError(null);
     try {
       await authService.verifyEmail({ email, verification_code: code });
-      router.push("/sign-in?verified=true");
+      if (role === "WRITER") {
+        router.push(`/pending-approval?email=${encodeURIComponent(email)}`);
+      } else {
+        router.push("/sign-in?verified=true");
+      }
     } catch (err) {
       setError((err as Error).message || "Invalid verification code.");
     } finally { setLoading(false); }

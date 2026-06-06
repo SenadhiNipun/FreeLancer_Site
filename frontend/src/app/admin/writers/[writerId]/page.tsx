@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, FileText, MapPin, Building, Clock } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, MapPin, Building, Clock, Phone, BookOpen, GraduationCap, Tag, CheckCircle2, XCircle } from "lucide-react";
 import { adminService } from "@/services/admin.service";
+import { toast } from "react-toastify";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -27,18 +28,40 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function WriterDetailPage() {
-  const { writerId }            = useParams<{ writerId: string }>();
-  const [writer, setWriter]     = useState<any>(null);
-  const [tasks, setTasks]       = useState<any[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const { writerId }              = useParams<{ writerId: string }>();
+  const [writer, setWriter]       = useState<any>(null);
+  const [tasks, setTasks]         = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [actioning, setActioning] = useState<"approve" | "reject" | null>(null);
 
-  useEffect(() => {
+  const load = () =>
     Promise.all([adminService.getAllWriters(), adminService.getWriterTasks(Number(writerId))])
       .then(([wRes, tRes]) => {
         setWriter((wRes.results || []).find((w: any) => w.id === Number(writerId)) || null);
         setTasks(tRes.results || []);
       }).catch(console.error).finally(() => setLoading(false));
-  }, [writerId]);
+
+  useEffect(() => { load(); }, [writerId]);
+
+  const approve = async () => {
+    setActioning("approve");
+    try {
+      await adminService.approveWriter(Number(writerId));
+      toast.success("Writer approved successfully!");
+      load();
+    } catch { toast.error("Failed to approve writer."); }
+    finally { setActioning(null); }
+  };
+
+  const reject = async () => {
+    setActioning("reject");
+    try {
+      await adminService.rejectWriter(Number(writerId));
+      toast.success("Writer rejected.");
+      load();
+    } catch { toast.error("Failed to reject writer."); }
+    finally { setActioning(null); }
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[50vh] gap-3">
@@ -60,6 +83,41 @@ export default function WriterDetailPage() {
       <Link href="/admin/writers" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="size-4" /> Writers
       </Link>
+
+      {/* Pending approval action banner */}
+      {wp?.profile_status === "PENDING_APPROVAL" && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="size-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Clock className="size-4 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-900">Awaiting Your Review</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                This writer has submitted their application and is waiting for approval.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              disabled={!!actioning}
+              onClick={reject}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium text-red-600 bg-white border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+            >
+              {actioning === "reject" ? <Loader2 className="size-3.5 animate-spin" /> : <XCircle className="size-3.5" />}
+              Reject
+            </button>
+            <button
+              disabled={!!actioning}
+              onClick={approve}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              {actioning === "approve" ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+              Approve
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Profile header */}
       <div className="bg-white border border-border rounded-xl p-5">
@@ -89,6 +147,71 @@ export default function WriterDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Profile details */}
+      {wp && (
+        <div className="bg-white border border-border rounded-xl p-5 space-y-4">
+          <h2 className="font-semibold text-foreground">Profile Details</h2>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {writer.mobile_number && (
+              <div className="flex items-start gap-3">
+                <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
+                  <Phone className="size-4 text-slate-500" strokeWidth={1.75} />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Mobile</p>
+                  <p className="text-sm font-medium text-foreground">{writer.mobile_number}</p>
+                </div>
+              </div>
+            )}
+            {wp.education_level && (
+              <div className="flex items-start gap-3">
+                <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
+                  <GraduationCap className="size-4 text-slate-500" strokeWidth={1.75} />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Education Level</p>
+                  <p className="text-sm font-medium text-foreground">{wp.education_level}</p>
+                </div>
+              </div>
+            )}
+            {wp.academic_category && (
+              <div className="flex items-start gap-3">
+                <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="size-4 text-slate-500" strokeWidth={1.75} />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Academic Category</p>
+                  <p className="text-sm font-medium text-foreground">{wp.academic_category}</p>
+                </div>
+              </div>
+            )}
+            {wp.specialization && (
+              <div className="flex items-start gap-3">
+                <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
+                  <Tag className="size-4 text-slate-500" strokeWidth={1.75} />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Specialization</p>
+                  <p className="text-sm font-medium text-foreground">{wp.specialization}</p>
+                </div>
+              </div>
+            )}
+          </div>
+          {wp.qualifications?.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">Qualifications</p>
+              <div className="flex flex-wrap gap-2">
+                {wp.qualifications.map((q: string) => (
+                  <span key={q} className="px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 text-xs font-medium border border-violet-200">
+                    {q}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tasks */}
       <div className="bg-white border border-border rounded-xl overflow-hidden">

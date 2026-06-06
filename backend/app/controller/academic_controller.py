@@ -23,3 +23,4 @@ def get_academic_categories(db: db_dependency):
 def get_specializations(category_id: int, db: db_dependency):
     results = AcademicService.get_specializations(db, category_id)
     return GenericResponse.success(message="Specializations fetched successfully", results=results)
+

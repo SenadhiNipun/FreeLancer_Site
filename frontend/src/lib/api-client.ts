@@ -134,8 +134,13 @@ export async function apiClient(endpoint: string, options: RequestInit = {}): Pr
       }
 
       // If it's still 401 or 403 after refresh attempt (or no refresh token)
+      // Skip auto-redirect for auth endpoints so their callers can handle the error themselves
       if (response.status === 401 || response.status === 403) {
-        if (isClient && !endpoint.includes('/auth/refresh')) {
+        if (
+          isClient &&
+          !endpoint.includes('/auth/refresh') &&
+          !endpoint.includes('/auth/login')
+        ) {
           localStorage.removeItem('token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('user');

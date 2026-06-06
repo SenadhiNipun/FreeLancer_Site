@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authService } from "@/services/auth.service";
+import { LogoutConfirmDialog } from "@/components/ui/logout-confirm-dialog";
 
 const menuGroups = [
   {
@@ -50,8 +51,9 @@ const menuGroups = [
 
 export function CustomerSidebar() {
   const pathname = usePathname();
-  const [userName, setUserName] = useState("Client");
+  const [userName, setUserName]         = useState("Client");
   const [userInitials, setUserInitials] = useState("CL");
+  const [confirmOpen, setConfirmOpen]   = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
@@ -124,13 +126,19 @@ export function CustomerSidebar() {
           </div>
         </Link>
         <button
-          onClick={() => authService.logout()}
+          onClick={() => setConfirmOpen(true)}
           className="flex items-center gap-2.5 w-full px-2 py-2 rounded-lg text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors mt-0.5"
         >
           <LogOut className="size-4 flex-shrink-0" strokeWidth={1.75} />
           Sign out
         </button>
       </div>
+
+      <LogoutConfirmDialog
+        open={confirmOpen}
+        onConfirm={() => authService.logout()}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </aside>
   );
 }

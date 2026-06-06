@@ -33,7 +33,12 @@ export default function SignInPage() {
         else router.push("/customer/dashboard");
       }
     } catch (err: any) {
-      setError(err.message || "Invalid email or password.");
+      const msg: string = err.message || "Invalid email or password.";
+      if (msg.toLowerCase().includes("pending approval")) {
+        router.push(`/pending-approval?email=${encodeURIComponent(email)}`);
+        return;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
