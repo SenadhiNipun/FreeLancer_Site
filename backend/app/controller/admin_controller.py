@@ -141,6 +141,39 @@ def activate_user(
     return GenericResponse.success(message="User activated successfully", results=result)
 
 
+@router.get("/tasks")
+def get_all_tasks(
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security),
+    status: str = None,
+):
+    require_super_admin(db, auth)
+    results = AdminService.get_all_tasks(db, status=status)
+    return GenericResponse.success(message="Tasks fetched successfully", results=results)
+
+
+@router.get("/tasks/{task_id}")
+def get_task_details(
+    task_id: int,
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security)
+):
+    require_super_admin(db, auth)
+    results = AdminService.get_task_details(db, task_id)
+    return GenericResponse.success(message="Task details fetched successfully", results=results)
+
+
+@router.get("/customers/{customer_id}/tasks")
+def get_customer_tasks(
+    customer_id: int,
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security)
+):
+    require_super_admin(db, auth)
+    results = AdminService.get_customer_tasks(db, customer_id)
+    return GenericResponse.success(message="Customer tasks fetched successfully", results=results)
+
+
 @router.get("/chats")
 def get_all_chat_sessions(
     db: db_dependency,

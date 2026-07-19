@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.orm import Session
 from app.repository.user_repository import UserRepository
 from app.exceptions.exception import NotFoundException, ValidationException, UnauthorizedException
@@ -346,6 +347,95 @@ class AdminService:
             "completed_tasks": completed_tasks,
             "total_revenue": float(total_revenue),
         }
+
+    @staticmethod
+    def get_all_tasks(db: Session, status: Optional[str] = None):
+        from app.repository.task_repository import TaskRepository
+
+        CONFIRMED_STATUSES = ["ASSIGNED", "IN_PROGRESS", "SUBMITTED", "REVISION_REQUESTED", "COMPLETED"]
+
+        if status and status != "ALL":
+            tasks = TaskRepository.get_all_tasks(db, status=status)
+        else:
+            tasks = TaskRepository.get_all_tasks(db)
+            if status != "ALL":
+                tasks = [t for t in tasks if t.task_status in CONFIRMED_STATUSES]
+
+        result = []
+        for t in tasks:
+            writer = t.writer
+            result.append({
+                "id": t.id,
+                "title": t.title,
+                "task_status": t.task_status,
+                "payment_status": t.payment_status,
+                "budget": float(t.budget) if t.budget else None,
+                "deadline": t.deadline.isoformat() if t.deadline else None,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "customer_id": t.customer_id,
+                "customer_name": f"{t.customer.first_name} {t.customer.last_name}" if t.customer else "Unknown",
+                "writer_id": writer.id if writer else None,
+                "writer_name": f"{writer.first_name} {writer.last_name}" if writer else None,
+            })
+        return result
+
+    @staticmethod
+    def get_task_details(db: Session, task_id: int):
+        from app.repository.task_repository import TaskRepository
+        from app.entity.chat_session_entity import ChatSessionEntity
+        from app.model.task_response import TaskResponse
+
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            raise NotFoundException(detail="Task not found")
+
+        data = TaskResponse.model_validate(task).model_dump()
+
+        # Confirmed-on date: same assignment selected by TaskEntity.writer property
+        confirmed_at = None
+        for a in (task.assignments or []):
+            if a.assignment_status not in ["CANCELLED", "REJECTED"]:
+                confirmed_at = a.accepted_at or a.assigned_at
+                break
+        data["confirmed_at"] = confirmed_at.isoformat() if confirmed_at else None
+
+        session = (
+            db.query(ChatSessionEntity)
+            .filter(ChatSessionEntity.task_id == task_id)
+            .first()
+        )
+        data["chat_session_id"] = session.id if session else None
+
+        return data
+
+    @staticmethod
+    def get_customer_tasks(db: Session, customer_id: int):
+        from app.entity.task_entity import TaskEntity
+
+        user = UserRepository.get_user_by_id(db, customer_id)
+        if not user:
+            raise NotFoundException(detail="Customer not found")
+
+        tasks = (
+            db.query(TaskEntity)
+            .filter(TaskEntity.customer_id == customer_id, TaskEntity.is_delete == False)
+            .order_by(TaskEntity.created_at.desc())
+            .all()
+        )
+
+        result = []
+        for t in tasks:
+            writer = t.writer
+            result.append({
+                "id": t.id,
+                "title": t.title,
+                "task_status": t.task_status,
+                "budget": float(t.budget) if t.budget else None,
+                "deadline": t.deadline.isoformat() if t.deadline else None,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "writer_name": f"{writer.first_name} {writer.last_name}" if writer else None,
+            })
+        return result
 
     @staticmethod
     def suspend_user(db: Session, user_id: int):

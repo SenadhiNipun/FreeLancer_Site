@@ -16,6 +16,14 @@ export const adminService = {
 
   // ── Customers ──────────────────────────────────────────────────────────
   getAllCustomers: () => apiClient("/api/v1/admin/customers"),
+  getCustomerTasks: (customerId: number) =>
+    apiClient(`/api/v1/admin/customers/${customerId}/tasks`),
+
+  // ── Tasks ──────────────────────────────────────────────────────────────
+  getAllTasks: (status?: string) =>
+    apiClient(`/api/v1/admin/tasks${status ? `?status=${status}` : ""}`),
+  getTaskDetails: (taskId: number) =>
+    apiClient(`/api/v1/admin/tasks/${taskId}`),
 
   // ── User management ────────────────────────────────────────────────────
   suspendUser: (userId: number) =>

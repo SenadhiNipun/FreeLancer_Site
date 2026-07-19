@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, FileText, MapPin, Building, Clock, Phone, BookOpen, GraduationCap, Tag, CheckCircle2, XCircle } from "lucide-react";
 import { adminService } from "@/services/admin.service";
@@ -29,6 +29,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function WriterDetailPage() {
   const { writerId }              = useParams<{ writerId: string }>();
+  const router                    = useRouter();
   const [writer, setWriter]       = useState<any>(null);
   const [tasks, setTasks]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -237,7 +238,8 @@ export default function WriterDetailPage() {
               </thead>
               <tbody>
                 {tasks.map((t: any) => (
-                  <tr key={t.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                  <tr key={t.id} onClick={() => router.push(`/admin/tasks/${t.id}`)}
+                    className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer">
                     <td className="px-5 py-3.5 font-medium text-foreground truncate max-w-[220px]">{t.title}</td>
                     <td className="px-5 py-3.5"><StatusBadge status={t.task_status} /></td>
                     <td className="px-5 py-3.5 text-muted-foreground">{t.customer_name}</td>

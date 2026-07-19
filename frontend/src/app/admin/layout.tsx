@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, PenSquare, MessageSquare,
   ClipboardCheck, LogOut, Shield, Menu, X, TicketCheck,
-  Bell, UserCheck, TicketIcon, CheckCheck,
+  Bell, UserCheck, TicketIcon, CheckCheck, ClipboardList,
 } from "lucide-react";
 import { LogoutConfirmDialog } from "@/components/ui/logout-confirm-dialog";
 import { notificationService } from "@/services/notification.service";
@@ -16,6 +16,7 @@ const NAV = [
   { href: "/admin/dashboard", label: "Dashboard",         icon: LayoutDashboard },
   { href: "/admin/writers",   label: "Writers",           icon: PenSquare },
   { href: "/admin/customers", label: "Customers",         icon: Users },
+  { href: "/admin/tasks",     label: "Tasks",             icon: ClipboardList },
   { href: "/admin/chats",     label: "All Chats",         icon: MessageSquare },
   { href: "/admin/pending",   label: "Pending Approvals", icon: ClipboardCheck },
   { href: "/admin/support",   label: "Support Tickets",   icon: TicketCheck },

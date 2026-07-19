@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { Search, Loader2, Users } from "lucide-react";
 import { adminService } from "@/services/admin.service";
 
@@ -97,15 +98,15 @@ export default function AdminCustomersPage() {
                 {filtered.map((c: any) => (
                   <tr key={c.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
+                      <Link href={`/admin/customers/${c.id}`} className="flex items-center gap-3 group">
                         <div className="size-8 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold flex items-center justify-center flex-shrink-0">
                           {(c.first_name?.[0] || "") + (c.last_name?.[0] || "")}
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">{c.first_name} {c.last_name}</p>
+                          <p className="font-medium text-foreground group-hover:text-primary transition-colors">{c.first_name} {c.last_name}</p>
                           <p className="text-xs text-muted-foreground">{c.email}</p>
                         </div>
-                      </div>
+                      </Link>
                     </td>
                     <td className="px-5 py-4"><StatusBadge status={c.status} /></td>
                     <td className="px-5 py-4 text-center font-medium">{c.task_count}</td>

@@ -29,6 +29,13 @@ class SpecializationResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class EducationLevelResponse(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
 class TaskFileResponse(BaseModel):
     id: int
     file_type: str
@@ -53,6 +60,7 @@ class TaskResponse(BaseModel):
     specialization_id: Optional[int] = None
     specialization: Optional[SpecializationResponse] = None
     education_level_id: Optional[int] = None
+    education_level: Optional[EducationLevelResponse] = None
     deadline: datetime
     budget: Optional[float] = None
     task_status: str
