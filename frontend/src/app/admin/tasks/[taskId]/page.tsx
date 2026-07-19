@@ -86,6 +86,7 @@ export default function AdminTaskDetailPage() {
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">Urgent</span>
               )}
             </div>
+            <p className="text-xs text-muted-foreground mb-1">#{task.id.toString().padStart(6,"0")}</p>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Payment:</span> <StatusBadge status={task.payment_status} />
             </div>

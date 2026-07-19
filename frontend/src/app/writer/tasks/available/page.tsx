@@ -54,9 +54,15 @@ export default function AvailableTasks() {
     } finally { setSubmitting(false); }
   };
 
-  const displayed = tasks.filter(t =>
-    !search || t.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const displayed = tasks.filter(t => {
+    if (!search) return true;
+    const term = search.trim().replace(/^#/, "").toLowerCase();
+    return (
+      t.title.toLowerCase().includes(search.toLowerCase()) ||
+      t.id.toString().includes(term) ||
+      t.id.toString().padStart(6, "0").includes(term)
+    );
+  });
 
   return (
     <div className="space-y-5">
@@ -70,7 +76,7 @@ export default function AvailableTasks() {
       <div className="bg-white border border-border rounded-xl p-3 flex gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks…"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by task ID or title…"
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors placeholder:text-muted-foreground/50" />
         </div>
       </div>
@@ -110,6 +116,7 @@ export default function AvailableTasks() {
                       {task.title}
                     </h3>
                   </Link>
+                  <p className="text-xs text-muted-foreground">#{task.id.toString().padStart(6,"0")}</p>
 
                   <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
 

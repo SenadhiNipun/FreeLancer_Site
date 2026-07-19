@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Clock, Briefcase, Zap, ArrowRight, MessageSquare, Upload,
-  User, FileText, AlertCircle, CheckCircle2, RotateCcw, CreditCard,
+  User, FileText, AlertCircle, CheckCircle2, RotateCcw, CreditCard, Search,
 } from "lucide-react";
 import { taskService } from "@/services/task.service";
 import { formatDistanceToNow, differenceInHours } from "date-fns";
@@ -50,6 +50,7 @@ function DeadlineTag({ deadline }: { deadline: string }) {
 export default function ActiveTasks() {
   const [tasks, setTasks]     = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch]   = useState("");
 
   useEffect(() => {
     taskService.getWriterTasks()
@@ -65,6 +66,16 @@ export default function ActiveTasks() {
     const hoursA = differenceInHours(new Date(a.deadline), new Date());
     const hoursB = differenceInHours(new Date(b.deadline), new Date());
     return hoursA - hoursB;
+  });
+
+  const displayed = sorted.filter(t => {
+    if (!search) return true;
+    const term = search.trim().replace(/^#/, "").toLowerCase();
+    return (
+      t.title.toLowerCase().includes(search.toLowerCase()) ||
+      t.id.toString().includes(term) ||
+      t.id.toString().padStart(6, "0").includes(term)
+    );
   });
 
   const counts = {
@@ -119,6 +130,17 @@ export default function ActiveTasks() {
         </div>
       )}
 
+      {/* Search */}
+      {active.length > 0 && (
+        <div className="bg-white border border-border rounded-xl p-3">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by task ID or title…"
+              className="w-full h-9 pl-9 pr-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors placeholder:text-muted-foreground/50" />
+          </div>
+        </div>
+      )}
+
       {/* Tasks grid */}
       {active.length === 0 ? (
         <div className="bg-white border border-dashed border-border rounded-xl flex flex-col items-center justify-center py-20 text-center">
@@ -135,9 +157,15 @@ export default function ActiveTasks() {
             </button>
           </Link>
         </div>
+      ) : displayed.length === 0 ? (
+        <div className="bg-white border border-dashed border-border rounded-xl flex flex-col items-center justify-center py-16 text-center">
+          <Search className="size-10 text-muted-foreground/30 mb-3" />
+          <p className="font-medium text-foreground">No matching tasks</p>
+          <p className="text-sm text-muted-foreground mt-1">Try a different task ID or title.</p>
+        </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          {sorted.map((task) => {
+          {displayed.map((task) => {
             const hoursLeft  = differenceInHours(new Date(task.deadline), new Date());
             const isOverdue  = hoursLeft <= 0;
             const isUrgent   = hoursLeft > 0 && hoursLeft <= 24;
@@ -163,10 +191,11 @@ export default function ActiveTasks() {
                 {/* Card body */}
                 <div className="p-5">
                   <Link href={`/writer/tasks/${task.id}`}>
-                    <h3 className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer leading-snug mb-3">
+                    <h3 className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer leading-snug">
                       {task.title}
                     </h3>
                   </Link>
+                  <p className="text-xs text-muted-foreground mb-3">#{task.id.toString().padStart(6,"0")}</p>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
                     <DeadlineTag deadline={task.deadline} />

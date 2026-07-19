@@ -151,7 +151,7 @@ export default function OrderDetails() {
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <StatusBadge status={task.task_status} />
-              <span className="text-xs text-muted-foreground">#{task.id.toString().padStart(4,"0")}</span>
+              <span className="text-xs text-muted-foreground">#{task.id.toString().padStart(6,"0")}</span>
             </div>
             <h1 className="text-xl font-semibold text-foreground">{task.title}</h1>
           </div>

@@ -41,7 +41,14 @@ export default function MyOrders() {
   const displayed = useMemo(() => {
     let list = tasks;
     if (filter !== "All") list = list.filter(t => t.task_status === filter || (filter === "IN_PROGRESS" && ["ASSIGNED","IN_PROGRESS"].includes(t.task_status)));
-    if (search) list = list.filter(t => t.title.toLowerCase().includes(search.toLowerCase()));
+    if (search) {
+      const term = search.trim().replace(/^#/, "").toLowerCase();
+      list = list.filter(t =>
+        t.title.toLowerCase().includes(search.toLowerCase()) ||
+        t.id.toString().includes(term) ||
+        t.id.toString().padStart(6, "0").includes(term)
+      );
+    }
     return list;
   }, [tasks, filter, search]);
 
@@ -68,7 +75,7 @@ export default function MyOrders() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search projects…"
+            placeholder="Search by project ID or title…"
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors placeholder:text-muted-foreground/50"
           />
         </div>
@@ -122,7 +129,7 @@ export default function MyOrders() {
                     <Link href={`/customer/orders/${task.id}`} className="font-medium text-foreground hover:text-primary transition-colors line-clamp-1">
                       {task.title}
                     </Link>
-                    <p className="text-xs text-muted-foreground mt-0.5">#{task.id.toString().padStart(4,"0")}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">#{task.id.toString().padStart(6,"0")}</p>
                   </td>
                   <td className="px-5 py-4 text-sm text-foreground whitespace-nowrap">
                     {format(new Date(task.deadline), "dd MMM yyyy")}

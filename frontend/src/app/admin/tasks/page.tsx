@@ -40,11 +40,13 @@ export default function AdminTasksPage() {
   useEffect(() => { load(filter); }, [filter]);
 
   const filtered = search
-    ? tasks.filter(t =>
-        [t.title, t.customer_name, t.writer_name].some(v =>
+    ? tasks.filter(t => {
+        const term = search.trim().replace(/^#/, "").toLowerCase();
+        if (t.id.toString().includes(term) || t.id.toString().padStart(6, "0").includes(term)) return true;
+        return [t.title, t.customer_name, t.writer_name].some(v =>
           v?.toLowerCase().includes(search.toLowerCase())
-        )
-      )
+        );
+      })
     : tasks;
 
   return (
@@ -57,7 +59,7 @@ export default function AdminTasksPage() {
       <div className="bg-white border border-border rounded-xl p-3 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by task, client, or writer…"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by task ID, title, client, or writer…"
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors placeholder:text-muted-foreground/50" />
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -100,6 +102,7 @@ export default function AdminTasksPage() {
                   <tr key={t.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                     <td className="px-5 py-3.5 font-medium text-foreground truncate max-w-[220px]">
                       <Link href={`/admin/tasks/${t.id}`} className="hover:text-primary transition-colors">{t.title}</Link>
+                      <p className="text-xs font-normal text-muted-foreground">#{t.id.toString().padStart(6,"0")}</p>
                     </td>
                     <td className="px-5 py-3.5"><StatusBadge status={t.task_status} /></td>
                     <td className="px-5 py-3.5 text-muted-foreground">{t.customer_name}</td>

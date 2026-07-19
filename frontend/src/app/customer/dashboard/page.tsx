@@ -139,7 +139,7 @@ export default function CustomerDashboard() {
                       <Link href={`/customer/orders/${p.id}`} className="font-medium text-foreground hover:text-primary transition-colors line-clamp-1">
                         {p.title}
                       </Link>
-                      <p className="text-xs text-muted-foreground">ID #{p.id.toString().padStart(4,"0")}</p>
+                      <p className="text-xs text-muted-foreground">ID #{p.id.toString().padStart(6,"0")}</p>
                     </td>
                     <td className="px-5 py-3.5">
                       <StatusBadge status={p.status} />
