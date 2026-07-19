@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(Get-ChildItem -Path \"e:\\\\Software Projects\\\\Assignment\\\\Project Folder\\\\backend\" -Recurse -File)",
+      "Bash(Select-Object FullName)",
+      "Bash(find \"e:\\\\Software Projects\\\\Assignment\\\\Project Folder\\\\backend\" -type f | head -50)",
+      "Read(//e/Software Projects/Assignment/Project Folder/backend/**)"
+    ]
+  }
+}

@@ -11,6 +11,7 @@ class EmailUtil:
         smtp_port = int(os.environ.get("SMTP_PORT", 587))
         smtp_user = os.environ.get("SMTP_USER", "")
         smtp_pass = os.environ.get("SMTP_PASS", "")
+        from_email = os.environ.get("SMTP_FROM", smtp_user)
 
         subject = "Verify Your Email - Assignment System"
         body = f"""
@@ -29,7 +30,7 @@ class EmailUtil:
 
         try:
             msg = MIMEMultipart()
-            msg['From'] = smtp_user
+            msg['From'] = from_email
             msg['To'] = to_email
             msg['Subject'] = subject
             msg.attach(MIMEText(body, 'html'))
@@ -38,7 +39,7 @@ class EmailUtil:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
                 server.send_message(msg)
-            
+
             logger.info(f"Verification email sent to {to_email}")
             return True
         except Exception as e:
@@ -51,6 +52,7 @@ class EmailUtil:
         smtp_port = int(os.environ.get("SMTP_PORT", 587))
         smtp_user = os.environ.get("SMTP_USER", "")
         smtp_pass = os.environ.get("SMTP_PASS", "")
+        from_email = os.environ.get("SMTP_FROM", smtp_user)
 
         subject = "Reset Your Password - Assignment System"
         body = f"""
@@ -70,7 +72,7 @@ class EmailUtil:
 
         try:
             msg = MIMEMultipart()
-            msg['From'] = smtp_user
+            msg['From'] = from_email
             msg['To'] = to_email
             msg['Subject'] = subject
             msg.attach(MIMEText(body, 'html'))
@@ -79,7 +81,7 @@ class EmailUtil:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
                 server.send_message(msg)
-            
+
             logger.info(f"Password reset email sent to {to_email}")
             return True
         except Exception as e:

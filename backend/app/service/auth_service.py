@@ -44,10 +44,11 @@ class AuthService:
         # Check if email exists
         existing_user = UserRepository.get_user_by_email(db, request.email)
         if existing_user:
-            if existing_user.is_verified:
-                raise ValidationException(detail="Email already exists and is verified")
+            if existing_user.is_email_verified:
+                raise ValidationException(detail="This email is already registered and verified. Please log in instead.")
             else:
                 # If user exists but not verified, delete them to allow fresh registration
+                # (a fresh verification code is generated below and emailed to the user)
                 db.delete(existing_user)
                 db.flush()
 
@@ -96,10 +97,11 @@ class AuthService:
         # Check unique constraint
         existing_user = UserRepository.get_user_by_email(db, request.email)
         if existing_user:
-            if existing_user.is_verified:
-                raise ValidationException(detail="Email already exists and is verified")
+            if existing_user.is_email_verified:
+                raise ValidationException(detail="This email is already registered and verified. Please log in instead.")
             else:
                 # If user exists but not verified, delete them to allow fresh registration
+                # (a fresh verification code is generated below and emailed to the user)
                 db.delete(existing_user)
                 db.flush()
 
@@ -364,6 +366,9 @@ class AuthService:
         existing_user = UserRepository.get_user_by_id(db, int(user_id))
         if existing_user is None or existing_user.is_delete:
             raise UnauthorizedException(detail="User not found")
+
+        if existing_user.status == "SUSPENDED":
+            raise UnauthorizedException(detail="User account is suspended")
 
         roles = []
         if existing_user.role:
