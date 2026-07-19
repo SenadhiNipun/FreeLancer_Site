@@ -13,6 +13,12 @@ export const supportService = {
   getTicket: (ticketId: number) =>
     apiClient(`/api/v1/support/tickets/${ticketId}`),
 
+  replyToMyTicket: (ticketId: number, message: string) =>
+    apiClient(`/api/v1/support/tickets/${ticketId}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
+
   // ── Admin ────────────────────────────────────────────────────────────────
   getAllTickets: (status?: string) =>
     apiClient(`/api/v1/support/admin/tickets${status ? `?status=${status}` : ""}`),

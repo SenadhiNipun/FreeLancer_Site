@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MessageCircle, Mail, ShieldAlert, ChevronDown, Loader2, CheckCircle, ArrowLeft, FileQuestion, Tag, Clock, ChevronRight } from "lucide-react";
+import { MessageCircle, Mail, ShieldAlert, ChevronDown, Loader2, CheckCircle, ArrowLeft, FileQuestion, Tag, Clock, ChevronRight, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supportService } from "@/services/support.service";
 import { toast } from "react-toastify";
@@ -33,6 +33,8 @@ export default function CustomerSupportPage() {
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [loadingDetail, setLoadingDetail]   = useState(false);
+  const [replyText, setReplyText]       = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
 
   useEffect(() => {
     supportService.getMyTickets()
@@ -65,6 +67,22 @@ export default function CustomerSupportPage() {
       setSelectedTicket(res.results);
     } catch { toast.error("Failed to load ticket."); }
     finally { setLoadingDetail(false); }
+  };
+
+  const sendReply = async () => {
+    if (!replyText.trim() || !selectedTicket) return;
+    setSendingReply(true);
+    try {
+      await supportService.replyToMyTicket(selectedTicket.id, replyText.trim());
+      setReplyText("");
+      const res = await supportService.getTicket(selectedTicket.id);
+      setSelectedTicket(res.results);
+      setTickets(prev => prev.map(t => (t.id === res.results.id ? res.results : t)));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send reply.");
+    } finally {
+      setSendingReply(false);
+    }
   };
 
   // ── Ticket detail view ────────────────────────────────────────────────────
@@ -111,6 +129,25 @@ export default function CustomerSupportPage() {
             ))
           )}
         </div>
+
+        {/* Reply box — hidden for closed tickets */}
+        {selectedTicket.status !== "CLOSED" && (
+          <div className="bg-white border border-border rounded-xl p-5 space-y-3">
+            <h2 className="font-semibold text-foreground text-sm">Send Reply</h2>
+            <textarea
+              value={replyText} onChange={e => setReplyText(e.target.value)}
+              rows={4} placeholder="Type your reply…"
+              className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors resize-none placeholder:text-muted-foreground/50"
+            />
+            <div className="flex justify-end">
+              <button onClick={sendReply} disabled={sendingReply || !replyText.trim()}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60">
+                {sendingReply ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                {sendingReply ? "Sending…" : "Send Reply"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

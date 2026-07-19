@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.entity.support_ticket_entity import SupportTicketEntity
 from app.entity.support_ticket_reply_entity import SupportTicketReplyEntity
-from app.exceptions.exception import NotFoundException
+from app.exceptions.exception import NotFoundException, UnauthorizedException
 
 
 def _reply_to_dict(r):
@@ -93,6 +93,12 @@ class SupportService:
         if not ticket:
             raise NotFoundException(detail="Ticket not found")
 
+        if not is_admin and ticket.user_id != user_id:
+            raise UnauthorizedException(detail="You do not have access to this ticket")
+
+        if not is_admin and ticket.status == "CLOSED":
+            raise UnauthorizedException(detail="This ticket is closed and can no longer be replied to")
+
         reply = SupportTicketReplyEntity(
             ticket_id=ticket_id,
             user_id=user_id,
@@ -107,8 +113,8 @@ class SupportService:
         db.commit()
         db.refresh(reply)
 
+        from app.service.notification_service import NotificationService
         if is_admin:
-            from app.service.notification_service import NotificationService
             NotificationService.create_notification(
                 db,
                 user_id=ticket.user_id,
@@ -117,6 +123,8 @@ class SupportService:
                 notification_type="SUPPORT_REPLY",
                 related_id=ticket_id,
             )
+        else:
+            NotificationService.notify_admins_ticket_reply(db, ticket.id, ticket.ticket_number, ticket.subject)
 
         return _reply_to_dict(reply)
 

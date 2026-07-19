@@ -68,6 +68,21 @@ class NotificationService:
             )
 
     @staticmethod
+    def notify_admins_ticket_reply(db: Session, ticket_id: int, ticket_number: str, subject: str):
+        from app.repository.user_repository import UserRepository
+        from app.enums.role_enum import RoleEnum
+        admins = UserRepository.get_all_users_by_role(db, RoleEnum.SUPER_ADMIN.value)
+        for admin in admins:
+            NotificationService.create_notification(
+                db,
+                user_id=admin.id,
+                title=f"New reply on ticket {ticket_number}",
+                message=f"A reply was added to support ticket: \"{subject}\"",
+                notification_type="SUPPORT_REPLY",
+                related_id=ticket_id,
+            )
+
+    @staticmethod
     def notify_admins_new_writer(db: Session, writer_user_id: int, writer_name: str):
         from app.repository.user_repository import UserRepository
         from app.enums.role_enum import RoleEnum

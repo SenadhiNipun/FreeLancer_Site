@@ -73,6 +73,18 @@ def get_ticket(
     return GenericResponse.success(message="Ticket fetched", results=result)
 
 
+@router.post("/tickets/{ticket_id}/reply")
+def reply_to_ticket(
+    ticket_id: int,
+    request: ReplyRequest,
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security),
+):
+    user = get_current_user(db, auth)
+    result = SupportService.reply(db, ticket_id, user.id, request.message, is_admin=False)
+    return GenericResponse.success(message="Reply sent", results=result)
+
+
 # ── Admin endpoints ──────────────────────────────────────────────────────────
 
 @router.get("/admin/tickets")
