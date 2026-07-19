@@ -1,0 +1,279 @@
+[33mcommit e3c10defe489d949bb01cc9cb21ad62a53263ced[m[33m ([m[1;36mHEAD -> [m[1;32mdev[m[33m)[m
+Author: SenadhiNipun <senadhirajarathna@gmail.com>
+Date:   Sun Jul 19 11:33:25 2026 +0530
+
+    feat(auth): validate and enforce unique mobile numbers on registration
+
+[33mcommit 683bb36030cc7dbca60cb1fe5725f169441598a4[m
+Author: SenadhiNipun <senadhirajarathna@gmail.com>
+Date:   Sun Jul 19 11:10:35 2026 +0530
+
+    fix(auth): resolve crash on duplicate email registration and clarify messaging
+
+[33mcommit 4eadad6ecff39449a0a346fdbb24abb6fd0ff5e1[m[33m ([m[1;31morigin/dev[m[33m)[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Tue Jun 9 15:29:42 2026 +0530
+
+    changed railway configurations to deploy
+
+[33mcommit df77fe94cad6436810fb7dc53eec19d48b80a2d1[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Tue Jun 9 15:01:30 2026 +0530
+
+    add railway.json file
+
+[33mcommit 60dcd8081953e08c1a93a1a74401f179c3b7edce[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Tue Jun 9 14:50:11 2026 +0530
+
+    add port to the package.json
+
+[33mcommit e15aa61a167a309f3bf0ace188fe614daac222e8[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Tue Jun 9 14:37:42 2026 +0530
+
+    modified for deploy
+
+[33mcommit 94a2916a8658056131543550137981d394b8f14a[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Mon Jun 8 10:22:24 2026 +0530
+
+    edited src/app/writer/messages/page.tsx for deployement
+
+[33mcommit ce52232f440db6c854f9616ea87699f4224b8bb0[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun Jun 7 01:08:00 2026 +0530
+
+    support ticket feature created
+
+[33mcommit fdd787aa6e21f248bf60358493b6443ea7359270[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun Jun 7 00:27:49 2026 +0530
+
+    implemented admins approval for writer registration process
+
+[33mcommit fa0f74f049010bf7b1e75cfdd7cedef29897c9b6[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sat Jun 6 21:44:31 2026 +0530
+
+    messages scroll removed
+
+[33mcommit 452fb3e08900a38830133a29205dc2803b586a5d[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sat Jun 6 21:43:59 2026 +0530
+
+    messaging section scroll removed
+
+[33mcommit 7aa02ae6a93d926815240f4f46cab562db4c540f[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sat Jun 6 09:39:53 2026 +0530
+
+    Add Dockerfile and production config for Railway deployment
+
+[33mcommit ce50182cec958b05fd146d070d671452c91873d7[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Thu Jun 4 23:38:41 2026 +0530
+
+    refine UI
+
+[33mcommit 7e97097ebb626334674d6ee34955173bff774bc9[m
+Merge: ad2b4e8 5358baf
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Thu Jun 4 22:43:15 2026 +0530
+
+    Merge branch 'dev' of github-personal:SenadhiNipun/FreeLancer_Site into dev
+
+[33mcommit ad2b4e834ea1a917a7f051c5d826f5ad370ccde0[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Thu Jun 4 22:42:30 2026 +0530
+
+    add toastify for the alerts
+
+[33mcommit 5358bafea54dcc1281ee56fa1a756c0c07bd1ab0[m
+Author: Senadhi Rajarathna <senadhirajarathna@gmail.com>
+Date:   Wed Jun 3 08:10:35 2026 +0530
+
+    Change MySQL user and connection settings
+    
+    Updated MySQL connection details for the backend environment.
+
+[33mcommit 8e4b9c032ea50f36c92ba1ad7193927110ede8b6[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Mon May 25 08:40:46 2026 +0530
+
+    super admin profile created
+
+[33mcommit bbe23cc265f8f0d2051709e486b75ab9d1574067[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Mon May 25 07:46:54 2026 +0530
+
+    user name displayed in greeting
+
+[33mcommit 48f356c47ebe5fcd4ba22eea713587a89caaed0a[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 24 23:52:13 2026 +0530
+
+    feat: initialize project file structure and implement user profile page components
+
+[33mcommit baff1612d6fc30ecc836089b2bda8437abee4e54[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 24 20:54:16 2026 +0530
+
+    reviews page is completed
+
+[33mcommit 261ab3ce785212e6b6ebb3ce09d2112f25d1fbd1[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 24 19:52:06 2026 +0530
+
+    changes up to 2026/05/24
+
+[33mcommit 4df63b2995552c9296dedff468f0b69d7921e396[m
+Merge: 635a1fd 6f4c697
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 24 19:41:47 2026 +0530
+
+    Merge branch 'bright-corona-fires-08h23' into dev
+
+[33mcommit 6f4c697a1d6661b32f5fb02c642187ad17752ece[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 24 19:40:09 2026 +0530
+
+    Update chat feature changes from Antigravity
+
+[33mcommit 635a1fd5782fbb016a0e5b2d022cc192307e8aa7[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 24 18:58:15 2026 +0530
+
+    changes before add bit change option from messages
+
+[33mcommit 372b36737a041cafc84c85f6477dfa06e9859b21[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Tue May 19 00:45:42 2026 +0530
+
+    changes upto 2026/05/18 midnight
+
+[33mcommit 0c594806648af2dcf0d1e1f1c48e82aed2329113[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Tue May 19 00:27:50 2026 +0530
+
+    message window completed
+
+[33mcommit fd1ea233df4f78ba48c916a06eeb068e06fd221a[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 17 13:09:45 2026 +0530
+
+    messaging interface template added.
+
+[33mcommit 160aa7b3b490b310215080aea581938bfd06a994[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 17 11:02:14 2026 +0530
+
+    wter is able to upload a profile picture
+
+[33mcommit 1482c24def6d55c1fae82a4650d8abf5c427c4b9[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 17 10:53:45 2026 +0530
+
+    the reviews submitted by the user is visible in the writers public profile
+
+[33mcommit a080b386c52369d99f6f659750718fda17b27686[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 17 10:43:01 2026 +0530
+
+    submit review from the user's side is completed
+
+[33mcommit 3ea30d9b124ed5d5019b8b8a4430e3b77da47f79[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 17 09:29:00 2026 +0530
+
+    user recieve a notification when writER send completed task
+
+[33mcommit f1408642254f24dca2cdd2a0ca2aaf09774f91da[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 17 09:25:05 2026 +0530
+
+    whenuser request a revision writer will get a notification
+
+[33mcommit 1c4beea7aaa05a9e8db67535c30b2a941e62fd5b[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 17 09:02:34 2026 +0530
+
+    files upload to revisions send by the user, from the writers side is completed
+
+[33mcommit 37c99166ca72480d45f4e732a6f1dcce125624bd[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 17 08:39:51 2026 +0530
+
+    revision submission in user side is completed
+
+[33mcommit 7e1d7f54648c6acadda937a6e6e6bd17c3de1aa2[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 17 08:37:07 2026 +0530
+
+    user side request upload process completed
+
+[33mcommit f32f90dc931e4a4198ec318d255a2edb5f852b3b[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Fri May 15 09:17:46 2026 +0530
+
+    Update upto 2026.05.15
+
+[33mcommit 994b063535a70e289874c194a03e36aafa0fc864[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Mon May 4 00:14:42 2026 +0530
+
+    ongoing
+
+[33mcommit 0c20a66813f9bef4cf451366123d37c489e5be7c[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun May 3 23:17:10 2026 +0530
+
+    Working
+
+[33mcommit 974d0861c766359923b8a9c271ae4250fca89a07[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Tue Apr 28 00:40:15 2026 +0530
+
+    dn messages krnna plwn
+
+[33mcommit a5218942f36cb5659400c73748e82c9ebc5952e7[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun Apr 26 23:24:46 2026 +0530
+
+    can place a task
+
+[33mcommit 28cd611389459f2840e55e44986ff250bc5c79af[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Sun Apr 26 23:23:43 2026 +0530
+
+    order placement shape eka iwrai- before mgs ability
+
+[33mcommit c5dc329325891618eb879ff5e8fcbfd3e955e0c1[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Fri Apr 24 10:16:40 2026 +0530
+
+    Merge frontend into main repository
+
+[33mcommit 9eacdb9d5c32e5dacbfe93737425cbcc0840db35[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Fri Apr 24 09:57:35 2026 +0530
+
+    user and writer dash board are added
+
+[33mcommit 35e2abf36fc1348887ec7ba9b8897c9f73968668[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Wed Apr 22 17:56:50 2026 +0530
+
+    Registration process ok
+
+[33mcommit f351a852333285e707b9de90ab0593cc31c8fb5b[m
+Author: Senadhi Nipun <senadhirajarathna@gmail.com>
+Date:   Wed Apr 22 15:34:45 2026 +0530
+
+    Initial commit with login backend
+
+[33mcommit b502953e9e8bfbde6a52dbb73a44a082eb77707f[m
+Author: SenadhiNipun1 <senadhi@focalid.tech>
+Date:   Tue Apr 21 14:58:30 2026 +0530
+
+    Initial backend project setup
