@@ -17,7 +17,7 @@ class UserEntity(Base, BaseEntity):
     username = Column(String(100), nullable=True, unique=True, index=True)
     password_hash = Column(String(255), nullable=False)
     
-    mobile_number = Column(String(20), nullable=True)
+    mobile_number = Column(String(20), nullable=True, unique=True, index=True)
     whatsapp_number = Column(String(20), nullable=True)
     
     role_id = Column(BIGINT, ForeignKey("roles.id"), nullable=True)

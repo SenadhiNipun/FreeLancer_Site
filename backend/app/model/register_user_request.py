@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from app.util.phone_util import validate_phone_number
 
 class RegisterUserRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
@@ -8,6 +9,11 @@ class RegisterUserRequest(BaseModel):
     whatsapp_number: str = Field(..., min_length=10, max_length=15)
     password: str = Field(..., min_length=8)
     verify_password: str = Field(..., min_length=8)
+
+    @field_validator('mobile_number', 'whatsapp_number')
+    @classmethod
+    def validate_phone(cls, v):
+        return validate_phone_number(v)
 
     @field_validator('verify_password')
     @classmethod

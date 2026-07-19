@@ -52,6 +52,11 @@ class AuthService:
                 db.delete(existing_user)
                 db.flush()
 
+        # Check if mobile number is already registered to another account
+        existing_mobile_user = UserRepository.get_user_by_mobile_number(db, request.mobile_number)
+        if existing_mobile_user:
+            raise ValidationException(detail="This mobile number is already registered with another account.")
+
         customer_role = RoleRepository.get_role_by_name(db, RoleEnum.CUSTOMER.value)
         if customer_role is None:
             raise NotFoundException(detail="CUSTOMER role not found")
@@ -104,6 +109,11 @@ class AuthService:
                 # (a fresh verification code is generated below and emailed to the user)
                 db.delete(existing_user)
                 db.flush()
+
+        # Check if mobile number is already registered to another account
+        existing_mobile_user = UserRepository.get_user_by_mobile_number(db, request.mobile_number)
+        if existing_mobile_user:
+            raise ValidationException(detail="This mobile number is already registered with another account.")
 
         writer_role = RoleRepository.get_role_by_name(db, RoleEnum.WRITER.value)
         if writer_role is None:

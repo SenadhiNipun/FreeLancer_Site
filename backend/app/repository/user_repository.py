@@ -21,6 +21,15 @@ class UserRepository:
         )
 
     @staticmethod
+    def get_user_by_mobile_number(db: Session, mobile_number: str) -> UserEntity | None:
+        return (
+            db.query(UserEntity)
+            .filter(UserEntity.mobile_number == mobile_number)
+            .filter(UserEntity.is_delete == False)
+            .first()
+        )
+
+    @staticmethod
     def get_user_by_username(db: Session, username: str) -> UserEntity | None:
         return (
             db.query(UserEntity)

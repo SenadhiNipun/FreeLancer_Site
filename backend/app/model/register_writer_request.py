@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List
+from app.util.phone_util import validate_phone_number
 
 class RegisterWriterRequest(BaseModel):
     # Basic User Info
@@ -26,6 +27,11 @@ class RegisterWriterRequest(BaseModel):
     experience_years: Optional[int] = Field(0, ge=0)
     bio: Optional[str] = Field(None, min_length=10)
     
+    @field_validator('mobile_number', 'whatsapp_number')
+    @classmethod
+    def validate_phone(cls, v):
+        return validate_phone_number(v)
+
     @field_validator('confirm_password')
     @classmethod
     def passwords_match(cls, v, info):
