@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, FileText, MapPin, Building, Clock, Phone, BookOpen, GraduationCap, Tag, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, MapPin, Building, Clock, Phone, BookOpen, GraduationCap, Tag, CheckCircle2, XCircle, Mail, MessageSquare } from "lucide-react";
 import { adminService } from "@/services/admin.service";
+import { adminMessageService } from "@/services/adminMessage.service";
+import { EmailComposeModal } from "@/components/admin/EmailComposeModal";
 import { toast } from "react-toastify";
 
 function StatusBadge({ status }: { status: string }) {
@@ -34,6 +36,8 @@ export default function WriterDetailPage() {
   const [tasks, setTasks]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [actioning, setActioning] = useState<"approve" | "reject" | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [messaging, setMessaging] = useState(false);
 
   const load = () =>
     Promise.all([adminService.getAllWriters(), adminService.getWriterTasks(Number(writerId))])
@@ -62,6 +66,16 @@ export default function WriterDetailPage() {
       load();
     } catch { toast.error("Failed to reject writer."); }
     finally { setActioning(null); }
+  };
+
+  const openConversation = async () => {
+    if (!writer) return;
+    setMessaging(true);
+    try {
+      const res = await adminMessageService.getOrCreateConversationForUser(writer.id) as any;
+      router.push(`/admin/messages/${res.results.id}`);
+    } catch { toast.error("Failed to open conversation."); }
+    finally { setMessaging(false); }
   };
 
   if (loading) return (
@@ -142,12 +156,33 @@ export default function WriterDetailPage() {
             )}
             {wp?.bio && <p className="text-sm text-muted-foreground mt-3 leading-relaxed max-w-2xl">{wp.bio}</p>}
           </div>
-          <div className="text-right text-xs text-muted-foreground flex-shrink-0">
-            <p>Joined {writer.created_at ? new Date(writer.created_at).toLocaleDateString() : "—"}</p>
-            <p className="font-semibold text-foreground mt-1">{tasks.length} tasks</p>
+          <div className="text-right text-xs text-muted-foreground flex-shrink-0 space-y-2">
+            <div>
+              <p>Joined {writer.created_at ? new Date(writer.created_at).toLocaleDateString() : "—"}</p>
+              <p className="font-semibold text-foreground mt-1">{tasks.length} tasks</p>
+            </div>
+            <div className="flex items-center justify-end gap-1.5">
+              <button onClick={() => setShowEmailModal(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-foreground hover:bg-muted/50 transition-colors">
+                <Mail className="size-3.5" /> Email
+              </button>
+              <button disabled={messaging} onClick={openConversation}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50">
+                {messaging ? <Loader2 className="size-3.5 animate-spin" /> : <MessageSquare className="size-3.5" />} Message
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {showEmailModal && (
+        <EmailComposeModal
+          userId={writer.id}
+          userName={`${writer.first_name} ${writer.last_name}`}
+          userEmail={writer.email}
+          onClose={() => setShowEmailModal(false)}
+        />
+      )}
 
       {/* Profile details */}
       {wp && (

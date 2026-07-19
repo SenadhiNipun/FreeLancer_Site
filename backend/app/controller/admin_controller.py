@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from app.config.database import db_dependency
 from app.service.admin_service import AdminService
@@ -141,6 +142,23 @@ def activate_user(
     return GenericResponse.success(message="User activated successfully", results=result)
 
 
+class SendEmailRequest(BaseModel):
+    subject: str
+    message: str
+
+
+@router.post("/users/{user_id}/email")
+def send_email_to_user(
+    user_id: int,
+    request: SendEmailRequest,
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security)
+):
+    require_super_admin(db, auth)
+    result = AdminService.send_email_to_user(db, user_id, request.subject, request.message)
+    return GenericResponse.success(message="Email sent successfully", results=result)
+
+
 @router.get("/tasks")
 def get_all_tasks(
     db: db_dependency,
@@ -197,7 +215,6 @@ def get_chat_messages(
 
 # ─── Super Admin Registration (secret-key protected) ────────────────────────
 
-from pydantic import BaseModel
 import os
 
 class RegisterSuperAdminRequest(BaseModel):

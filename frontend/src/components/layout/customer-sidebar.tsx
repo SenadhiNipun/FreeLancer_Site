@@ -13,6 +13,7 @@ import {
   User,
   LifeBuoy,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authService } from "@/services/auth.service";
@@ -24,6 +25,7 @@ const menuGroups = [
     items: [
       { label: "Dashboard",   icon: LayoutDashboard, href: "/customer/dashboard" },
       { label: "Messages",    icon: MessageSquare,   href: "/customer/messages" },
+      { label: "Admin Messages", icon: Shield,       href: "/customer/admin-messages" },
     ],
   },
   {

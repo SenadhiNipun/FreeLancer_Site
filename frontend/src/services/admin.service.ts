@@ -30,6 +30,11 @@ export const adminService = {
     apiClient(`/api/v1/admin/users/${userId}/suspend`, { method: "POST" }),
   activateUser: (userId: number) =>
     apiClient(`/api/v1/admin/users/${userId}/activate`, { method: "POST" }),
+  sendEmailToUser: (userId: number, subject: string, message: string) =>
+    apiClient(`/api/v1/admin/users/${userId}/email`, {
+      method: "POST",
+      body: JSON.stringify({ subject, message }),
+    }),
 
   // ── Chats ──────────────────────────────────────────────────────────────
   getAllChatSessions: () => apiClient("/api/v1/admin/chats"),

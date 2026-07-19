@@ -15,6 +15,7 @@ import {
   Bell,
   LifeBuoy,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authService } from "@/services/auth.service";
@@ -26,6 +27,7 @@ const menuGroups = [
     items: [
       { label: "Dashboard",       icon: LayoutDashboard, href: "/writer/dashboard" },
       { label: "Messages",        icon: MessageSquare,   href: "/writer/messages" },
+      { label: "Admin Messages",  icon: Shield,          href: "/writer/admin-messages" },
       { label: "Notifications",   icon: Bell,            href: "/writer/notifications" },
     ],
   },

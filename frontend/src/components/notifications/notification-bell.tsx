@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { Bell, Check, Clock, Info, MessageSquare, Zap, RotateCcw, Award } from "lucide-react";
+import { Bell, Check, Clock, Info, MessageSquare, Zap, RotateCcw, Award, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { notificationService } from "@/services/notification.service";
 import { cn } from "@/lib/utils";
@@ -55,6 +55,7 @@ export function NotificationBell() {
       WORK_DELIVERED:     { icon: Check,         cls: "bg-green-50 border-green-100 text-green-600" },
       REVIEW_RECEIVED:    { icon: Award,         cls: "bg-amber-50 border-amber-100 text-amber-600" },
       NEW_MESSAGE:        { icon: MessageSquare, cls: "bg-violet-50 border-violet-100 text-violet-600" },
+      ADMIN_MESSAGE:      { icon: Shield,        cls: "bg-violet-50 border-violet-100 text-violet-600" },
     };
     return map[type] || { icon: Info, cls: "bg-blue-50 border-blue-100 text-blue-600" };
   };
@@ -65,6 +66,7 @@ export function NotificationBell() {
     const roles: string[] = JSON.parse(localStorage.getItem("user_roles") || "[]");
     const isWriter = roles.includes("WRITER");
     if (n.notification_type === "NEW_MESSAGE" && n.related_id) router.push(`${isWriter ? "/writer" : "/customer"}/messages?session=${n.related_id}`);
+    else if (n.notification_type === "ADMIN_MESSAGE" && n.related_id) router.push(`${isWriter ? "/writer" : "/customer"}/admin-messages?conv=${n.related_id}`);
     else if (n.notification_type === "BID_RECEIVED" && n.related_id) router.push(`/customer/orders/${n.related_id}`);
     else if (n.notification_type === "BID_ACCEPTED" && n.related_id) router.push(`/writer/tasks/${n.related_id}`);
     else if (n.notification_type === "REVISION_REQUESTED" && n.related_id) router.push(`/writer/tasks/${n.related_id}`);

@@ -454,3 +454,14 @@ class AdminService:
         user.status = "ACTIVE"
         db.commit()
         return {"id": user_id, "status": "ACTIVE"}
+
+    @staticmethod
+    def send_email_to_user(db: Session, user_id: int, subject: str, message: str):
+        from app.util.email_util import EmailUtil
+
+        user = UserRepository.get_user_by_id(db, user_id)
+        if not user:
+            raise NotFoundException(detail="User not found")
+
+        sent = EmailUtil.send_custom_email(user.email, subject, message)
+        return {"id": user_id, "email": user.email, "sent": sent}

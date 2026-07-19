@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, FileText, Mail } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, Mail, MessageSquare } from "lucide-react";
 import { adminService } from "@/services/admin.service";
+import { adminMessageService } from "@/services/adminMessage.service";
+import { EmailComposeModal } from "@/components/admin/EmailComposeModal";
 import { toast } from "react-toastify";
 
 function StatusBadge({ status }: { status: string }) {
@@ -26,10 +28,13 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function CustomerDetailPage() {
   const { customerId }            = useParams<{ customerId: string }>();
+  const router                    = useRouter();
   const [customer, setCustomer]   = useState<any>(null);
   const [tasks, setTasks]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [actioning, setActioning] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [messaging, setMessaging] = useState(false);
 
   const load = () =>
     Promise.all([adminService.getAllCustomers(), adminService.getCustomerTasks(Number(customerId))])
@@ -50,6 +55,16 @@ export default function CustomerDetailPage() {
       load();
     } catch { toast.error("Failed to update customer status."); }
     finally { setActioning(false); }
+  };
+
+  const openConversation = async () => {
+    if (!customer) return;
+    setMessaging(true);
+    try {
+      const res = await adminMessageService.getOrCreateConversationForUser(customer.id) as any;
+      router.push(`/admin/messages/${res.results.id}`);
+    } catch { toast.error("Failed to open conversation."); }
+    finally { setMessaging(false); }
   };
 
   if (loading) return (
@@ -89,13 +104,32 @@ export default function CustomerDetailPage() {
               <p>Joined {customer.created_at ? new Date(customer.created_at).toLocaleDateString() : "—"}</p>
               <p className="font-semibold text-foreground mt-1">{tasks.length} tasks</p>
             </div>
-            <button disabled={actioning} onClick={toggleSuspend}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors disabled:opacity-40 ${customer.status === "SUSPENDED" ? "text-green-700 bg-green-50 border-green-200 hover:bg-green-100" : "text-red-600 bg-red-50 border-red-200 hover:bg-red-100"}`}>
-              {customer.status === "SUSPENDED" ? "Activate" : "Suspend"}
-            </button>
+            <div className="flex items-center justify-end gap-1.5">
+              <button onClick={() => setShowEmailModal(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-foreground hover:bg-muted/50 transition-colors">
+                <Mail className="size-3.5" /> Email
+              </button>
+              <button disabled={messaging} onClick={openConversation}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50">
+                {messaging ? <Loader2 className="size-3.5 animate-spin" /> : <MessageSquare className="size-3.5" />} Message
+              </button>
+              <button disabled={actioning} onClick={toggleSuspend}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors disabled:opacity-40 ${customer.status === "SUSPENDED" ? "text-green-700 bg-green-50 border-green-200 hover:bg-green-100" : "text-red-600 bg-red-50 border-red-200 hover:bg-red-100"}`}>
+                {customer.status === "SUSPENDED" ? "Activate" : "Suspend"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {showEmailModal && (
+        <EmailComposeModal
+          userId={customer.id}
+          userName={`${customer.first_name} ${customer.last_name}`}
+          userEmail={customer.email}
+          onClose={() => setShowEmailModal(false)}
+        />
+      )}
 
       {/* Tasks */}
       <div className="bg-white border border-border rounded-xl overflow-hidden">
