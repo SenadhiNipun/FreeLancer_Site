@@ -93,6 +93,7 @@ export default function AdminTasksPage() {
                   <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Client</th>
                   <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Writer</th>
                   <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Budget</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Uploaded</th>
                   <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground">Deadline</th>
                   <th className="px-5 py-3"></th>
                 </tr>
@@ -108,6 +109,7 @@ export default function AdminTasksPage() {
                     <td className="px-5 py-3.5 text-muted-foreground">{t.customer_name}</td>
                     <td className="px-5 py-3.5 text-muted-foreground">{t.writer_name || "Unassigned"}</td>
                     <td className="px-5 py-3.5 font-medium">{t.budget != null ? `$${t.budget.toFixed(2)}` : "—"}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground">{t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
                     <td className="px-5 py-3.5 text-muted-foreground">{t.deadline ? new Date(t.deadline).toLocaleDateString() : "—"}</td>
                     <td className="px-5 py-3.5 text-right">
                       <Link href={`/admin/tasks/${t.id}`}>

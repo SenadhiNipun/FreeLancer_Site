@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Loader2, FileText, BookOpen, GraduationCap, Tag,
   CalendarClock, CalendarCheck, MessageSquare, Paperclip, User, PenSquare,
+  History, Upload, Gavel, UserCheck, XCircle, RotateCcw, CheckCircle2, Star,
 } from "lucide-react";
 import { adminService } from "@/services/admin.service";
 import { getFileUrl } from "@/lib/api-client";
@@ -31,12 +32,71 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={map[status] || "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200"}>{status.replace(/_/g, " ")}</span>;
 }
 
+const ACTIVITY_ICON: Record<string, { icon: any; cls: string }> = {
+  TASK_CREATED:         { icon: Upload,       cls: "bg-slate-50 border-slate-200 text-slate-600" },
+  BID_PLACED:           { icon: Gavel,        cls: "bg-amber-50 border-amber-200 text-amber-600" },
+  BID_ACCEPTED:         { icon: CheckCircle2, cls: "bg-green-50 border-green-200 text-green-600" },
+  BID_REJECTED:         { icon: XCircle,      cls: "bg-red-50 border-red-200 text-red-600" },
+  BID_WITHDRAWN:        { icon: XCircle,      cls: "bg-slate-50 border-slate-200 text-slate-500" },
+  WRITER_ASSIGNED:      { icon: UserCheck,    cls: "bg-blue-50 border-blue-200 text-blue-600" },
+  ASSIGNMENT_ACCEPTED:  { icon: CheckCircle2, cls: "bg-green-50 border-green-200 text-green-600" },
+  ASSIGNMENT_REJECTED:  { icon: XCircle,      cls: "bg-red-50 border-red-200 text-red-600" },
+  SUBMISSION:           { icon: FileText,     cls: "bg-violet-50 border-violet-200 text-violet-600" },
+  REVISION_REQUESTED:   { icon: RotateCcw,    cls: "bg-orange-50 border-orange-200 text-orange-600" },
+  REVISION_COMPLETED:   { icon: CheckCircle2, cls: "bg-green-50 border-green-200 text-green-600" },
+  REVIEW_SUBMITTED:     { icon: Star,         cls: "bg-amber-50 border-amber-200 text-amber-600" },
+};
+
+function ActivityLog({ events }: { events: any[] }) {
+  if (!events?.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <History className="size-8 text-muted-foreground/30 mb-2" />
+        <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-5 py-4 space-y-0">
+      {events.map((e, idx) => {
+        const cfg = ACTIVITY_ICON[e.type] || { icon: History, cls: "bg-slate-50 border-slate-200 text-slate-500" };
+        const Icon = cfg.icon;
+        const isLast = idx === events.length - 1;
+        return (
+          <div key={idx} className="flex gap-3.5">
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div className={`size-8 rounded-lg border flex items-center justify-center ${cfg.cls}`}>
+                <Icon className="size-4" strokeWidth={1.75} />
+              </div>
+              {!isLast && <div className="w-px flex-1 bg-border my-1" />}
+            </div>
+            <div className={`min-w-0 flex-1 ${isLast ? "pb-0" : "pb-5"}`}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-foreground">{e.title}</p>
+                <span className="text-xs text-muted-foreground flex-shrink-0">
+                  {new Date(e.timestamp).toLocaleString()}
+                </span>
+              </div>
+              {e.detail && <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{e.detail}</p>}
+              {e.actor && <p className="text-xs text-muted-foreground/70 mt-0.5">by {e.actor}</p>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function FileRow({ file }: { file: any }) {
   return (
     <a href={getFileUrl(file.file_url)} target="_blank" rel="noopener noreferrer"
       className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border hover:bg-muted/30 transition-colors">
       <Paperclip className="size-3.5 text-muted-foreground flex-shrink-0" />
       <span className="text-sm text-foreground truncate flex-1">{file.file_name}</span>
+      {file.file_type && (
+        <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0">{file.file_type.replace(/_/g, " ").toLowerCase()}</span>
+      )}
       {file.file_size != null && (
         <span className="text-xs text-muted-foreground flex-shrink-0">{(file.file_size / 1024).toFixed(0)} KB</span>
       )}
@@ -146,6 +206,10 @@ export default function AdminTaskDetailPage() {
             </div>
           )}
           <div className="flex items-start gap-3">
+            <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0"><Upload className="size-4 text-slate-500" strokeWidth={1.75} /></div>
+            <div><p className="text-xs text-muted-foreground">Uploaded On</p><p className="text-sm font-medium text-foreground">{task.created_at ? new Date(task.created_at).toLocaleString() : "—"}</p></div>
+          </div>
+          <div className="flex items-start gap-3">
             <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0"><CalendarCheck className="size-4 text-slate-500" strokeWidth={1.75} /></div>
             <div><p className="text-xs text-muted-foreground">Confirmed On</p><p className="text-sm font-medium text-foreground">{task.confirmed_at ? new Date(task.confirmed_at).toLocaleDateString() : "—"}</p></div>
           </div>
@@ -154,6 +218,24 @@ export default function AdminTaskDetailPage() {
             <div><p className="text-xs text-muted-foreground">Due Date</p><p className="text-sm font-medium text-foreground">{task.deadline ? new Date(task.deadline).toLocaleDateString() : "—"}</p></div>
           </div>
         </div>
+      </div>
+
+      {/* Uploaded Files (attached by the client when the task was created) */}
+      <div className="bg-white border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
+          <h2 className="font-semibold text-foreground">Uploaded Files ({task.files?.length || 0})</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Requirement and reference files attached by the client.</p>
+        </div>
+        {!task.files?.length ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Paperclip className="size-8 text-muted-foreground/30 mb-2" />
+            <p className="text-sm text-muted-foreground">No files uploaded.</p>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-2 p-5">
+            {task.files.map((f: any) => <FileRow key={f.id} file={f} />)}
+          </div>
+        )}
       </div>
 
       {/* Conversation */}
@@ -232,6 +314,15 @@ export default function AdminTaskDetailPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Activity Log */}
+      <div className="bg-white border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <History className="size-4 text-slate-500" strokeWidth={1.75} />
+          <h2 className="font-semibold text-foreground">Activity Log</h2>
+        </div>
+        <ActivityLog events={task.activity_log || []} />
       </div>
     </div>
   );

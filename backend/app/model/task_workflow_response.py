@@ -44,6 +44,7 @@ class RevisionResponse(BaseModel):
     revision_note: str
     revision_status: str
     requested_at: datetime
+    completed_at: Optional[datetime] = None
     files: List[RevisionFileResponse] = []
 
     class Config:

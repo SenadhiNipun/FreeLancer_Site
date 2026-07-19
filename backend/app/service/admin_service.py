@@ -41,6 +41,58 @@ def _user_to_dict(user, include_writer_profile=False, task_count=0):
     return d
 
 
+def _build_task_activity_log(task) -> list:
+    """Chronological log of every dated event recorded against a task."""
+    events = []
+
+    def add(timestamp, event_type, title, detail=None, actor=None):
+        if not timestamp:
+            return
+        events.append({
+            "type": event_type,
+            "title": title,
+            "detail": detail,
+            "actor": actor,
+            "timestamp": timestamp.isoformat(),
+        })
+
+    add(task.created_at, "TASK_CREATED", "Task uploaded",
+        actor=f"{task.customer.first_name} {task.customer.last_name}".strip() if task.customer else None)
+
+    for bid in (task.bids or []):
+        writer_name = f"{bid.writer.first_name} {bid.writer.last_name}".strip() if bid.writer else "A writer"
+        add(bid.created_at, "BID_PLACED", f"Bid placed by {writer_name}",
+            detail=f"${float(bid.bid_amount):.2f}", actor=writer_name)
+        if bid.bid_status in ("ACCEPTED", "REJECTED", "WITHDRAWN") and bid.updated_at != bid.created_at:
+            add(bid.updated_at, f"BID_{bid.bid_status}", f"Bid {bid.bid_status.lower()} — {writer_name}",
+                detail=f"${float(bid.bid_amount):.2f}", actor=writer_name)
+
+    for a in (task.assignments or []):
+        writer_name = f"{a.writer.first_name} {a.writer.last_name}".strip() if a.writer else "A writer"
+        assigned_detail = f"Assigned by {a.admin.first_name} {a.admin.last_name}".strip() if a.admin else "Auto-assigned via accepted bid"
+        add(a.assigned_at, "WRITER_ASSIGNED", f"Writer assigned — {writer_name}", detail=assigned_detail, actor=writer_name)
+        add(a.accepted_at, "ASSIGNMENT_ACCEPTED", f"Assignment accepted — {writer_name}", actor=writer_name)
+        add(a.rejected_at, "ASSIGNMENT_REJECTED", f"Assignment rejected — {writer_name}", actor=writer_name)
+
+    for s in (task.submissions or []):
+        writer_name = f"{s.writer.first_name} {s.writer.last_name}".strip() if s.writer else "The writer"
+        add(s.submitted_at, "SUBMISSION", f"Work submitted ({s.submission_status.replace('_', ' ').title()})",
+            detail=s.submission_note, actor=writer_name)
+
+    for r in (task.revisions or []):
+        requester_name = f"{r.requester.first_name} {r.requester.last_name}".strip() if r.requester else None
+        add(r.requested_at, "REVISION_REQUESTED", "Revision requested", detail=r.revision_note, actor=requester_name)
+        add(r.completed_at, "REVISION_COMPLETED", "Revision completed")
+
+    if task.review:
+        reviewer_name = f"{task.review.customer.first_name} {task.review.customer.last_name}".strip() if task.review.customer else None
+        add(task.review.created_at, "REVIEW_SUBMITTED", f"Review submitted ({task.review.rating}/5)",
+            detail=task.review.feedback, actor=reviewer_name)
+
+    events.sort(key=lambda e: e["timestamp"])
+    return events
+
+
 class AdminService:
 
     # ─── Existing methods (preserved) ─────────────────────────────────────
@@ -398,6 +450,7 @@ class AdminService:
                 confirmed_at = a.accepted_at or a.assigned_at
                 break
         data["confirmed_at"] = confirmed_at.isoformat() if confirmed_at else None
+        data["activity_log"] = _build_task_activity_log(task)
 
         session = (
             db.query(ChatSessionEntity)
