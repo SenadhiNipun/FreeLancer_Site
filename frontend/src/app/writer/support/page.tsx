@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LifeBuoy, MessageCircle, Mail, ShieldAlert, ChevronDown, Loader2, CheckCircle, ArrowLeft, FileQuestion, Tag, Clock, ChevronRight, Send } from "lucide-react";
+import { LifeBuoy, MessageCircle, Mail, ShieldAlert, ChevronDown, Loader2, CheckCircle, ArrowLeft, FileQuestion, Tag, Clock, ChevronRight, Send, Headphones } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supportService } from "@/services/support.service";
 import { toast } from "react-toastify";
@@ -163,7 +163,9 @@ export default function WriterSupportPage() {
       <div className="grid lg:grid-cols-3 gap-5 items-start">
         {/* Support channels */}
         <div className="space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Support Channels</p>
+          <h2 className="font-semibold text-foreground flex items-center gap-2">
+            <Headphones className="size-4 text-primary" /> Support Channels
+          </h2>
           {[
             { icon: MessageCircle, title: "Live Chat",          sub: "Typical response: 5 min",  color: "text-primary", bg: "bg-violet-50 border-violet-100", btn: "Start Chat" },
             { icon: Mail,          title: "Email Helpdesk",     sub: "Response within 24 hours", color: "text-amber-600", bg: "bg-amber-50 border-amber-100", btn: "Send Email", href: "mailto:support@projecthub.com" },
@@ -195,11 +197,11 @@ export default function WriterSupportPage() {
         {/* Ticket form, my tickets + FAQ */}
         <div className="lg:col-span-2 space-y-5">
           {/* Ticket form */}
-          <div className="bg-white border border-border rounded-xl p-5">
-            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+          <div className="space-y-3">
+            <h2 className="font-semibold text-foreground flex items-center gap-2">
               <LifeBuoy className="size-4 text-primary" /> Submit a Support Ticket
             </h2>
-
+            <div className="bg-white border border-border rounded-xl p-5">
             {newTicket ? (
               <div className="flex flex-col items-center py-8 text-center space-y-3">
                 <div className="size-12 rounded-full bg-green-100 border border-green-200 flex items-center justify-center">
@@ -235,6 +237,7 @@ export default function WriterSupportPage() {
                 </button>
               </form>
             )}
+          </div>
           </div>
 
           {/* My tickets */}

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   ArrowLeft, Mail, MapPin, GraduationCap, ShieldCheck,
   Award, Star, CheckCircle2, BookOpen, Loader2, Briefcase,
@@ -115,15 +114,6 @@ export default function PublicProfile() {
                 </span>
               )}
             </div>
-          </div>
-
-          {/* Contact CTA */}
-          <div className="flex-shrink-0">
-            <Link href="/sign-in">
-              <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity shadow-md shadow-primary/20">
-                <MessageSquare className="size-4" /> Contact Writer
-              </button>
-            </Link>
           </div>
         </div>
 
