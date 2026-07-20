@@ -9,6 +9,7 @@ import {
 import { userService } from "@/services/user.service";
 import { getFileUrl } from "@/lib/api-client";
 import { toast } from "react-toastify";
+import { ImageCropModal } from "@/components/ui/image-crop-modal";
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -51,6 +52,8 @@ export default function CustomerProfile() {
   const [phone, setPhone]         = useState("");
   const [location, setLocation]   = useState("");
   const [imageUrl, setImageUrl]   = useState("");
+  const [cropSrc, setCropSrc]     = useState<string | null>(null);
+  const [cropOpen, setCropOpen]   = useState(false);
 
   const [currentPw, setCurrentPw]   = useState("");
   const [newPw, setNewPw]           = useState("");
@@ -99,9 +102,15 @@ export default function CustomerProfile() {
     finally { setSaving(false); }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
+    setCropSrc(URL.createObjectURL(file));
+    setCropOpen(true);
+  };
+
+  const handleCropped = async (file: File) => {
     try {
       const res = await userService.uploadProfilePicture(file);
       setImageUrl(res.results.profile_image_url);
@@ -438,6 +447,17 @@ export default function CustomerProfile() {
         </div>
       )}
 
+      <ImageCropModal
+        isOpen={cropOpen}
+        imageSrc={cropSrc}
+        fileName="profile.jpg"
+        onClose={() => {
+          setCropOpen(false);
+          if (cropSrc) URL.revokeObjectURL(cropSrc);
+          setCropSrc(null);
+        }}
+        onCropped={handleCropped}
+      />
     </div>
   );
 }

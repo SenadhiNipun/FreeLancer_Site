@@ -9,6 +9,7 @@ import {
 import { userService } from "@/services/user.service";
 import { getFileUrl } from "@/lib/api-client";
 import { toast } from "react-toastify";
+import { ImageCropModal } from "@/components/ui/image-crop-modal";
 
 const inputCls = "w-full h-10 px-3 rounded-lg border border-border bg-white text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-muted/30";
 
@@ -27,6 +28,8 @@ export default function WriterProfile() {
   const [academicStatus, setAcademicStatus] = useState("");
   const [experienceYears, setExpYears]      = useState(0);
   const [imageUrl, setImageUrl]             = useState("");
+  const [cropSrc, setCropSrc]               = useState<string | null>(null);
+  const [cropOpen, setCropOpen]             = useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -59,9 +62,15 @@ export default function WriterProfile() {
     finally { setSaving(false); }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
+    setCropSrc(URL.createObjectURL(file));
+    setCropOpen(true);
+  };
+
+  const handleCropped = async (file: File) => {
     try {
       const res = await userService.uploadProfilePicture(file);
       setImageUrl(res.results.profile_image_url);
@@ -224,6 +233,18 @@ export default function WriterProfile() {
           </div>
         </div>
       </div>
+
+      <ImageCropModal
+        isOpen={cropOpen}
+        imageSrc={cropSrc}
+        fileName="profile.jpg"
+        onClose={() => {
+          setCropOpen(false);
+          if (cropSrc) URL.revokeObjectURL(cropSrc);
+          setCropSrc(null);
+        }}
+        onCropped={handleCropped}
+      />
     </div>
   );
 }
