@@ -49,8 +49,7 @@ class AuthService:
             else:
                 # If user exists but not verified, delete them to allow fresh registration
                 # (a fresh verification code is generated below and emailed to the user)
-                db.delete(existing_user)
-                db.flush()
+                UserRepository.delete_user(db, existing_user)
 
         # Check if mobile number is already registered to another account
         existing_mobile_user = UserRepository.get_user_by_mobile_number(db, request.mobile_number)
@@ -86,7 +85,7 @@ class AuthService:
             user_role_link = UserRoleEntity(user_id=saved_user.id, role_id=customer_role.id)
             UserRepository.save_user_role(db, user_role_link)
 
-            db.commit()
+            UserRepository.finalize_registration(db)
 
             # 3. Send Verification Email
             EmailUtil.send_verification_email(request.email, verification_code)
@@ -107,8 +106,7 @@ class AuthService:
             else:
                 # If user exists but not verified, delete them to allow fresh registration
                 # (a fresh verification code is generated below and emailed to the user)
-                db.delete(existing_user)
-                db.flush()
+                UserRepository.delete_user(db, existing_user)
 
         # Check if mobile number is already registered to another account
         existing_mobile_user = UserRepository.get_user_by_mobile_number(db, request.mobile_number)
@@ -160,8 +158,8 @@ class AuthService:
                 profile_status="INCOMPLETE"
             )
             UserRepository.save_writer_profile(db, new_writer_profile)
-            
-            db.commit()
+
+            UserRepository.finalize_registration(db)
 
             # 4. Send Verification Email
             EmailUtil.send_verification_email(request.email, verification_code)
@@ -195,12 +193,12 @@ class AuthService:
 
             if user.writer_profile and user.writer_profile.profile_status == "INCOMPLETE":
                 user.writer_profile.profile_status = "PENDING_APPROVAL"
-                db.commit()
+                UserRepository.mark_email_verified(db, user)
                 from app.service.notification_service import NotificationService
                 writer_name = f"{user.first_name} {user.last_name}".strip() or user.email
                 NotificationService.notify_admins_new_writer(db, user.id, writer_name)
             else:
-                db.commit()
+                UserRepository.mark_email_verified(db, user)
 
             return True
         except Exception:
@@ -220,9 +218,7 @@ class AuthService:
             reset_code = ''.join(random.choices(string.digits, k=6))
             expiry_time = datetime.now() + timedelta(minutes=15)
 
-            user.reset_password_code = reset_code
-            user.reset_password_expires_at = expiry_time
-            db.commit()
+            UserRepository.set_reset_password_code(db, user, reset_code, expiry_time)
 
             EmailUtil.send_password_reset_email(user.email, reset_code)
             return True
@@ -243,10 +239,7 @@ class AuthService:
             raise ValidationException(detail="Reset code has expired")
 
         try:
-            user.password_hash = hash_password(request.new_password)
-            user.reset_password_code = None
-            user.reset_password_expires_at = None
-            db.commit()
+            UserRepository.update_password_and_clear_reset_code(db, user, hash_password(request.new_password))
             return True
         except Exception:
             db.rollback()
@@ -309,8 +302,7 @@ class AuthService:
             }
         )
 
-        existing_user.last_login_at = datetime.now()
-        db.commit()
+        UserRepository.update_last_login(db, existing_user, datetime.now())
 
         return TokenResponse(
             access_token=access_token,

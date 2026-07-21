@@ -1,5 +1,6 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List
+from datetime import datetime
 
 from app.entity.user_entity import UserEntity
 from app.entity.user_profile_entity import UserProfileEntity
@@ -15,6 +16,12 @@ class UserRepository:
     def get_user_by_email(db: Session, email: str) -> UserEntity | None:
         return (
             db.query(UserEntity)
+            .options(
+                selectinload(UserEntity.role),
+                selectinload(UserEntity.user_roles).selectinload(UserRoleEntity.role),
+                selectinload(UserEntity.user_profile),
+                selectinload(UserEntity.writer_profile),
+            )
             .filter(UserEntity.email == email)
             .filter(UserEntity.is_delete == False)
             .first()
@@ -42,6 +49,12 @@ class UserRepository:
     def get_user_by_id(db: Session, user_id: int) -> UserEntity | None:
         return (
             db.query(UserEntity)
+            .options(
+                selectinload(UserEntity.role),
+                selectinload(UserEntity.user_roles).selectinload(UserRoleEntity.role),
+                selectinload(UserEntity.user_profile),
+                selectinload(UserEntity.writer_profile),
+            )
             .filter(UserEntity.id == user_id)
             .filter(UserEntity.is_delete == False)
             .first()
@@ -104,3 +117,38 @@ class UserRepository:
             .order_by(UserEntity.id.desc())
             .all()
         )
+
+    @staticmethod
+    def delete_user(db: Session, user: UserEntity) -> None:
+        db.delete(user)
+        db.flush()
+
+    @staticmethod
+    def finalize_registration(db: Session) -> None:
+        db.commit()
+
+    @staticmethod
+    def mark_email_verified(db: Session, user: UserEntity) -> UserEntity:
+        db.commit()
+        return user
+
+    @staticmethod
+    def set_reset_password_code(db: Session, user: UserEntity, code: str, expires_at: datetime) -> UserEntity:
+        user.reset_password_code = code
+        user.reset_password_expires_at = expires_at
+        db.commit()
+        return user
+
+    @staticmethod
+    def update_password_and_clear_reset_code(db: Session, user: UserEntity, new_password_hash: str) -> UserEntity:
+        user.password_hash = new_password_hash
+        user.reset_password_code = None
+        user.reset_password_expires_at = None
+        db.commit()
+        return user
+
+    @staticmethod
+    def update_last_login(db: Session, user: UserEntity, login_time: datetime) -> UserEntity:
+        user.last_login_at = login_time
+        db.commit()
+        return user
