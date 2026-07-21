@@ -25,6 +25,6 @@ class PaymentService:
         task.payment_status = "PAID"
         if task.task_status == "PENDING_PAYMENT":
             task.task_status = "PENDING_ASSIGNMENT"
-            
-        db.commit()
+
+        TaskRepository.save_task(db, task)
         return payment
