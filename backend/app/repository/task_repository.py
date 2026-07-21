@@ -80,6 +80,11 @@ class TaskRepository:
     def get_overdue_confirmed_tasks(db: Session, now) -> List[TaskEntity]:
         return (
             db.query(TaskEntity)
+            .options(
+                selectinload(TaskEntity.customer),
+                selectinload(TaskEntity.assignments).selectinload(TaskAssignmentEntity.writer),
+                selectinload(TaskEntity.bids).selectinload(TaskBidEntity.writer),
+            )
             .filter(
                 TaskEntity.is_delete == False,
                 TaskEntity.task_status.in_(OVERDUE_ELIGIBLE_STATUSES),

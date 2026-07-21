@@ -100,9 +100,25 @@ class NotificationService:
         return NotificationRepository.has_notification_of_type(db, "TASK_OVERDUE", task_id)
 
     @staticmethod
-    def notify_task_overdue(db: Session, task: TaskEntity):
+    def _overdue_label(now, deadline) -> str:
+        delta = now - deadline
+        days = delta.days
+        if days >= 1:
+            return f"{days} day{'s' if days != 1 else ''}"
+        hours = delta.seconds // 3600
+        if hours >= 1:
+            return f"{hours} hour{'s' if hours != 1 else ''}"
+        return "less than an hour"
+
+    @staticmethod
+    def notify_task_overdue(db: Session, task: TaskEntity, now=None):
         from app.repository.user_repository import UserRepository
         from app.enums.role_enum import RoleEnum
+        from app.util.email_util import EmailUtil
+        from datetime import datetime
+        import os
+
+        now = now or datetime.now()
 
         notifications = [
             NotificationEntity(
@@ -138,6 +154,37 @@ class NotificationService:
 
         NotificationRepository.bulk_create(db, notifications)
 
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+        deadline_str = task.deadline.strftime("%b %d, %Y %I:%M %p")
+        overdue_label = NotificationService._overdue_label(now, task.deadline)
+        customer = task.customer
+        customer_name = f"{customer.first_name} {customer.last_name}".strip() if customer else "Customer"
+        writer_name = f"{writer.first_name} {writer.last_name}".strip() if writer else "Not yet assigned"
+
+        if customer and customer.email:
+            EmailUtil.send_task_overdue_email_customer(
+                to_email=customer.email,
+                customer_name=customer_name,
+                writer_name=writer_name,
+                task_title=task.title,
+                order_id=task.id,
+                deadline_str=deadline_str,
+                overdue_label=overdue_label,
+                link=f"{frontend_url}/customer/orders/{task.id}",
+            )
+
+        if writer and writer.email:
+            EmailUtil.send_task_overdue_email_writer(
+                to_email=writer.email,
+                writer_name=writer_name,
+                customer_name=customer_name,
+                task_title=task.title,
+                order_id=task.id,
+                deadline_str=deadline_str,
+                overdue_label=overdue_label,
+                link=f"{frontend_url}/writer/tasks/{task.id}",
+            )
+
     @staticmethod
     def has_deadline_reminder(db: Session, task_id: int, notification_type: str) -> bool:
         return NotificationRepository.has_notification_of_type(db, notification_type, task_id)
@@ -146,6 +193,8 @@ class NotificationService:
     def notify_task_deadline_reminder(db: Session, task: TaskEntity, notification_type: str, time_label: str):
         from app.repository.user_repository import UserRepository
         from app.enums.role_enum import RoleEnum
+        from app.util.email_util import EmailUtil
+        import os
 
         notifications = [
             NotificationEntity(
@@ -180,6 +229,36 @@ class NotificationService:
         ])
 
         NotificationRepository.bulk_create(db, notifications)
+
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+        deadline_str = task.deadline.strftime("%b %d, %Y %I:%M %p")
+        customer = task.customer
+        customer_name = f"{customer.first_name} {customer.last_name}".strip() if customer else "Customer"
+        writer_name = f"{writer.first_name} {writer.last_name}".strip() if writer else "Not yet assigned"
+
+        if customer and customer.email:
+            EmailUtil.send_task_due_soon_email_customer(
+                to_email=customer.email,
+                customer_name=customer_name,
+                writer_name=writer_name,
+                task_title=task.title,
+                order_id=task.id,
+                deadline_str=deadline_str,
+                time_label=time_label,
+                link=f"{frontend_url}/customer/orders/{task.id}",
+            )
+
+        if writer and writer.email:
+            EmailUtil.send_task_due_soon_email_writer(
+                to_email=writer.email,
+                writer_name=writer_name,
+                customer_name=customer_name,
+                task_title=task.title,
+                order_id=task.id,
+                deadline_str=deadline_str,
+                time_label=time_label,
+                link=f"{frontend_url}/writer/tasks/{task.id}",
+            )
 
     @staticmethod
     def mark_as_read(db: Session, user_id: int, notification_id: int):

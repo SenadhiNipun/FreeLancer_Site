@@ -678,12 +678,13 @@ class TaskService:
     def check_and_notify_overdue_tasks(db: Session):
         from datetime import datetime
 
-        overdue_tasks = TaskRepository.get_overdue_confirmed_tasks(db, datetime.now())
+        now = datetime.now()
+        overdue_tasks = TaskRepository.get_overdue_confirmed_tasks(db, now)
         for task in overdue_tasks:
             if NotificationService.has_overdue_notification(db, task.id):
                 continue
             try:
-                NotificationService.notify_task_overdue(db, task)
+                NotificationService.notify_task_overdue(db, task, now)
             except Exception as e:
                 print(f"Failed to send overdue notifications for task {task.id}: {e}")
 

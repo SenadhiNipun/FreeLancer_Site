@@ -61,6 +61,82 @@ class EmailUtil:
         return EmailUtil._dispatch(to_email, subject, body)
 
     @staticmethod
+    def send_task_overdue_email_customer(
+        to_email: str, customer_name: str, writer_name: str, task_title: str,
+        order_id: int, deadline_str: str, overdue_label: str, link: str,
+    ):
+        subject = f"Order #{order_id} is overdue - Assignment System"
+        body = f"""
+        <h1 style="color: #e74c3c;">Your order has passed its deadline</h1>
+        <p>Hi {customer_name},</p>
+        <p>Your order <strong>#{order_id} - {task_title}</strong> was due on <strong>{deadline_str}</strong>
+        and is now <strong>{overdue_label} overdue</strong>.</p>
+        <p><strong>Writer:</strong> {writer_name}</p>
+        <p>We've notified the writer and our team is aware of the delay. You can check the latest status
+        or reach out to support at any time.</p>
+        <p><a href="{link}" style="color: #4a90e2;">View your order</a></p>
+        <hr>
+        <p style="color: #888; font-size: 12px;">If you need help, contact our support team from your dashboard.</p>
+        """
+        return EmailUtil._dispatch(to_email, subject, body)
+
+    @staticmethod
+    def send_task_overdue_email_writer(
+        to_email: str, writer_name: str, customer_name: str, task_title: str,
+        order_id: int, deadline_str: str, overdue_label: str, link: str,
+    ):
+        subject = f"Order #{order_id} is overdue - action needed"
+        body = f"""
+        <h1 style="color: #e74c3c;">This task has passed its deadline</h1>
+        <p>Hi {writer_name},</p>
+        <p>The task <strong>#{order_id} - {task_title}</strong> for <strong>{customer_name}</strong>
+        was due on <strong>{deadline_str}</strong> and is now <strong>{overdue_label} overdue</strong>.</p>
+        <p>Please submit your work as soon as possible, or reach out to the customer/support if you need
+        an extension.</p>
+        <p><a href="{link}" style="color: #4a90e2;">View task</a></p>
+        <hr>
+        <p style="color: #888; font-size: 12px;">Repeated overdue submissions may affect your writer rating.</p>
+        """
+        return EmailUtil._dispatch(to_email, subject, body)
+
+    @staticmethod
+    def send_task_due_soon_email_customer(
+        to_email: str, customer_name: str, writer_name: str, task_title: str,
+        order_id: int, deadline_str: str, time_label: str, link: str,
+    ):
+        subject = f"Order #{order_id} is due in {time_label}"
+        body = f"""
+        <h1 style="color: #e67e22;">Your order's deadline is approaching</h1>
+        <p>Hi {customer_name},</p>
+        <p>Your order <strong>#{order_id} - {task_title}</strong> is due in <strong>{time_label}</strong>,
+        on <strong>{deadline_str}</strong>.</p>
+        <p><strong>Writer:</strong> {writer_name}</p>
+        <p>No action is needed from you right now - this is just a heads up so you know when to expect delivery.</p>
+        <p><a href="{link}" style="color: #4a90e2;">View your order</a></p>
+        <hr>
+        <p style="color: #888; font-size: 12px;">If you need help, contact our support team from your dashboard.</p>
+        """
+        return EmailUtil._dispatch(to_email, subject, body)
+
+    @staticmethod
+    def send_task_due_soon_email_writer(
+        to_email: str, writer_name: str, customer_name: str, task_title: str,
+        order_id: int, deadline_str: str, time_label: str, link: str,
+    ):
+        subject = f"Order #{order_id} is due in {time_label}"
+        body = f"""
+        <h1 style="color: #e67e22;">Deadline approaching</h1>
+        <p>Hi {writer_name},</p>
+        <p>The task <strong>#{order_id} - {task_title}</strong> for <strong>{customer_name}</strong>
+        is due in <strong>{time_label}</strong>, on <strong>{deadline_str}</strong>.</p>
+        <p>Please make sure your submission is on track to be delivered on time.</p>
+        <p><a href="{link}" style="color: #4a90e2;">View task</a></p>
+        <hr>
+        <p style="color: #888; font-size: 12px;">This is an automated reminder from the Assignment System.</p>
+        """
+        return EmailUtil._dispatch(to_email, subject, body)
+
+    @staticmethod
     def send_custom_email(to_email: str, subject: str, message: str):
         """Send an admin-composed email with a plain-text message rendered into a simple HTML template."""
         safe_message = message.replace("\n", "<br>")
