@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.entity.review_entity import ReviewEntity
 from app.repository.task_repository import TaskRepository
+from app.repository.review_repository import ReviewRepository
 from app.model.review_model import CreateReviewRequest, ReviewResponse
 from app.exceptions.exception import NotFoundException, ValidationException
 from app.service.notification_service import NotificationService
@@ -24,7 +25,7 @@ class ReviewService:
             raise ValidationException(detail="No writer assigned to this task")
 
         # Check for existing review
-        existing_review = db.query(ReviewEntity).filter(ReviewEntity.task_id == task_id).first()
+        existing_review = ReviewRepository.get_review_by_task(db, task_id)
         if existing_review:
             raise ValidationException(detail="You have already submitted a review for this task")
 
@@ -36,7 +37,7 @@ class ReviewService:
             rating=request.rating,
             feedback=request.feedback
         )
-        db.add(review)
+        review = ReviewRepository.add_review(db, review)
 
         # Notify writer about the review
         try:
@@ -52,6 +53,5 @@ class ReviewService:
         except Exception as e:
             print(f"Failed to send review notification to writer: {e}")
 
-        db.commit()
-        db.refresh(review)
+        review = ReviewRepository.save_review(db, review)
         return ReviewResponse.model_validate(review)
