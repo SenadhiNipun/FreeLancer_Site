@@ -118,6 +118,31 @@ class TaskRepository:
         ).first()
 
     @staticmethod
+    def get_active_bid_by_task_and_writer(db: Session, task_id: int, writer_id: int) -> Optional[TaskBidEntity]:
+        return db.query(TaskBidEntity).filter(
+            TaskBidEntity.task_id == task_id,
+            TaskBidEntity.writer_id == writer_id,
+            TaskBidEntity.bid_status.in_(["PENDING", "ACCEPTED"]),
+        ).first()
+
+    @staticmethod
+    def get_accepted_bid_by_task(db: Session, task_id: int) -> Optional[TaskBidEntity]:
+        return db.query(TaskBidEntity).filter(
+            TaskBidEntity.task_id == task_id,
+            TaskBidEntity.bid_status == "ACCEPTED",
+        ).first()
+
+    @staticmethod
+    def get_accepted_task_ids(db: Session, task_ids: List[int]):
+        if not task_ids:
+            return set()
+        rows = db.query(TaskBidEntity.task_id).filter(
+            TaskBidEntity.task_id.in_(task_ids),
+            TaskBidEntity.bid_status == "ACCEPTED",
+        ).all()
+        return {row[0] for row in rows}
+
+    @staticmethod
     def get_bid_by_id_and_writer(db: Session, bid_id: int, writer_id: int) -> Optional[TaskBidEntity]:
         return db.query(TaskBidEntity).filter(
             TaskBidEntity.id == bid_id,

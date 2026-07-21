@@ -41,22 +41,14 @@ class ChatService:
                 raise ValidationException(detail="Proposed amount must be a positive number")
             
             # Verify writer has an active/pending bid
-            from app.entity.task_bid_entity import TaskBidEntity
-            bid = db.query(TaskBidEntity).filter(
-                TaskBidEntity.task_id == session.task_id,
-                TaskBidEntity.writer_id == sender_id,
-                TaskBidEntity.bid_status.in_(["PENDING", "ACCEPTED"])
-            ).first()
-            
+            bid = TaskRepository.get_active_bid_by_task_and_writer(db, session.task_id, sender_id)
+
             if not bid:
                 raise ValidationException(detail="You must have placed a bid on this task to request a change")
-            
+
             # Check if any bid has been accepted for this task
-            accepted_bid = db.query(TaskBidEntity).filter(
-                TaskBidEntity.task_id == session.task_id,
-                TaskBidEntity.bid_status == "ACCEPTED"
-            ).first()
-            
+            accepted_bid = TaskRepository.get_accepted_bid_by_task(db, session.task_id)
+
             if accepted_bid:
                 raise ValidationException(detail="Cannot change bid after a bid has been accepted for this task")
                 
@@ -77,24 +69,24 @@ class ChatService:
         # Save attachments if present
         if request.attachments:
             from app.entity.chat_message_attachment_entity import ChatMessageAttachmentEntity
-            for att in request.attachments:
-                db_att = ChatMessageAttachmentEntity(
+            attachments = [
+                ChatMessageAttachmentEntity(
                     message_id=created_message.id,
                     file_name=att.file_name,
                     file_url=att.file_url,
                     mime_type=att.mime_type,
                     file_size=att.file_size
                 )
-                db.add(db_att)
-            db.commit()
-            db.refresh(created_message)
-        
+                for att in request.attachments
+            ]
+            created_message = ChatRepository.add_attachments(db, attachments, created_message)
+
         recipient_id = session.writer_id if sender_id == session.customer_id else session.customer_id
         from app.service.notification_service import NotificationService
-        
+
         if message_type == "BID_CHANGE":
-            from app.entity.user_entity import UserEntity
-            writer = db.query(UserEntity).filter(UserEntity.id == sender_id).first()
+            from app.repository.user_repository import UserRepository
+            writer = UserRepository.get_user_by_id(db, sender_id)
             writer_name = f"{writer.first_name} {writer.last_name}" if writer else "The writer"
             
             NotificationService.create_notification(
@@ -141,12 +133,14 @@ class ChatService:
     @staticmethod
     def get_user_chat_sessions(db: Session, user_id: int):
         sessions = ChatRepository.get_user_sessions(db, user_id)
+        accepted_task_ids = TaskRepository.get_accepted_task_ids(db, [s.task_id for s in sessions])
+
         results = []
         for s in sessions:
             resp = ChatSessionResponse.model_validate(s)
             # Add extra info for UI
             resp.task_title = s.task.title if s.task else "Unknown Task"
-            
+
             # Name of the other person
             if user_id == s.customer_id:
                 resp.other_party_name = f"{s.writer.first_name} {s.writer.last_name}" if s.writer else "Writer"
@@ -154,15 +148,9 @@ class ChatService:
             else:
                 resp.other_party_name = f"{s.customer.first_name} {s.customer.last_name}" if s.customer else "Customer"
                 resp.other_party_profile_image_url = s.customer.profile_image_url if s.customer else None
-            
-            # Check if any bid on this task has been accepted
-            from app.entity.task_bid_entity import TaskBidEntity
-            any_accepted = db.query(TaskBidEntity).filter(
-                TaskBidEntity.task_id == s.task_id,
-                TaskBidEntity.bid_status == "ACCEPTED"
-            ).first() is not None
-            resp.is_bid_accepted = any_accepted
-                
+
+            resp.is_bid_accepted = s.task_id in accepted_task_ids
+
             results.append(resp)
         return results
 
@@ -176,30 +164,28 @@ class ChatService:
             raise ValidationException(detail="You are not a participant in this chat")
         
         session.is_active = not session.is_active
-        db.commit()
-        db.refresh(session)
+        session = ChatRepository.save_session(db, session)
         return session
 
     @staticmethod
     def delete_message(db: Session, message_id: int, user_id: int):
-        message = db.query(ChatMessageEntity).filter(ChatMessageEntity.id == message_id).first()
+        message = ChatRepository.get_message_by_id(db, message_id)
         if not message:
             raise NotFoundException(detail="Message not found")
-        
+
         if message.sender_id != user_id:
             raise ValidationException(detail="You can only delete your own messages")
-        
+
         from datetime import datetime
         time_diff = (datetime.now() - message.created_at).total_seconds()
         if time_diff > 120:
             raise ValidationException(detail="Messages can only be deleted within 2 minutes of sending")
-        
-        db.delete(message)
-        db.commit()
+
+        ChatRepository.delete_message(db, message)
 
     @staticmethod
     def respond_to_bid_change(db: Session, message_id: int, user_id: int, action: str):
-        message = db.query(ChatMessageEntity).filter(ChatMessageEntity.id == message_id).first()
+        message = ChatRepository.get_message_by_id(db, message_id)
         if not message:
             raise NotFoundException(detail="Message not found")
         
@@ -221,15 +207,10 @@ class ChatService:
             
         if action == "ACCEPT":
             message.bid_change_status = "ACCEPTED"
-            
+
             # Find the corresponding bid
-            from app.entity.task_bid_entity import TaskBidEntity
-            bid = db.query(TaskBidEntity).filter(
-                TaskBidEntity.task_id == session.task_id,
-                TaskBidEntity.writer_id == message.sender_id,
-                TaskBidEntity.bid_status.in_(["PENDING", "ACCEPTED"])
-            ).first()
-            
+            bid = TaskRepository.get_active_bid_by_task_and_writer(db, session.task_id, message.sender_id)
+
             if not bid:
                 raise NotFoundException(detail="Active bid not found")
                 
@@ -247,26 +228,22 @@ class ChatService:
                 session.task.task_status = "PENDING_PAYMENT"
                 
                 # Reject other pending bids on the same task
-                db.query(TaskBidEntity).filter(
-                    TaskBidEntity.task_id == session.task_id,
-                    TaskBidEntity.id != bid.id,
-                    TaskBidEntity.bid_status == "PENDING",
-                ).update({"bid_status": "REJECTED"})
-                
+                TaskRepository.reject_other_pending_bids(db, session.task_id, bid.id)
+
                 # Create assignment
                 from app.entity.task_assignment_entity import TaskAssignmentEntity
                 from datetime import datetime
-                
+
                 assignment = TaskAssignmentEntity(
                     task_id=session.task_id,
                     writer_id=bid.writer_id,
                     assignment_status="ACCEPTED",
                     accepted_at=datetime.now()
                 )
-                db.add(assignment)
-                
-            db.commit()
-            
+                TaskRepository.create_assignment(db, assignment)
+
+            ChatRepository.commit_bid_change_decision(db)
+
             # Notify writer that their request was accepted
             from app.service.notification_service import NotificationService
             NotificationService.create_notification(
@@ -279,8 +256,8 @@ class ChatService:
             )
         else:
             message.bid_change_status = "REJECTED"
-            db.commit()
-            
+            ChatRepository.commit_bid_change_decision(db)
+
             # Notify writer that their request was rejected
             from app.service.notification_service import NotificationService
             NotificationService.create_notification(
@@ -291,6 +268,6 @@ class ChatService:
                 notification_type="BID_CHANGE_DECLINED",
                 related_id=session.task_id
             )
-            
-        db.refresh(message)
+
+        message = ChatRepository.refresh_message(db, message)
         return message

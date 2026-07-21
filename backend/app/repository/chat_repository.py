@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.entity.chat_session_entity import ChatSessionEntity
 from app.entity.chat_message_entity import ChatMessageEntity
+from app.entity.chat_message_attachment_entity import ChatMessageAttachmentEntity
 from typing import List, Optional
 
 class ChatRepository:
@@ -61,3 +62,34 @@ class ChatRepository:
             ChatMessageEntity.is_read == False
         ).update({"is_read": True})
         db.commit()
+
+    @staticmethod
+    def get_message_by_id(db: Session, message_id: int) -> Optional[ChatMessageEntity]:
+        return db.query(ChatMessageEntity).filter(ChatMessageEntity.id == message_id).first()
+
+    @staticmethod
+    def add_attachments(db: Session, attachments: List[ChatMessageAttachmentEntity], message: ChatMessageEntity) -> ChatMessageEntity:
+        db.add_all(attachments)
+        db.commit()
+        db.refresh(message)
+        return message
+
+    @staticmethod
+    def save_session(db: Session, session: ChatSessionEntity) -> ChatSessionEntity:
+        db.commit()
+        db.refresh(session)
+        return session
+
+    @staticmethod
+    def delete_message(db: Session, message: ChatMessageEntity) -> None:
+        db.delete(message)
+        db.commit()
+
+    @staticmethod
+    def commit_bid_change_decision(db: Session) -> None:
+        db.commit()
+
+    @staticmethod
+    def refresh_message(db: Session, message: ChatMessageEntity) -> ChatMessageEntity:
+        db.refresh(message)
+        return message
