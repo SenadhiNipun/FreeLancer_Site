@@ -1,10 +1,9 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 from app.entity.task_entity import TaskEntity
 from app.entity.task_bid_entity import TaskBidEntity
 from app.entity.task_submission_entity import TaskSubmissionEntity
 from app.entity.task_revision_entity import TaskRevisionEntity
-from app.entity.writer_profile_entity import WriterProfileEntity
 from app.repository.task_repository import TaskRepository
 from app.model.create_task_request import CreateTaskRequest
 from app.model.submit_task_request import SubmitTaskRequest
@@ -67,15 +66,8 @@ class TaskService:
             raise NotFoundException(detail="Task not found")
         if task.customer_id != customer_id:
             raise ValidationException(detail="You don't own this task")
-        bids = (
-            db.query(TaskBidEntity)
-            .filter(
-                TaskBidEntity.task_id == task_id,
-                TaskBidEntity.bid_status != "WITHDRAWN",
-            )
-            .all()
-        )
-        
+        bids = TaskRepository.get_active_bids_for_task(db, task_id)
+
         results = []
         for b in bids:
             resp = BidResponse.model_validate(b)
@@ -109,11 +101,7 @@ class TaskService:
         if task.task_status != "OPEN":
             raise ValidationException(detail="Task is not open for bidding")
 
-        bid = db.query(TaskBidEntity).filter(
-            TaskBidEntity.id == bid_id,
-            TaskBidEntity.task_id == task_id,
-            TaskBidEntity.bid_status == "PENDING",
-        ).first()
+        bid = TaskRepository.get_pending_bid_by_id_and_task(db, bid_id, task_id)
         if not bid:
             raise NotFoundException(detail="Bid not found or already processed")
 
@@ -123,28 +111,22 @@ class TaskService:
         task.task_status = "PENDING_PAYMENT"
 
         # Reject all other pending bids on the same task
-        db.query(TaskBidEntity).filter(
-            TaskBidEntity.task_id == task_id,
-            TaskBidEntity.id != bid_id,
-            TaskBidEntity.bid_status == "PENDING",
-        ).update({"bid_status": "REJECTED"})
+        TaskRepository.reject_other_pending_bids(db, task_id, bid_id)
 
         # Create task assignment for the writer
         from app.entity.task_assignment_entity import TaskAssignmentEntity
         from datetime import datetime
-        
+
         assignment = TaskAssignmentEntity(
             task_id=task_id,
             writer_id=bid.writer_id,
             assignment_status="ACCEPTED",
             accepted_at=datetime.now()
         )
-        db.add(assignment)
+        TaskRepository.create_assignment(db, assignment)
 
-        db.commit()
-        db.refresh(task)
-        db.refresh(bid)
-        
+        TaskRepository.save_bid_acceptance(db, task, bid)
+
         # Initialize chat between customer and writer
         try:
             ChatService.initialize_chat(db, task_id, customer_id, bid.writer_id)
@@ -174,8 +156,8 @@ class TaskService:
     # ──────────────────────────────────────────────
     @staticmethod
     def get_customer_dashboard_stats(db: Session, customer_id: int):
-        tasks = db.query(TaskEntity).filter(TaskEntity.customer_id == customer_id, TaskEntity.is_delete == False).all()
-        
+        tasks = TaskRepository.get_tasks_for_customer_stats(db, customer_id)
+
         # Total posted tasks (all statuses)
         total_posted = len(tasks)
         
@@ -196,50 +178,25 @@ class TaskService:
 
         # Real spending this week
         from datetime import datetime, timedelta
-        from app.entity.payment_entity import PaymentEntity
-        from sqlalchemy import func
-        
+
         one_week_ago = datetime.now() - timedelta(days=7)
-        weekly_spending_result = db.query(func.sum(PaymentEntity.amount)).filter(
-            PaymentEntity.customer_id == customer_id,
-            PaymentEntity.payment_status == "PAID",
-            PaymentEntity.created_at >= one_week_ago
-        ).scalar()
-        
+        weekly_spending_result = TaskRepository.get_weekly_paid_amount(db, customer_id, one_week_ago)
+
         spending_this_week = float(weekly_spending_result) if weekly_spending_result else 0.0
 
-        # Real monthly data (aggregated across years to ensure data visibility)
-        from sqlalchemy import extract
-        monthly_stats = db.query(
-            extract('month', TaskEntity.created_at).label('month'),
-            func.sum(TaskEntity.budget).label('total_budget')
-        ).filter(
-            TaskEntity.customer_id == customer_id,
-            TaskEntity.is_delete == False
-        ).group_by(extract('month', TaskEntity.created_at)).all()
-
-        month_map = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 
+        # Real monthly data, aggregated in-memory from the already-loaded tasks
+        # (avoids a redundant SQL aggregation query over the same rows)
+        month_map = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
                      7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
-        
-        # Initialize all months with zero
-        real_monthly_data = [{"month": month_map[m], "value": 0} for m in range(1, 13)]
-        for m_stat in monthly_stats:
-            if m_stat.month:
-                month_idx = int(m_stat.month)
-                if 1 <= month_idx <= 12:
-                    real_monthly_data[month_idx - 1]["value"] = float(m_stat.total_budget or 0)
 
-        monthly_data = real_monthly_data
-        
-        # Fallback manual aggregation if SQL grouping didn't return results
-        if sum(m["value"] for m in monthly_data) == 0 and tasks:
-            for t in tasks:
-                if t.created_at:
-                    try:
-                        m_idx = t.created_at.month
-                        monthly_data[m_idx - 1]["value"] += float(t.budget or 0)
-                    except:
-                        continue
+        monthly_data = [{"month": month_map[m], "value": 0} for m in range(1, 13)]
+        for t in tasks:
+            if t.created_at:
+                try:
+                    m_idx = t.created_at.month
+                    monthly_data[m_idx - 1]["value"] += float(t.budget or 0)
+                except:
+                    continue
 
         # Mock recent activity
         recent_activity = []
@@ -272,45 +229,24 @@ class TaskService:
     # ──────────────────────────────────────────────
     @staticmethod
     def get_open_tasks_for_writer(db: Session, writer_id: int):
-        profile = (
-            db.query(WriterProfileEntity)
-            .filter(WriterProfileEntity.user_id == writer_id)
-            .first()
-        )
+        profile = TaskRepository.get_writer_profile_by_user_id(db, writer_id)
 
-        query = db.query(TaskEntity).options(selectinload(TaskEntity.files)).filter(
-            TaskEntity.task_status == "OPEN",
-            TaskEntity.is_delete == False,
-        )
+        category_id = profile.academic_category_id if profile else None
+        specialization_id = profile.specialization_id if profile else None
+        tasks = TaskRepository.get_open_tasks_matching_profile(db, category_id, specialization_id)
 
-        # Narrow by writer's academic profile if available
-        if profile:
-            filters = []
-            if profile.academic_category_id:
-                filters.append(TaskEntity.academic_category_id == profile.academic_category_id)
-            if profile.specialization_id:
-                filters.append(TaskEntity.specialization_id == profile.specialization_id)
-            if filters:
-                from sqlalchemy import or_
-                query = query.filter(or_(*filters))
+        my_bids = TaskRepository.get_pending_bids_by_writer_for_tasks(db, writer_id, [t.id for t in tasks])
+        my_bids_by_task = {b.task_id: b for b in my_bids}
 
-        tasks = query.order_by(TaskEntity.created_at.desc()).all()
-        
         results = []
         for t in tasks:
             resp = TaskResponse.model_validate(t)
-            # Find if this writer has a pending bid
-            from app.entity.task_bid_entity import TaskBidEntity
-            my_bid = db.query(TaskBidEntity).filter(
-                TaskBidEntity.task_id == t.id,
-                TaskBidEntity.writer_id == writer_id,
-                TaskBidEntity.bid_status == "PENDING"
-            ).first()
+            my_bid = my_bids_by_task.get(t.id)
             if my_bid:
                 from app.model.bid_response import BidResponse
                 resp.my_bid = BidResponse.model_validate(my_bid)
             results.append(resp)
-            
+
         return results
 
     # ──────────────────────────────────────────────
@@ -325,17 +261,14 @@ class TaskService:
             raise ValidationException(detail="Task is not open for bidding")
 
         # Handle existing active bids (update instead of error)
-        existing = db.query(TaskBidEntity).filter(
-            TaskBidEntity.task_id == task_id,
-            TaskBidEntity.writer_id == writer_id,
-            TaskBidEntity.bid_status == "PENDING",
-        ).first()
-        
+        existing = TaskRepository.get_bid_by_task_writer_status(db, task_id, writer_id, "PENDING")
+
         is_update = False
         if existing:
             existing.bid_amount = request.bid_amount
             existing.message = request.message
             bid = existing
+            bid = TaskRepository.save_bid(db, bid)
             is_update = True
         else:
             bid = TaskBidEntity(
@@ -345,16 +278,13 @@ class TaskService:
                 message=request.message,
                 bid_status="PENDING",
             )
-            db.add(bid)
-        
-        db.commit()
-        db.refresh(bid)
+            bid = TaskRepository.create_bid(db, bid)
 
         # Initialize chat between customer and writer so they can discuss before acceptance
         try:
             # ── Notification for Customer ──
-            from app.entity.user_entity import UserEntity
-            writer = db.query(UserEntity).filter(UserEntity.id == writer_id).first()
+            from app.repository.user_repository import UserRepository
+            writer = UserRepository.get_user_by_id(db, writer_id)
             writer_name = f"{writer.first_name} {writer.last_name}" if writer else "An expert writer"
             
             action_text = "updated their bid to" if is_update else "placed a new bid of"
@@ -385,12 +315,7 @@ class TaskService:
     @staticmethod
     def get_writer_bids(db: Session, writer_id: int):
         from app.model.bid_response import TaskBriefResponse
-        bids = (
-            db.query(TaskBidEntity)
-            .filter(TaskBidEntity.writer_id == writer_id)
-            .order_by(TaskBidEntity.created_at.desc())
-            .all()
-        )
+        bids = TaskRepository.get_bids_by_writer(db, writer_id)
         results = []
         for b in bids:
             resp = BidResponse.model_validate(b)
@@ -404,27 +329,7 @@ class TaskService:
     # ──────────────────────────────────────────────
     @staticmethod
     def get_writer_tasks(db: Session, writer_id: int):
-        from app.entity.task_assignment_entity import TaskAssignmentEntity
-        from app.entity.task_bid_entity import TaskBidEntity
-        from sqlalchemy import or_
-        from sqlalchemy.orm import joinedload
-        
-        tasks = (
-            db.query(TaskEntity)
-            .outerjoin(TaskAssignmentEntity)
-            .outerjoin(TaskBidEntity)
-            .options(selectinload(TaskEntity.files))
-            .filter(
-                TaskEntity.is_delete == False,
-                or_(
-                    TaskAssignmentEntity.writer_id == writer_id,
-                    (TaskBidEntity.writer_id == writer_id) & (TaskBidEntity.bid_status == "ACCEPTED")
-                )
-            )
-            .order_by(TaskEntity.created_at.desc())
-            .distinct()
-            .all()
-        )
+        tasks = TaskRepository.get_tasks_for_writer(db, writer_id)
         return [TaskResponse.model_validate(t) for t in tasks]
 
     # ──────────────────────────────────────────────
@@ -432,16 +337,13 @@ class TaskService:
     # ──────────────────────────────────────────────
     @staticmethod
     def withdraw_bid(db: Session, bid_id: int, writer_id: int):
-        bid = db.query(TaskBidEntity).filter(
-            TaskBidEntity.id == bid_id,
-            TaskBidEntity.writer_id == writer_id,
-        ).first()
+        bid = TaskRepository.get_bid_by_id_and_writer(db, bid_id, writer_id)
         if not bid:
             raise NotFoundException(detail="Bid not found")
         if bid.bid_status != "PENDING":
             raise ValidationException(detail="Only pending bids can be withdrawn")
         bid.bid_status = "WITHDRAWN"
-        db.commit()
+        TaskRepository.commit_bid_withdrawal(db, bid)
         return {"message": "Bid withdrawn successfully"}
 
     # ──────────────────────────────────────────────
@@ -455,13 +357,8 @@ class TaskService:
         
         resp = TaskResponse.model_validate(task)
         if writer_id:
-            from app.entity.task_bid_entity import TaskBidEntity
             from app.model.bid_response import BidResponse
-            my_bid = db.query(TaskBidEntity).filter(
-                TaskBidEntity.task_id == task_id,
-                TaskBidEntity.writer_id == writer_id,
-                TaskBidEntity.bid_status == "PENDING"
-            ).first()
+            my_bid = TaskRepository.get_bid_by_task_writer_status(db, task_id, writer_id, "PENDING")
             if my_bid:
                 resp.my_bid = BidResponse.model_validate(my_bid)
                 
@@ -483,23 +380,12 @@ class TaskService:
         if not task:
             raise NotFoundException(detail="Task not found")
 
-        from app.entity.task_assignment_entity import TaskAssignmentEntity
-        from app.entity.task_bid_entity import TaskBidEntity
-        
-        assignment = db.query(TaskAssignmentEntity).filter(
-            TaskAssignmentEntity.task_id == task_id,
-            TaskAssignmentEntity.writer_id == writer_id,
-            TaskAssignmentEntity.assignment_status.in_(["PENDING", "ACCEPTED"]),
-        ).first()
+        assignment = TaskRepository.get_active_assignment_for_writer(db, task_id, writer_id)
 
         if not assignment:
             # Fallback: check for accepted bid
-            bid = db.query(TaskBidEntity).filter(
-                TaskBidEntity.task_id == task_id,
-                TaskBidEntity.writer_id == writer_id,
-                TaskBidEntity.bid_status == "ACCEPTED"
-            ).first()
-            
+            bid = TaskRepository.get_bid_by_task_writer_status(db, task_id, writer_id, "ACCEPTED")
+
             if not bid:
                 raise ValidationException(detail="Writer not assigned to this task")
 
@@ -509,9 +395,8 @@ class TaskService:
             submission_note=submission_note,
             submission_status="FINAL_SUBMISSION" if is_final else "DRAFT_SUBMISSION",
         )
-        db.add(submission)
         task.task_status = "SUBMITTED"
-        db.flush()  # Flush to get submission.id
+        submission = TaskRepository.create_submission(db, submission)  # flushes to get submission.id
 
         # Save submission files if provided
         if files:
@@ -522,6 +407,7 @@ class TaskService:
             upload_dir = "uploads/submissions"
             os.makedirs(upload_dir, exist_ok=True)
 
+            submission_files = []
             for file in files:
                 timestamp = dt.now().strftime("%Y%m%d%H%M%S%f")
                 safe_filename = file.filename.replace(" ", "_")
@@ -531,21 +417,17 @@ class TaskService:
                 with open(file_path, "wb") as buffer:
                     shutil.copyfileobj(file.file, buffer)
 
-                submission_file = SubmissionFileEntity(
+                submission_files.append(SubmissionFileEntity(
                     submission_id=submission.id,
                     file_name=file.filename,
                     file_url=f"/uploads/submissions/{saved_name}",
                     mime_type=file.content_type,
                     file_size=getattr(file, "size", 0),
-                )
-                db.add(submission_file)
+                ))
+            TaskRepository.add_submission_files(db, submission_files)
 
         # Transition any active revision requests to COMPLETED
-        from app.entity.task_revision_entity import TaskRevisionEntity
-        active_revisions = db.query(TaskRevisionEntity).filter(
-            TaskRevisionEntity.task_id == task_id,
-            TaskRevisionEntity.revision_status.in_(["REQUESTED", "IN_PROGRESS"])
-        ).all()
+        active_revisions = TaskRepository.get_active_revisions_for_task(db, task_id)
         for rev in active_revisions:
             rev.revision_status = "COMPLETED"
 
@@ -574,8 +456,7 @@ class TaskService:
             except Exception as e:
                 print(f"Failed to send delivery notification to customer: {e}")
 
-        db.commit()
-        db.refresh(submission)
+        submission = TaskRepository.save_submission(db, submission)
         return SubmissionResponse.model_validate(submission)
 
     @staticmethod
@@ -602,8 +483,7 @@ class TaskService:
             except Exception as e:
                 print(f"Failed to send task approval notification: {e}")
 
-        db.commit()
-        db.refresh(task)
+        task = TaskRepository.save_task(db, task)
         return TaskResponse.model_validate(task)
 
     # ──────────────────────────────────────────────
@@ -615,12 +495,7 @@ class TaskService:
         if not task or task.customer_id != customer_id:
             raise NotFoundException(detail="Task not found")
 
-        last_submission = (
-            db.query(TaskSubmissionEntity)
-            .filter(TaskSubmissionEntity.task_id == task_id)
-            .order_by(TaskSubmissionEntity.submitted_at.desc())
-            .first()
-        )
+        last_submission = TaskRepository.get_last_submission_for_task(db, task_id)
         if not last_submission:
             raise ValidationException(detail="No submission found to revise")
 
@@ -631,9 +506,8 @@ class TaskService:
             revision_note=revision_note,
             revision_status="REQUESTED",
         )
-        db.add(revision)
         task.task_status = "REVISION_REQUESTED"
-        db.flush()  # Flush to get revision.id before adding files
+        revision = TaskRepository.create_revision(db, revision)  # flushes to get revision.id
 
         # Save revision files if provided
         if files:
@@ -644,6 +518,7 @@ class TaskService:
             upload_dir = "uploads/revisions"
             os.makedirs(upload_dir, exist_ok=True)
 
+            revision_files = []
             for file in files:
                 timestamp = dt.now().strftime("%Y%m%d%H%M%S%f")
                 safe_filename = file.filename.replace(" ", "_")
@@ -653,15 +528,15 @@ class TaskService:
                 with open(file_path, "wb") as buffer:
                     shutil.copyfileobj(file.file, buffer)
 
-                revision_file = RevisionFileEntity(
+                revision_files.append(RevisionFileEntity(
                     revision_id=revision.id,
                     uploaded_by_user_id=customer_id,
                     file_name=file.filename,
                     file_url=f"/uploads/revisions/{saved_name}",
                     mime_type=file.content_type,
                     file_size=getattr(file, "size", 0),
-                )
-                db.add(revision_file)
+                ))
+            TaskRepository.add_revision_files(db, revision_files)
 
         # Notify the writer about the revision request
         writer = task.writer
@@ -679,8 +554,7 @@ class TaskService:
             except Exception as e:
                 print(f"Failed to send revision notification: {e}")
 
-        db.commit()
-        db.refresh(revision)
+        revision = TaskRepository.save_revision(db, revision)
         return RevisionResponse.model_validate(revision)
     @staticmethod
     async def save_task_files_locally(db: Session, task_id: int, user_id: int, files: List["UploadFile"], file_type: str = "REQUIREMENT_FILE"):
@@ -693,12 +567,10 @@ class TaskService:
             raise NotFoundException(detail="Task not found")
         
         # Check permissions: User must be either the customer or the assigned writer
-        from app.entity.task_assignment_entity import TaskAssignmentEntity
+        # (task.assignments is already eager-loaded by get_task_by_id, so this
+        # is an in-memory check instead of a redundant query)
         is_customer = task.customer_id == user_id
-        is_writer = db.query(TaskAssignmentEntity).filter(
-            TaskAssignmentEntity.task_id == task_id,
-            TaskAssignmentEntity.writer_id == user_id
-        ).first() is not None
+        is_writer = any(a.writer_id == user_id for a in task.assignments)
 
         if not is_customer and not is_writer:
             raise ValidationException(detail="You don't have permission to add files to this task")
@@ -733,11 +605,10 @@ class TaskService:
                 mime_type=file.content_type,
                 file_size=getattr(file, 'size', 0)
             )
-            db.add(new_file)
             new_files.append(new_file)
-            
-        db.commit()
-        
+
+        new_files = TaskRepository.add_task_files(db, new_files)
+
         # Notify the writer if one is assigned
         writer = task.writer
         if writer:
@@ -753,7 +624,7 @@ class TaskService:
                 )
             except Exception as e:
                 print(f"Failed to send notification for files: {e}")
-            
+
         return [TaskFileResponse.model_validate(f) for f in new_files]
 
     # ──────────────────────────────────────────────
@@ -781,11 +652,10 @@ class TaskService:
                 mime_type=file_data.mime_type,
                 file_size=file_data.file_size
             )
-            db.add(new_file)
             new_files.append(new_file)
-            
-        db.commit()
-        
+
+        new_files = TaskRepository.add_task_files(db, new_files)
+
         # Notify the writer if one is assigned
         writer = task.writer
         if writer:
@@ -798,5 +668,21 @@ class TaskService:
                 notification_type="FILES_ADDED",
                 related_id=task_id
             )
-            
+
         return [TaskFileResponse.model_validate(f) for f in new_files]
+
+    # ──────────────────────────────────────────────
+    # SYSTEM — check for confirmed tasks that missed their deadline
+    # ──────────────────────────────────────────────
+    @staticmethod
+    def check_and_notify_overdue_tasks(db: Session):
+        from datetime import datetime
+
+        overdue_tasks = TaskRepository.get_overdue_confirmed_tasks(db, datetime.now())
+        for task in overdue_tasks:
+            if NotificationService.has_overdue_notification(db, task.id):
+                continue
+            try:
+                NotificationService.notify_task_overdue(db, task)
+            except Exception as e:
+                print(f"Failed to send overdue notifications for task {task.id}: {e}")
