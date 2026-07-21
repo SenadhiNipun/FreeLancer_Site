@@ -1,19 +1,15 @@
 from sqlalchemy.orm import Session
-from app.entity.user_entity import UserEntity
-from app.entity.writer_profile_entity import WriterProfileEntity
-from app.entity.task_entity import TaskEntity
-from app.entity.task_assignment_entity import TaskAssignmentEntity
-from app.entity.review_entity import ReviewEntity
 from app.model.writer_profile_response import WriterProfileResponse, PublicReviewModel
 from app.model.update_writer_profile_request import UpdateWriterProfileRequest
-from app.entity.writer_qualification_entity import WriterQualificationEntity
+from app.repository.writer_repository import WriterRepository
+from app.repository.review_repository import ReviewRepository
 from app.exceptions.exception import NotFoundException
 
 class WriterService:
 
     @staticmethod
     def get_public_profile(db: Session, user_id: int) -> WriterProfileResponse:
-        user = db.query(UserEntity).filter(UserEntity.id == user_id).first()
+        user = WriterRepository.get_user_with_writer_profile(db, user_id)
         if not user:
             raise NotFoundException(detail="User not found")
 
@@ -37,23 +33,20 @@ class WriterService:
         
         if writer_profile:
             # Count completed projects
-            completed_count = db.query(TaskAssignmentEntity).join(TaskEntity).filter(
-                TaskAssignmentEntity.writer_id == user_id,
-                TaskEntity.task_status == "COMPLETED"
-            ).count()
+            completed_count = WriterRepository.get_completed_project_count(db, user_id)
 
             # Build qualifications list
             quals = [q.qualification_name for q in writer_profile.qualifications]
-            
+
             # Build expertise list (tags)
             if writer_profile.specialization:
                 expertise.append(writer_profile.specialization.name)
             if writer_profile.academic_category:
                 expertise.append(writer_profile.academic_category.name)
-            
+
             # Fetch actual reviews
-            review_entities = db.query(ReviewEntity).filter(ReviewEntity.writer_id == user_id).all()
-            
+            review_entities = ReviewRepository.get_reviews_by_writer(db, user_id)
+
             for r in review_entities:
                 cust_name = "Anonymous Client"
                 if r.customer:
@@ -123,7 +116,7 @@ class WriterService:
 
     @staticmethod
     def update_profile(db: Session, user_id: int, request: UpdateWriterProfileRequest):
-        user = db.query(UserEntity).filter(UserEntity.id == user_id).first()
+        user = WriterRepository.get_user_with_writer_profile(db, user_id)
         if not user:
             raise NotFoundException(detail="User not found")
 
@@ -139,12 +132,12 @@ class WriterService:
         if not writer_profile:
             # For non-writers (e.g. customers), update UserProfileEntity
             from app.entity.user_profile_entity import UserProfileEntity
+            from app.repository.user_repository import UserRepository
             user_profile = user.user_profile
             if not user_profile:
                 user_profile = UserProfileEntity(user_id=user_id)
-                db.add(user_profile)
-                db.flush()
-            
+                user_profile = UserRepository.save_user_profile(db, user_profile)
+
             if request.phone is not None:
                 user_profile.phone_number = request.phone
                 
@@ -158,10 +151,8 @@ class WriterService:
                     user_profile.address = c
                 elif co:
                     user_profile.address = co
-            
-            db.commit()
-            db.refresh(user)
-            db.refresh(user_profile)
+
+            WriterRepository.save_user_and_profile(db, user, user_profile)
             return WriterService.get_public_profile(db, user_id)
 
         # Update Profile fields
@@ -180,19 +171,9 @@ class WriterService:
 
         # Update Qualifications
         if request.qualifications is not None:
-            # Clear old ones
-            db.query(WriterQualificationEntity).filter(
-                WriterQualificationEntity.writer_profile_id == writer_profile.id
-            ).delete()
-            # Add new ones
-            for q_name in request.qualifications:
-                db.add(WriterQualificationEntity(
-                    writer_profile_id=writer_profile.id,
-                    qualification_name=q_name
-                ))
+            WriterRepository.delete_qualifications(db, writer_profile.id)
+            WriterRepository.add_qualifications(db, writer_profile.id, request.qualifications)
 
-        db.commit()
-        db.refresh(user)
-        db.refresh(writer_profile)
-        
+        WriterRepository.save_user_and_writer_profile(db, user, writer_profile)
+
         return WriterService.get_public_profile(db, user_id)
