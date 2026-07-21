@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Bell, BellOff, Check, CheckSquare, Briefcase, CheckCircle2,
-  MessageSquare, Star, RefreshCw, Sparkles, Clock, ArrowRight, Loader2, Shield,
+  MessageSquare, Star, RefreshCw, Sparkles, Clock, ArrowRight, Loader2, Shield, AlertTriangle,
 } from "lucide-react";
 import { notificationService } from "@/services/notification.service";
 import { formatDistanceToNow } from "date-fns";
@@ -24,6 +24,7 @@ const TYPE_CFG: Record<string, { icon: any; color: string; link: string }> = {
   TASK_APPROVED:     { icon: Sparkles,      color: "bg-violet-50 border-violet-100 text-violet-600", link: "/writer/tasks/completed" },
   REVISION_REQUESTED:{ icon: RefreshCw,     color: "bg-orange-50 border-orange-100 text-orange-600", link: "/writer/tasks/active" },
   ADMIN_MESSAGE:     { icon: Shield,        color: "bg-violet-50 border-violet-100 text-violet-600", link: "/writer/admin-messages" },
+  TASK_OVERDUE:      { icon: AlertTriangle, color: "bg-red-50 border-red-100 text-red-600",       link: "/writer/tasks/active" },
 };
 
 const CATS = [

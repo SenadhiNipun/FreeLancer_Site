@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, PenSquare, MessageSquare,
   ClipboardCheck, LogOut, Shield, Menu, X, TicketCheck,
-  Bell, UserCheck, TicketIcon, CheckCheck, ClipboardList, Send,
+  Bell, UserCheck, TicketIcon, CheckCheck, ClipboardList, Send, AlertTriangle,
 } from "lucide-react";
 import { LogoutConfirmDialog } from "@/components/ui/logout-confirm-dialog";
 import { notificationService } from "@/services/notification.service";
@@ -27,6 +27,7 @@ function notifLink(n: any): string {
   if ((n.notification_type === "SUPPORT_TICKET" || n.notification_type === "SUPPORT_REPLY") && n.related_id) return `/admin/support/${n.related_id}`;
   if (n.notification_type === "WRITER_REGISTRATION")               return "/admin/pending";
   if (n.notification_type === "ADMIN_MESSAGE_REPLY" && n.related_id) return `/admin/messages/${n.related_id}`;
+  if (n.notification_type === "TASK_OVERDUE" && n.related_id) return `/admin/tasks/${n.related_id}`;
   return "/admin/dashboard";
 }
 
@@ -34,6 +35,7 @@ function notifIcon(type: string) {
   if (type === "SUPPORT_TICKET" || type === "SUPPORT_REPLY") return <TicketIcon className="size-4 text-amber-600" strokeWidth={1.75} />;
   if (type === "WRITER_REGISTRATION") return <UserCheck className="size-4 text-violet-600" strokeWidth={1.75} />;
   if (type === "ADMIN_MESSAGE_REPLY") return <Send className="size-4 text-violet-600" strokeWidth={1.75} />;
+  if (type === "TASK_OVERDUE") return <AlertTriangle className="size-4 text-red-600" strokeWidth={1.75} />;
   return <Bell className="size-4 text-slate-500" strokeWidth={1.75} />;
 }
 

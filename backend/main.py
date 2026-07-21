@@ -1,8 +1,11 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import os
 
-from app.config.database import init_db, db_dependency
+from app.config.database import init_db, db_dependency, SessionLocal
 from app.config.cors_config import setup_cors
 from app.config.logging_config import logger
 from app.controller.auth_controller import router as auth_router
@@ -17,10 +20,39 @@ from app.controller.support_controller import router as support_router
 from app.controller.admin_message_controller import router as admin_message_router
 from app.exceptions.exception_handler import register_exception_handlers
 from app.util.response_util import success_response
+from app.service.task_service import TaskService
+
+OVERDUE_CHECK_INTERVAL_SECONDS = int(os.getenv("OVERDUE_CHECK_INTERVAL_SECONDS", 3600))
+
+
+async def _overdue_task_check_loop():
+    while True:
+        try:
+            await asyncio.to_thread(_run_overdue_task_check)
+        except Exception as e:
+            logger.error(f"Overdue task check failed: {e}")
+        await asyncio.sleep(OVERDUE_CHECK_INTERVAL_SECONDS)
+
+
+def _run_overdue_task_check():
+    db = SessionLocal()
+    try:
+        TaskService.check_and_notify_overdue_tasks(db)
+    finally:
+        db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(_overdue_task_check_loop())
+    yield
+    task.cancel()
+
 
 app = FastAPI(
     title="Assignment System Backend",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 init_db()

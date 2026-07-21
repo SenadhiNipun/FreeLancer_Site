@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { Bell, Check, Clock, Info, MessageSquare, Zap, RotateCcw, Award, Shield } from "lucide-react";
+import { Bell, Check, Clock, Info, MessageSquare, Zap, RotateCcw, Award, Shield, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { notificationService } from "@/services/notification.service";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,7 @@ export function NotificationBell() {
       REVIEW_RECEIVED:    { icon: Award,         cls: "bg-amber-50 border-amber-100 text-amber-600" },
       NEW_MESSAGE:        { icon: MessageSquare, cls: "bg-violet-50 border-violet-100 text-violet-600" },
       ADMIN_MESSAGE:      { icon: Shield,        cls: "bg-violet-50 border-violet-100 text-violet-600" },
+      TASK_OVERDUE:       { icon: AlertTriangle, cls: "bg-red-50 border-red-100 text-red-600" },
     };
     return map[type] || { icon: Info, cls: "bg-blue-50 border-blue-100 text-blue-600" };
   };
@@ -73,6 +74,7 @@ export function NotificationBell() {
     else if ((n.notification_type === "WORK_DELIVERED" || n.notification_type === "REVISION_DELIVERED") && n.related_id) router.push(`/customer/orders/${n.related_id}`);
     else if (n.notification_type === "TASK_AVAILABLE") router.push("/writer/tasks/available");
     else if (n.notification_type === "REVIEW_RECEIVED" && n.related_id) router.push("/writer/tasks/completed");
+    else if (n.notification_type === "TASK_OVERDUE" && n.related_id) router.push(isWriter ? `/writer/tasks/${n.related_id}` : `/customer/orders/${n.related_id}`);
   };
 
   return (
