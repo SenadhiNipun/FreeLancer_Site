@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.entity.admin_conversation_entity import AdminConversationEntity
 from app.entity.admin_conversation_message_entity import AdminConversationMessageEntity
 from app.repository.user_repository import UserRepository
+from app.repository.admin_messaging_repository import AdminMessagingRepository
 from app.exceptions.exception import NotFoundException, ValidationException
 
 
@@ -44,20 +45,12 @@ class AdminMessagingService:
         if not user:
             raise NotFoundException(detail="User not found")
 
-        conversation = (
-            db.query(AdminConversationEntity)
-            .filter(AdminConversationEntity.user_id == user_id)
-            .order_by(AdminConversationEntity.id.desc())
-            .first()
-        )
+        conversation = AdminMessagingRepository.get_latest_conversation_by_user(db, user_id)
         if conversation:
             return conversation
 
         conversation = AdminConversationEntity(user_id=user_id, subject=subject)
-        db.add(conversation)
-        db.commit()
-        db.refresh(conversation)
-        return conversation
+        return AdminMessagingRepository.create_conversation(db, conversation)
 
     @staticmethod
     def start_conversation(db: Session, admin_id: int, user_id: int, subject: str, message: str) -> dict:
@@ -71,9 +64,7 @@ class AdminMessagingService:
             message=message,
             is_admin=True,
         )
-        db.add(msg)
-        db.commit()
-        db.refresh(conversation)
+        conversation = AdminMessagingRepository.add_message_refresh_conversation(db, msg, conversation)
 
         from app.service.notification_service import NotificationService
         NotificationService.create_notification(
@@ -89,16 +80,12 @@ class AdminMessagingService:
 
     @staticmethod
     def get_all_conversations(db: Session) -> list:
-        conversations = (
-            db.query(AdminConversationEntity)
-            .order_by(AdminConversationEntity.id.desc())
-            .all()
-        )
+        conversations = AdminMessagingRepository.get_all_conversations(db)
         return [_conversation_to_dict(c) for c in conversations]
 
     @staticmethod
     def get_conversation(db: Session, conversation_id: int, user_id: int = None) -> dict:
-        conversation = db.query(AdminConversationEntity).filter(AdminConversationEntity.id == conversation_id).first()
+        conversation = AdminMessagingRepository.get_conversation_by_id(db, conversation_id)
         if not conversation:
             raise NotFoundException(detail="Conversation not found")
         if user_id is not None and conversation.user_id != user_id:
@@ -107,17 +94,12 @@ class AdminMessagingService:
 
     @staticmethod
     def get_user_conversations(db: Session, user_id: int) -> list:
-        conversations = (
-            db.query(AdminConversationEntity)
-            .filter(AdminConversationEntity.user_id == user_id)
-            .order_by(AdminConversationEntity.id.desc())
-            .all()
-        )
+        conversations = AdminMessagingRepository.get_conversations_by_user(db, user_id)
         return [_conversation_to_dict(c) for c in conversations]
 
     @staticmethod
     def reply(db: Session, conversation_id: int, sender_id: int, message: str, is_admin: bool) -> dict:
-        conversation = db.query(AdminConversationEntity).filter(AdminConversationEntity.id == conversation_id).first()
+        conversation = AdminMessagingRepository.get_conversation_by_id(db, conversation_id)
         if not conversation:
             raise NotFoundException(detail="Conversation not found")
         if not is_admin and conversation.user_id != sender_id:
@@ -129,9 +111,7 @@ class AdminMessagingService:
             message=message,
             is_admin=is_admin,
         )
-        db.add(msg)
-        db.commit()
-        db.refresh(msg)
+        msg = AdminMessagingRepository.add_message_refresh_message(db, msg)
 
         from app.service.notification_service import NotificationService
         if is_admin:
