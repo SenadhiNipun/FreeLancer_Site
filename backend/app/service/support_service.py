@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.entity.support_ticket_entity import SupportTicketEntity
 from app.entity.support_ticket_reply_entity import SupportTicketReplyEntity
+from app.repository.support_repository import SupportRepository
 from app.exceptions.exception import NotFoundException, UnauthorizedException
 
 
@@ -34,7 +35,7 @@ class SupportService:
 
     @staticmethod
     def create_ticket(db: Session, user_id: int, subject: str, message: str) -> dict:
-        count = db.query(SupportTicketEntity).count()
+        count = SupportRepository.count_tickets(db)
         ticket_number = f"TKT-{count + 1:04d}"
 
         ticket = SupportTicketEntity(
@@ -44,9 +45,7 @@ class SupportService:
             message=message,
             status="OPEN",
         )
-        db.add(ticket)
-        db.commit()
-        db.refresh(ticket)
+        ticket = SupportRepository.create_ticket(db, ticket)
 
         from app.service.notification_service import NotificationService
         NotificationService.notify_admins_support_ticket(db, ticket.id, ticket_number, subject)
@@ -55,41 +54,24 @@ class SupportService:
 
     @staticmethod
     def get_user_tickets(db: Session, user_id: int) -> list:
-        tickets = (
-            db.query(SupportTicketEntity)
-            .filter(SupportTicketEntity.user_id == user_id, SupportTicketEntity.is_delete == False)
-            .order_by(SupportTicketEntity.created_at.desc())
-            .all()
-        )
+        tickets = SupportRepository.get_tickets_by_user(db, user_id)
         return [_ticket_to_dict(t) for t in tickets]
 
     @staticmethod
     def get_ticket(db: Session, ticket_id: int, user_id: int = None) -> dict:
-        q = db.query(SupportTicketEntity).filter(
-            SupportTicketEntity.id == ticket_id,
-            SupportTicketEntity.is_delete == False,
-        )
-        if user_id is not None:
-            q = q.filter(SupportTicketEntity.user_id == user_id)
-        ticket = q.first()
+        ticket = SupportRepository.get_ticket_by_id(db, ticket_id, user_id)
         if not ticket:
             raise NotFoundException(detail="Ticket not found")
         return _ticket_to_dict(ticket, include_replies=True)
 
     @staticmethod
     def get_all_tickets(db: Session, status: str = None) -> list:
-        q = db.query(SupportTicketEntity).filter(SupportTicketEntity.is_delete == False)
-        if status:
-            q = q.filter(SupportTicketEntity.status == status)
-        tickets = q.order_by(SupportTicketEntity.created_at.desc()).all()
+        tickets = SupportRepository.get_all_tickets(db, status)
         return [_ticket_to_dict(t) for t in tickets]
 
     @staticmethod
     def reply(db: Session, ticket_id: int, user_id: int, message: str, is_admin: bool = False) -> dict:
-        ticket = db.query(SupportTicketEntity).filter(
-            SupportTicketEntity.id == ticket_id,
-            SupportTicketEntity.is_delete == False,
-        ).first()
+        ticket = SupportRepository.get_ticket_by_id(db, ticket_id)
         if not ticket:
             raise NotFoundException(detail="Ticket not found")
 
@@ -105,13 +87,11 @@ class SupportService:
             message=message,
             is_admin=is_admin,
         )
-        db.add(reply)
 
         if is_admin and ticket.status == "OPEN":
             ticket.status = "IN_PROGRESS"
 
-        db.commit()
-        db.refresh(reply)
+        reply = SupportRepository.add_reply(db, reply)
 
         from app.service.notification_service import NotificationService
         if is_admin:
@@ -130,12 +110,9 @@ class SupportService:
 
     @staticmethod
     def update_status(db: Session, ticket_id: int, status: str) -> dict:
-        ticket = db.query(SupportTicketEntity).filter(
-            SupportTicketEntity.id == ticket_id,
-            SupportTicketEntity.is_delete == False,
-        ).first()
+        ticket = SupportRepository.get_ticket_by_id(db, ticket_id)
         if not ticket:
             raise NotFoundException(detail="Ticket not found")
         ticket.status = status
-        db.commit()
+        ticket = SupportRepository.save_ticket(db, ticket)
         return _ticket_to_dict(ticket)
