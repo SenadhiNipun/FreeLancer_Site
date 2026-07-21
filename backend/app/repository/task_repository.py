@@ -65,7 +65,11 @@ class TaskRepository:
 
     @staticmethod
     def get_all_tasks(db: Session, status: Optional[str] = None) -> List[TaskEntity]:
-        query = db.query(TaskEntity).filter(TaskEntity.is_delete == False)
+        query = db.query(TaskEntity).options(
+            selectinload(TaskEntity.customer),
+            selectinload(TaskEntity.assignments).selectinload(TaskAssignmentEntity.writer),
+            selectinload(TaskEntity.bids).selectinload(TaskBidEntity.writer),
+        ).filter(TaskEntity.is_delete == False)
         if status:
             query = query.filter(TaskEntity.task_status == status)
         return query.order_by(TaskEntity.created_at.desc()).all()
@@ -209,6 +213,10 @@ class TaskRepository:
         return assignment
 
     @staticmethod
+    def commit_assignment_creation(db: Session) -> None:
+        db.commit()
+
+    @staticmethod
     def get_active_assignment_for_writer(db: Session, task_id: int, writer_id: int) -> Optional[TaskAssignmentEntity]:
         return db.query(TaskAssignmentEntity).filter(
             TaskAssignmentEntity.task_id == task_id,
@@ -350,3 +358,53 @@ class TaskRepository:
             PaymentEntity.payment_status == "PAID",
             PaymentEntity.created_at >= since,
         ).scalar()
+
+    # ──────────────────────────────────────────────
+    # Admin-facing aggregates
+    # ──────────────────────────────────────────────
+    @staticmethod
+    def get_assignment_counts_by_writer_ids(db: Session, writer_ids: List[int]):
+        if not writer_ids:
+            return {}
+        rows = db.query(TaskAssignmentEntity.writer_id, func.count(TaskAssignmentEntity.id)).filter(
+            TaskAssignmentEntity.writer_id.in_(writer_ids)
+        ).group_by(TaskAssignmentEntity.writer_id).all()
+        return {writer_id: count for writer_id, count in rows}
+
+    @staticmethod
+    def get_task_counts_by_customer_ids(db: Session, customer_ids: List[int]):
+        if not customer_ids:
+            return {}
+        rows = db.query(TaskEntity.customer_id, func.count(TaskEntity.id)).filter(
+            TaskEntity.customer_id.in_(customer_ids)
+        ).group_by(TaskEntity.customer_id).all()
+        return {customer_id: count for customer_id, count in rows}
+
+    @staticmethod
+    def get_tasks_assigned_or_bid_by_writer(db: Session, writer_id: int) -> List[TaskEntity]:
+        assigned_task_ids = db.query(TaskAssignmentEntity.task_id).filter(
+            TaskAssignmentEntity.writer_id == writer_id
+        ).subquery()
+        bid_task_ids = db.query(TaskBidEntity.task_id).filter(
+            TaskBidEntity.writer_id == writer_id
+        ).subquery()
+
+        return (
+            db.query(TaskEntity)
+            .options(selectinload(TaskEntity.customer))
+            .filter(
+                (TaskEntity.id.in_(db.query(assigned_task_ids)))
+                | (TaskEntity.id.in_(db.query(bid_task_ids)))
+            )
+            .order_by(TaskEntity.id.desc())
+            .all()
+        )
+
+    @staticmethod
+    def get_bids_by_writer_for_tasks(db: Session, writer_id: int, task_ids: List[int]) -> List[TaskBidEntity]:
+        if not task_ids:
+            return []
+        return db.query(TaskBidEntity).filter(
+            TaskBidEntity.task_id.in_(task_ids),
+            TaskBidEntity.writer_id == writer_id,
+        ).all()

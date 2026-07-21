@@ -152,3 +152,30 @@ class UserRepository:
         user.last_login_at = login_time
         db.commit()
         return user
+
+    @staticmethod
+    def update_writer_profile_status(db: Session, writer_profile: WriterProfileEntity, status: str) -> WriterProfileEntity:
+        writer_profile.profile_status = status
+        db.commit()
+        return writer_profile
+
+    @staticmethod
+    def update_user_status(db: Session, user: UserEntity, status: str) -> UserEntity:
+        user.status = status
+        db.commit()
+        return user
+
+    @staticmethod
+    def get_users_by_writer_profile_status(db: Session, status: str) -> List[UserEntity]:
+        return (
+            db.query(UserEntity)
+            .join(WriterProfileEntity)
+            .options(
+                selectinload(UserEntity.writer_profile).selectinload(WriterProfileEntity.qualifications),
+                selectinload(UserEntity.writer_profile).selectinload(WriterProfileEntity.education_level),
+                selectinload(UserEntity.writer_profile).selectinload(WriterProfileEntity.academic_category),
+                selectinload(UserEntity.writer_profile).selectinload(WriterProfileEntity.specialization),
+            )
+            .filter(WriterProfileEntity.profile_status == status)
+            .all()
+        )

@@ -1,6 +1,9 @@
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.repository.user_repository import UserRepository
+from app.repository.task_repository import TaskRepository
+from app.repository.chat_repository import ChatRepository
+from app.repository.admin_repository import AdminRepository
 from app.exceptions.exception import NotFoundException, ValidationException, UnauthorizedException
 from app.service.chat_service import ChatService
 from app.service.notification_service import NotificationService
@@ -103,8 +106,7 @@ class AdminService:
         if not user or not user.writer_profile:
             raise NotFoundException(detail="Writer not found")
 
-        user.writer_profile.profile_status = "APPROVED"
-        db.commit()
+        UserRepository.update_writer_profile_status(db, user.writer_profile, "APPROVED")
         NotificationService.create_notification(
             db,
             user_id=writer_id,
@@ -121,8 +123,7 @@ class AdminService:
         if not user or not user.writer_profile:
             raise NotFoundException(detail="Writer not found")
 
-        user.writer_profile.profile_status = "REJECTED"
-        db.commit()
+        UserRepository.update_writer_profile_status(db, user.writer_profile, "REJECTED")
         NotificationService.create_notification(
             db,
             user_id=writer_id,
@@ -135,21 +136,12 @@ class AdminService:
 
     @staticmethod
     def get_pending_writers(db: Session):
-        from app.entity.user_entity import UserEntity
-        from app.entity.writer_profile_entity import WriterProfileEntity
-
-        users = (
-            db.query(UserEntity)
-            .join(WriterProfileEntity)
-            .filter(WriterProfileEntity.profile_status == "PENDING_APPROVAL")
-            .all()
-        )
+        users = UserRepository.get_users_by_writer_profile_status(db, "PENDING_APPROVAL")
         return [_user_to_dict(u, include_writer_profile=True) for u in users]
 
     @staticmethod
     def assign_writer(db: Session, task_id: int, writer_id: int, admin_id: int):
         from app.entity.task_assignment_entity import TaskAssignmentEntity
-        from app.repository.task_repository import TaskRepository
 
         task = TaskRepository.get_task_by_id(db, task_id)
         if not task:
@@ -165,7 +157,7 @@ class AdminService:
             assigned_by_admin_id=admin_id,
             assignment_status="PENDING"
         )
-        db.add(assignment)
+        TaskRepository.create_assignment(db, assignment)
         task.task_status = "ASSIGNED"
 
         try:
@@ -173,83 +165,43 @@ class AdminService:
         except Exception as e:
             print(f"Failed to initialize chat: {e}")
 
-        db.commit()
+        TaskRepository.commit_assignment_creation(db)
         return assignment
 
     # ─── New Admin Methods ──────────────────────────────────────────────────
 
     @staticmethod
     def get_all_writers(db: Session):
-        from app.entity.task_assignment_entity import TaskAssignmentEntity
-
         users = UserRepository.get_all_users_by_role(db, RoleEnum.WRITER.value)
-        result = []
-        for u in users:
-            task_count = (
-                db.query(TaskAssignmentEntity)
-                .filter(TaskAssignmentEntity.writer_id == u.id)
-                .count()
-            )
-            result.append(_user_to_dict(u, include_writer_profile=True, task_count=task_count))
-        return result
+        counts = TaskRepository.get_assignment_counts_by_writer_ids(db, [u.id for u in users])
+        return [
+            _user_to_dict(u, include_writer_profile=True, task_count=counts.get(u.id, 0))
+            for u in users
+        ]
 
     @staticmethod
     def get_all_customers(db: Session):
-        from app.entity.task_entity import TaskEntity
-
         users = UserRepository.get_all_users_by_role(db, RoleEnum.CUSTOMER.value)
-        result = []
-        for u in users:
-            task_count = (
-                db.query(TaskEntity)
-                .filter(TaskEntity.customer_id == u.id)
-                .count()
-            )
-            result.append(_user_to_dict(u, task_count=task_count))
-        return result
+        counts = TaskRepository.get_task_counts_by_customer_ids(db, [u.id for u in users])
+        return [
+            _user_to_dict(u, task_count=counts.get(u.id, 0))
+            for u in users
+        ]
 
     @staticmethod
     def get_writer_tasks(db: Session, writer_id: int):
-        from app.entity.task_entity import TaskEntity
-        from app.entity.task_assignment_entity import TaskAssignmentEntity
-        from app.entity.task_bid_entity import TaskBidEntity
-
         user = UserRepository.get_user_by_id(db, writer_id)
         if not user:
             raise NotFoundException(detail="Writer not found")
 
-        # Tasks assigned to this writer
-        assigned_task_ids = (
-            db.query(TaskAssignmentEntity.task_id)
-            .filter(TaskAssignmentEntity.writer_id == writer_id)
-            .subquery()
-        )
+        tasks = TaskRepository.get_tasks_assigned_or_bid_by_writer(db, writer_id)
 
-        # Tasks the writer has bid on
-        bid_task_ids = (
-            db.query(TaskBidEntity.task_id)
-            .filter(TaskBidEntity.writer_id == writer_id)
-            .subquery()
-        )
-
-        tasks = (
-            db.query(TaskEntity)
-            .filter(
-                (TaskEntity.id.in_(db.query(assigned_task_ids)))
-                | (TaskEntity.id.in_(db.query(bid_task_ids)))
-            )
-            .order_by(TaskEntity.id.desc())
-            .all()
-        )
+        bids = TaskRepository.get_bids_by_writer_for_tasks(db, writer_id, [t.id for t in tasks])
+        bid_by_task = {b.task_id: b for b in bids}
 
         result = []
         for t in tasks:
-            # get bid for this writer on this task
-            bid = (
-                db.query(TaskBidEntity)
-                .filter(TaskBidEntity.task_id == t.id, TaskBidEntity.writer_id == writer_id)
-                .first()
-            )
+            bid = bid_by_task.get(t.id)
             result.append({
                 "id": t.id,
                 "title": t.title,
@@ -265,22 +217,9 @@ class AdminService:
 
     @staticmethod
     def get_all_chat_sessions(db: Session):
-        from app.entity.chat_session_entity import ChatSessionEntity
-
-        sessions = (
-            db.query(ChatSessionEntity)
-            .order_by(ChatSessionEntity.id.desc())
-            .all()
-        )
+        sessions_with_counts = AdminRepository.get_all_chat_sessions_with_message_counts(db)
         result = []
-        for s in sessions:
-            # Count messages
-            from app.entity.chat_message_entity import ChatMessageEntity
-            msg_count = (
-                db.query(ChatMessageEntity)
-                .filter(ChatMessageEntity.session_id == s.id)
-                .count()
-            )
+        for s, msg_count in sessions_with_counts:
             result.append({
                 "id": s.id,
                 "task_id": s.task_id,
@@ -297,19 +236,11 @@ class AdminService:
 
     @staticmethod
     def get_chat_messages_for_admin(db: Session, session_id: int):
-        from app.entity.chat_session_entity import ChatSessionEntity
-        from app.entity.chat_message_entity import ChatMessageEntity
-
-        session = db.query(ChatSessionEntity).filter(ChatSessionEntity.id == session_id).first()
+        session = ChatRepository.get_session_by_id_with_details(db, session_id)
         if not session:
             raise NotFoundException(detail="Chat session not found")
 
-        messages = (
-            db.query(ChatMessageEntity)
-            .filter(ChatMessageEntity.session_id == session_id)
-            .order_by(ChatMessageEntity.id.asc())
-            .all()
-        )
+        messages = ChatRepository.get_messages_by_session_ordered_by_id(db, session_id)
         result = []
         for m in messages:
             sender_name = f"{m.sender.first_name} {m.sender.last_name}" if m.sender else "Unknown"
@@ -348,62 +279,12 @@ class AdminService:
 
     @staticmethod
     def get_platform_stats(db: Session):
-        from app.entity.task_entity import TaskEntity
-        from app.entity.user_entity import UserEntity
-        from app.entity.writer_profile_entity import WriterProfileEntity
-        from app.entity.payment_entity import PaymentEntity
-        from sqlalchemy import func
-
-        total_customers = (
-            db.query(func.count(UserEntity.id))
-            .join(UserEntity.role)
-            .filter(UserEntity.role.has(role_name=RoleEnum.CUSTOMER.value))
-            .filter(UserEntity.is_delete == False)
-            .scalar() or 0
-        )
-        total_writers = (
-            db.query(func.count(UserEntity.id))
-            .join(UserEntity.role)
-            .filter(UserEntity.role.has(role_name=RoleEnum.WRITER.value))
-            .filter(UserEntity.is_delete == False)
-            .scalar() or 0
-        )
-        pending_writers = (
-            db.query(func.count(WriterProfileEntity.id))
-            .filter(WriterProfileEntity.profile_status == "PENDING_APPROVAL")
-            .scalar() or 0
-        )
-        total_tasks = db.query(func.count(TaskEntity.id)).scalar() or 0
-        active_tasks = (
-            db.query(func.count(TaskEntity.id))
-            .filter(TaskEntity.task_status.in_(["ASSIGNED", "IN_PROGRESS", "SUBMITTED"]))
-            .scalar() or 0
-        )
-        completed_tasks = (
-            db.query(func.count(TaskEntity.id))
-            .filter(TaskEntity.task_status == "COMPLETED")
-            .scalar() or 0
-        )
-        total_revenue = (
-            db.query(func.sum(PaymentEntity.amount))
-            .filter(PaymentEntity.payment_status == "COMPLETED")
-            .scalar() or 0
-        )
-
-        return {
-            "total_customers": total_customers,
-            "total_writers": total_writers,
-            "pending_writers": pending_writers,
-            "total_tasks": total_tasks,
-            "active_tasks": active_tasks,
-            "completed_tasks": completed_tasks,
-            "total_revenue": float(total_revenue),
-        }
+        stats = AdminRepository.get_platform_stats(db)
+        stats["total_revenue"] = float(stats["total_revenue"])
+        return stats
 
     @staticmethod
     def get_all_tasks(db: Session, status: Optional[str] = None):
-        from app.repository.task_repository import TaskRepository
-
         CONFIRMED_STATUSES = ["ASSIGNED", "IN_PROGRESS", "SUBMITTED", "REVISION_REQUESTED", "COMPLETED"]
 
         if status and status != "ALL":
@@ -433,8 +314,6 @@ class AdminService:
 
     @staticmethod
     def get_task_details(db: Session, task_id: int):
-        from app.repository.task_repository import TaskRepository
-        from app.entity.chat_session_entity import ChatSessionEntity
         from app.model.task_response import TaskResponse
 
         task = TaskRepository.get_task_by_id(db, task_id)
@@ -452,29 +331,18 @@ class AdminService:
         data["confirmed_at"] = confirmed_at.isoformat() if confirmed_at else None
         data["activity_log"] = _build_task_activity_log(task)
 
-        session = (
-            db.query(ChatSessionEntity)
-            .filter(ChatSessionEntity.task_id == task_id)
-            .first()
-        )
+        session = ChatRepository.get_session_by_task_id(db, task_id)
         data["chat_session_id"] = session.id if session else None
 
         return data
 
     @staticmethod
     def get_customer_tasks(db: Session, customer_id: int):
-        from app.entity.task_entity import TaskEntity
-
         user = UserRepository.get_user_by_id(db, customer_id)
         if not user:
             raise NotFoundException(detail="Customer not found")
 
-        tasks = (
-            db.query(TaskEntity)
-            .filter(TaskEntity.customer_id == customer_id, TaskEntity.is_delete == False)
-            .order_by(TaskEntity.created_at.desc())
-            .all()
-        )
+        tasks = TaskRepository.get_tasks_by_customer(db, customer_id)
 
         result = []
         for t in tasks:
@@ -495,8 +363,7 @@ class AdminService:
         user = UserRepository.get_user_by_id(db, user_id)
         if not user:
             raise NotFoundException(detail="User not found")
-        user.status = "SUSPENDED"
-        db.commit()
+        UserRepository.update_user_status(db, user, "SUSPENDED")
         return {"id": user_id, "status": "SUSPENDED"}
 
     @staticmethod
@@ -504,8 +371,7 @@ class AdminService:
         user = UserRepository.get_user_by_id(db, user_id)
         if not user:
             raise NotFoundException(detail="User not found")
-        user.status = "ACTIVE"
-        db.commit()
+        UserRepository.update_user_status(db, user, "ACTIVE")
         return {"id": user_id, "status": "ACTIVE"}
 
     @staticmethod

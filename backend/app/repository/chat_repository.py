@@ -17,6 +17,24 @@ class ChatRepository:
         return db.query(ChatSessionEntity).filter(ChatSessionEntity.id == session_id).first()
 
     @staticmethod
+    def get_session_by_id_with_details(db: Session, session_id: int) -> Optional[ChatSessionEntity]:
+        from sqlalchemy.orm import selectinload
+        return (
+            db.query(ChatSessionEntity)
+            .options(
+                selectinload(ChatSessionEntity.task),
+                selectinload(ChatSessionEntity.customer),
+                selectinload(ChatSessionEntity.writer),
+            )
+            .filter(ChatSessionEntity.id == session_id)
+            .first()
+        )
+
+    @staticmethod
+    def get_session_by_task_id(db: Session, task_id: int) -> Optional[ChatSessionEntity]:
+        return db.query(ChatSessionEntity).filter(ChatSessionEntity.task_id == task_id).first()
+
+    @staticmethod
     def get_session_by_task_and_users(db: Session, task_id: int, customer_id: int, writer_id: int) -> Optional[ChatSessionEntity]:
         return db.query(ChatSessionEntity).filter(
             ChatSessionEntity.task_id == task_id,
@@ -53,6 +71,16 @@ class ChatRepository:
         ).filter(
             ChatMessageEntity.session_id == session_id
         ).order_by(ChatMessageEntity.created_at.asc()).all()
+
+    @staticmethod
+    def get_messages_by_session_ordered_by_id(db: Session, session_id: int) -> List[ChatMessageEntity]:
+        from sqlalchemy.orm import selectinload
+        return db.query(ChatMessageEntity).options(
+            selectinload(ChatMessageEntity.sender),
+            selectinload(ChatMessageEntity.attachments)
+        ).filter(
+            ChatMessageEntity.session_id == session_id
+        ).order_by(ChatMessageEntity.id.asc()).all()
 
     @staticmethod
     def mark_messages_as_read(db: Session, session_id: int, user_id: int):
