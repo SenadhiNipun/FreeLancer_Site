@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Star,
   User,
+  Bell,
   LifeBuoy,
   LogOut,
   Shield,
@@ -26,6 +27,7 @@ const menuGroups = [
       { label: "Dashboard",   icon: LayoutDashboard, href: "/customer/dashboard" },
       { label: "Messages",    icon: MessageSquare,   href: "/customer/messages" },
       { label: "Admin Messages", icon: Shield,       href: "/customer/admin-messages" },
+      { label: "Notifications", icon: Bell,          href: "/customer/notifications" },
     ],
   },
   {

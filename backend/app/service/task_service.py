@@ -686,3 +686,25 @@ class TaskService:
                 NotificationService.notify_task_overdue(db, task)
             except Exception as e:
                 print(f"Failed to send overdue notifications for task {task.id}: {e}")
+
+    DEADLINE_REMINDER_THRESHOLDS = [
+        ("TASK_DUE_7_DAYS", "days", 7, "7 days"),
+        ("TASK_DUE_48_HOURS", "hours", 48, "48 hours"),
+        ("TASK_DUE_24_HOURS", "hours", 24, "24 hours"),
+    ]
+
+    @staticmethod
+    def check_and_notify_upcoming_deadlines(db: Session):
+        from datetime import datetime, timedelta
+
+        now = datetime.now()
+        for notification_type, unit, amount, time_label in TaskService.DEADLINE_REMINDER_THRESHOLDS:
+            window_end = now + timedelta(**{unit: amount})
+            tasks = TaskRepository.get_tasks_due_within(db, now, window_end)
+            for task in tasks:
+                if NotificationService.has_deadline_reminder(db, task.id, notification_type):
+                    continue
+                try:
+                    NotificationService.notify_task_deadline_reminder(db, task, notification_type, time_label)
+                except Exception as e:
+                    print(f"Failed to send {notification_type} reminder for task {task.id}: {e}")

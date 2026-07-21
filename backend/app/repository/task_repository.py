@@ -14,6 +14,8 @@ from app.entity.user_entity import UserEntity
 from app.entity.writer_profile_entity import WriterProfileEntity
 from app.entity.payment_entity import PaymentEntity
 
+OVERDUE_ELIGIBLE_STATUSES = ["ASSIGNED", "IN_PROGRESS", "SUBMITTED", "REVISION_REQUESTED"]
+
 class TaskRepository:
 
     @staticmethod
@@ -76,13 +78,29 @@ class TaskRepository:
 
     @staticmethod
     def get_overdue_confirmed_tasks(db: Session, now) -> List[TaskEntity]:
-        OVERDUE_ELIGIBLE_STATUSES = ["ASSIGNED", "IN_PROGRESS", "SUBMITTED", "REVISION_REQUESTED"]
         return (
             db.query(TaskEntity)
             .filter(
                 TaskEntity.is_delete == False,
                 TaskEntity.task_status.in_(OVERDUE_ELIGIBLE_STATUSES),
                 TaskEntity.deadline < now,
+            )
+            .all()
+        )
+
+    @staticmethod
+    def get_tasks_due_within(db: Session, now, window_end) -> List[TaskEntity]:
+        return (
+            db.query(TaskEntity)
+            .options(
+                selectinload(TaskEntity.assignments).selectinload(TaskAssignmentEntity.writer),
+                selectinload(TaskEntity.bids).selectinload(TaskBidEntity.writer),
+            )
+            .filter(
+                TaskEntity.is_delete == False,
+                TaskEntity.task_status.in_(OVERDUE_ELIGIBLE_STATUSES),
+                TaskEntity.deadline > now,
+                TaskEntity.deadline <= window_end,
             )
             .all()
         )

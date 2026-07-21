@@ -28,16 +28,17 @@ OVERDUE_CHECK_INTERVAL_SECONDS = int(os.getenv("OVERDUE_CHECK_INTERVAL_SECONDS",
 async def _overdue_task_check_loop():
     while True:
         try:
-            await asyncio.to_thread(_run_overdue_task_check)
+            await asyncio.to_thread(_run_deadline_checks)
         except Exception as e:
             logger.error(f"Overdue task check failed: {e}")
         await asyncio.sleep(OVERDUE_CHECK_INTERVAL_SECONDS)
 
 
-def _run_overdue_task_check():
+def _run_deadline_checks():
     db = SessionLocal()
     try:
         TaskService.check_and_notify_overdue_tasks(db)
+        TaskService.check_and_notify_upcoming_deadlines(db)
     finally:
         db.close()
 

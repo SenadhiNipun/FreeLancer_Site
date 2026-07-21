@@ -57,6 +57,9 @@ export function NotificationBell() {
       NEW_MESSAGE:        { icon: MessageSquare, cls: "bg-violet-50 border-violet-100 text-violet-600" },
       ADMIN_MESSAGE:      { icon: Shield,        cls: "bg-violet-50 border-violet-100 text-violet-600" },
       TASK_OVERDUE:       { icon: AlertTriangle, cls: "bg-red-50 border-red-100 text-red-600" },
+      TASK_DUE_7_DAYS:    { icon: Clock,         cls: "bg-amber-50 border-amber-100 text-amber-600" },
+      TASK_DUE_48_HOURS:  { icon: Clock,         cls: "bg-orange-50 border-orange-100 text-orange-600" },
+      TASK_DUE_24_HOURS:  { icon: Clock,         cls: "bg-red-50 border-red-100 text-red-600" },
     };
     return map[type] || { icon: Info, cls: "bg-blue-50 border-blue-100 text-blue-600" };
   };
@@ -75,6 +78,14 @@ export function NotificationBell() {
     else if (n.notification_type === "TASK_AVAILABLE") router.push("/writer/tasks/available");
     else if (n.notification_type === "REVIEW_RECEIVED" && n.related_id) router.push("/writer/tasks/completed");
     else if (n.notification_type === "TASK_OVERDUE" && n.related_id) router.push(isWriter ? `/writer/tasks/${n.related_id}` : `/customer/orders/${n.related_id}`);
+    else if (n.notification_type?.startsWith("TASK_DUE_") && n.related_id) router.push(isWriter ? `/writer/tasks/${n.related_id}` : `/customer/orders/${n.related_id}`);
+  };
+
+  const viewAll = () => {
+    setIsOpen(false);
+    const roles: string[] = JSON.parse(localStorage.getItem("user_roles") || "[]");
+    const isWriter = roles.includes("WRITER");
+    router.push(isWriter ? "/writer/notifications" : "/customer/notifications");
   };
 
   return (
@@ -138,7 +149,7 @@ export function NotificationBell() {
 
           {notifications.length > 0 && (
             <div className="px-4 py-2.5 border-t border-border bg-muted/20 text-center">
-              <button className="text-xs font-medium text-primary hover:underline">View all</button>
+              <button onClick={viewAll} className="text-xs font-medium text-primary hover:underline">View all</button>
             </div>
           )}
         </div>

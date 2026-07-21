@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Bell, BellOff, Check, CheckSquare, Briefcase, CheckCircle2,
-  MessageSquare, Star, RefreshCw, Sparkles, Clock, ArrowRight, Loader2, Shield, AlertTriangle,
+  Bell, BellOff, Check, CheckSquare, Info, CheckCircle2,
+  MessageSquare, RefreshCw, Sparkles, Clock, ArrowRight, Loader2, Shield, AlertTriangle,
 } from "lucide-react";
 import { notificationService } from "@/services/notification.service";
 import { formatDistanceToNow } from "date-fns";
@@ -17,17 +17,18 @@ interface Notif {
 }
 
 const TYPE_CFG: Record<string, { icon: any; color: string; link: string }> = {
-  TASK_AVAILABLE:    { icon: Briefcase,     color: "bg-green-50 border-green-100 text-green-600",  link: "/writer/tasks/available" },
-  BID_ACCEPTED:      { icon: CheckCircle2,  color: "bg-blue-50 border-blue-100 text-blue-600",    link: "/writer/tasks/active" },
-  NEW_MESSAGE:       { icon: MessageSquare, color: "bg-sky-50 border-sky-100 text-sky-600",       link: "/writer/messages" },
-  REVIEW_RECEIVED:   { icon: Star,          color: "bg-amber-50 border-amber-100 text-amber-600", link: "/writer/reviews" },
-  TASK_APPROVED:     { icon: Sparkles,      color: "bg-violet-50 border-violet-100 text-violet-600", link: "/writer/tasks/completed" },
-  REVISION_REQUESTED:{ icon: RefreshCw,     color: "bg-orange-50 border-orange-100 text-orange-600", link: "/writer/tasks/active" },
-  ADMIN_MESSAGE:     { icon: Shield,        color: "bg-violet-50 border-violet-100 text-violet-600", link: "/writer/admin-messages" },
-  TASK_OVERDUE:      { icon: AlertTriangle, color: "bg-red-50 border-red-100 text-red-600",       link: "/writer/tasks/active" },
-  TASK_DUE_7_DAYS:   { icon: Clock,         color: "bg-amber-50 border-amber-100 text-amber-600", link: "/writer/tasks/active" },
-  TASK_DUE_48_HOURS: { icon: Clock,         color: "bg-orange-50 border-orange-100 text-orange-600", link: "/writer/tasks/active" },
-  TASK_DUE_24_HOURS: { icon: Clock,         color: "bg-red-50 border-red-100 text-red-600",       link: "/writer/tasks/active" },
+  BID_RECEIVED:       { icon: Info,          color: "bg-blue-50 border-blue-100 text-blue-600",    link: "/customer/orders" },
+  WORK_DELIVERED:      { icon: CheckCircle2,  color: "bg-green-50 border-green-100 text-green-600", link: "/customer/orders" },
+  REVISION_DELIVERED:  { icon: CheckCircle2,  color: "bg-green-50 border-green-100 text-green-600", link: "/customer/orders" },
+  TASK_APPROVED:       { icon: Sparkles,      color: "bg-violet-50 border-violet-100 text-violet-600", link: "/customer/orders" },
+  NEW_MESSAGE:         { icon: MessageSquare, color: "bg-sky-50 border-sky-100 text-sky-600",       link: "/customer/messages" },
+  ADMIN_MESSAGE:       { icon: Shield,        color: "bg-violet-50 border-violet-100 text-violet-600", link: "/customer/admin-messages" },
+  ADMIN_MESSAGE_REPLY: { icon: Shield,        color: "bg-violet-50 border-violet-100 text-violet-600", link: "/customer/admin-messages" },
+  SUPPORT_REPLY:       { icon: RefreshCw,     color: "bg-orange-50 border-orange-100 text-orange-600", link: "/customer/support" },
+  TASK_OVERDUE:        { icon: AlertTriangle, color: "bg-red-50 border-red-100 text-red-600",       link: "/customer/orders" },
+  TASK_DUE_7_DAYS:     { icon: Clock,         color: "bg-amber-50 border-amber-100 text-amber-600", link: "/customer/orders" },
+  TASK_DUE_48_HOURS:   { icon: Clock,         color: "bg-orange-50 border-orange-100 text-orange-600", link: "/customer/orders" },
+  TASK_DUE_24_HOURS:   { icon: Clock,         color: "bg-red-50 border-red-100 text-red-600",       link: "/customer/orders" },
 };
 
 const CATS = [
@@ -36,7 +37,7 @@ const CATS = [
   { id: "messages", label: "Messages" },
 ];
 
-export default function NotificationsPage() {
+export default function CustomerNotificationsPage() {
   const [notifs, setNotifs]         = useState<Notif[]>([]);
   const [loading, setLoading]       = useState(true);
   const [cat, setCat]               = useState("all");
@@ -130,8 +131,11 @@ export default function NotificationsPage() {
         ) : (
           <div className="divide-y divide-border/50">
             {filtered.map((n) => {
-              const cfg  = TYPE_CFG[n.notification_type] || { icon: Bell, color: "bg-slate-50 border-slate-100 text-slate-500", link: "/writer/dashboard" };
+              const cfg  = TYPE_CFG[n.notification_type] || { icon: Bell, color: "bg-slate-50 border-slate-100 text-slate-500", link: "/customer/dashboard" };
               const Icon = cfg.icon;
+              const link = n.related_id && (cfg.link === "/customer/orders" || cfg.link === "/customer/admin-messages")
+                ? `${cfg.link}/${n.related_id}`
+                : cfg.link;
               return (
                 <div key={n.id} onClick={() => markRead(n.id)}
                   className={cn(
@@ -154,7 +158,7 @@ export default function NotificationsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <Link href={cfg.link} onClick={e => e.stopPropagation()}>
+                    <Link href={link} onClick={e => e.stopPropagation()}>
                       <button className="h-8 px-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/50 transition-colors flex items-center gap-1">
                         View <ArrowRight className="size-3" />
                       </button>

@@ -139,6 +139,49 @@ class NotificationService:
         NotificationRepository.bulk_create(db, notifications)
 
     @staticmethod
+    def has_deadline_reminder(db: Session, task_id: int, notification_type: str) -> bool:
+        return NotificationRepository.has_notification_of_type(db, notification_type, task_id)
+
+    @staticmethod
+    def notify_task_deadline_reminder(db: Session, task: TaskEntity, notification_type: str, time_label: str):
+        from app.repository.user_repository import UserRepository
+        from app.enums.role_enum import RoleEnum
+
+        notifications = [
+            NotificationEntity(
+                user_id=task.customer_id,
+                title="Task deadline approaching",
+                message=f"Your task '{task.title}' is due in {time_label}.",
+                notification_type=notification_type,
+                related_id=task.id,
+            )
+        ]
+
+        writer = task.writer
+        if writer:
+            notifications.append(NotificationEntity(
+                user_id=writer.id,
+                title="Task deadline approaching",
+                message=f"The task '{task.title}' you're working on is due in {time_label}.",
+                notification_type=notification_type,
+                related_id=task.id,
+            ))
+
+        admins = UserRepository.get_all_users_by_role(db, RoleEnum.SUPER_ADMIN.value)
+        notifications.extend([
+            NotificationEntity(
+                user_id=admin.id,
+                title="Task deadline approaching",
+                message=f"The task '{task.title}' is due in {time_label}.",
+                notification_type=notification_type,
+                related_id=task.id,
+            )
+            for admin in admins
+        ])
+
+        NotificationRepository.bulk_create(db, notifications)
+
+    @staticmethod
     def mark_as_read(db: Session, user_id: int, notification_id: int):
         notification = NotificationRepository.get_notification_by_id_and_user(db, notification_id, user_id)
         if notification:

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, PenSquare, MessageSquare,
   ClipboardCheck, LogOut, Shield, Menu, X, TicketCheck,
-  Bell, UserCheck, TicketIcon, CheckCheck, ClipboardList, Send, AlertTriangle,
+  Bell, UserCheck, TicketIcon, CheckCheck, ClipboardList, Send, AlertTriangle, Clock,
 } from "lucide-react";
 import { LogoutConfirmDialog } from "@/components/ui/logout-confirm-dialog";
 import { notificationService } from "@/services/notification.service";
@@ -28,6 +28,7 @@ function notifLink(n: any): string {
   if (n.notification_type === "WRITER_REGISTRATION")               return "/admin/pending";
   if (n.notification_type === "ADMIN_MESSAGE_REPLY" && n.related_id) return `/admin/messages/${n.related_id}`;
   if (n.notification_type === "TASK_OVERDUE" && n.related_id) return `/admin/tasks/${n.related_id}`;
+  if (n.notification_type?.startsWith("TASK_DUE_") && n.related_id) return `/admin/tasks/${n.related_id}`;
   return "/admin/dashboard";
 }
 
@@ -36,6 +37,9 @@ function notifIcon(type: string) {
   if (type === "WRITER_REGISTRATION") return <UserCheck className="size-4 text-violet-600" strokeWidth={1.75} />;
   if (type === "ADMIN_MESSAGE_REPLY") return <Send className="size-4 text-violet-600" strokeWidth={1.75} />;
   if (type === "TASK_OVERDUE") return <AlertTriangle className="size-4 text-red-600" strokeWidth={1.75} />;
+  if (type === "TASK_DUE_24_HOURS") return <Clock className="size-4 text-red-600" strokeWidth={1.75} />;
+  if (type === "TASK_DUE_48_HOURS") return <Clock className="size-4 text-orange-600" strokeWidth={1.75} />;
+  if (type === "TASK_DUE_7_DAYS") return <Clock className="size-4 text-amber-600" strokeWidth={1.75} />;
   return <Bell className="size-4 text-slate-500" strokeWidth={1.75} />;
 }
 
