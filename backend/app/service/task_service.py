@@ -6,6 +6,7 @@ from app.entity.task_submission_entity import TaskSubmissionEntity
 from app.entity.task_revision_entity import TaskRevisionEntity
 from app.repository.task_repository import TaskRepository
 from app.model.create_task_request import CreateTaskRequest
+from app.model.update_task_request import UpdateTaskRequest
 from app.model.submit_task_request import SubmitTaskRequest
 from app.model.revision_request import RevisionRequest
 from app.model.bid_request import BidRequest
@@ -46,6 +47,26 @@ class TaskService:
             # We don't want task creation to fail just because notification failed
             print(f"Failed to send notifications: {e}")
 
+        return TaskResponse.model_validate(task)
+
+    # ──────────────────────────────────────────────
+    # CUSTOMER — edit a posted task (only before it's confirmed, i.e. still OPEN)
+    # ──────────────────────────────────────────────
+    @staticmethod
+    def update_task(db: Session, task_id: int, customer_id: int, request: UpdateTaskRequest):
+        task = TaskRepository.get_task_by_id(db, task_id)
+        if not task:
+            raise NotFoundException(detail="Task not found")
+        if task.customer_id != customer_id:
+            raise ValidationException(detail="You don't own this task")
+        if task.task_status != "OPEN":
+            raise ValidationException(detail="This task can no longer be edited once a bid has been accepted")
+
+        updates = request.model_dump(exclude_unset=True)
+        for field, value in updates.items():
+            setattr(task, field, value)
+
+        task = TaskRepository.save_task(db, task)
         return TaskResponse.model_validate(task)
 
     # ──────────────────────────────────────────────

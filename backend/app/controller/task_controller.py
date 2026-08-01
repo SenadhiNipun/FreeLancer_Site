@@ -6,6 +6,7 @@ from app.config.database import db_dependency
 from app.service.task_service import TaskService
 from app.service.auth_service import AuthService
 from app.model.create_task_request import CreateTaskRequest
+from app.model.update_task_request import UpdateTaskRequest
 from app.model.generic_response import GenericResponse
 from app.model.add_task_file_request import AddTaskFilesRequest
 from app.model.review_model import CreateReviewRequest
@@ -50,6 +51,17 @@ def get_my_tasks(
     user_id = get_current_user_id(db, auth)
     results = TaskService.get_customer_tasks(db, user_id)
     return GenericResponse.success(message="Tasks fetched successfully", results=results)
+
+@router.patch("/tasks/{task_id}")
+def update_task(
+    task_id: int,
+    request: UpdateTaskRequest,
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security)
+):
+    customer_id = get_current_user_id(db, auth)
+    result = TaskService.update_task(db, task_id, customer_id, request)
+    return GenericResponse.success(message="Task updated successfully", results=result)
 
 @router.get("/tasks/{task_id}")
 def get_task_details(

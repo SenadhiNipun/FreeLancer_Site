@@ -21,6 +21,13 @@ export const taskService = {
     });
   },
 
+  updateTask: async (taskId: number, data: any) => {
+    return apiClient(`/api/v1/customer/tasks/${taskId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
   getTaskBids: async (taskId: number) => {
     return apiClient(`/api/v1/customer/tasks/${taskId}/bids`);
   },

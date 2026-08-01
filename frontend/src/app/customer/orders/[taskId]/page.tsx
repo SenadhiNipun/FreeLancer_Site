@@ -4,10 +4,11 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Clock, FileText, Download, MessageSquare,
-  CheckCircle2, RotateCcw, Gavel, Star, Upload, X, Paperclip, Activity,
+  CheckCircle2, RotateCcw, Gavel, Star, Upload, X, Paperclip, Activity, Pencil, ChevronDown,
 } from "lucide-react";
 import { taskService } from "@/services/task.service";
 import { chatService } from "@/services/chat.service";
+import { academicService } from "@/services/academic.service";
 import { format } from "date-fns";
 import { getFileUrl } from "@/lib/api-client";
 import { useParams, useRouter } from "next/navigation";
@@ -58,6 +59,17 @@ export default function OrderDetails() {
   // File upload for project docs
   const fileUploadRef = useRef<HTMLInputElement>(null);
 
+  // Edit task modal
+  const [showEdit, setShowEdit]     = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [edLevels, setEdLevels]     = useState<any[]>([]);
+  const [specs, setSpecs]           = useState<any[]>([]);
+  const [editForm, setEditForm]     = useState({
+    title: "", description: "", academic_category_id: "",
+    specialization_id: "", education_level_id: "", deadline: "", is_urgent: false,
+  });
+
   const loadData = async (id: number) => {
     const [tRes, bRes] = await Promise.all([taskService.getTaskDetails(id), taskService.getTaskBids(id)]);
     setTask(tRes.results);
@@ -86,6 +98,59 @@ export default function OrderDetails() {
       await loadData(parseInt(taskIdParam));
     } catch (err: any) { toast.error(err.message || "Failed to accept bid."); }
     finally { setAccepting(null); }
+  };
+
+  const openEdit = async () => {
+    setEditForm({
+      title: task.title || "",
+      description: task.description || "",
+      academic_category_id: task.academic_category_id ? String(task.academic_category_id) : "",
+      specialization_id: task.specialization_id ? String(task.specialization_id) : "",
+      education_level_id: task.education_level_id ? String(task.education_level_id) : "",
+      deadline: task.deadline ? task.deadline.slice(0, 10) : "",
+      is_urgent: !!task.is_urgent,
+    });
+    setShowEdit(true);
+    if (!categories.length) {
+      const [cats, edus] = await Promise.all([academicService.getAcademicCategories(), academicService.getEducationLevels()])
+        .catch(() => [{ results: [] }, { results: [] }]);
+      setCategories(cats.results || []);
+      setEdLevels(edus.results || []);
+    }
+    if (task.academic_category_id) {
+      const r = await academicService.getSpecializations(task.academic_category_id).catch(() => ({ results: [] }));
+      setSpecs(r.results || []);
+    }
+  };
+
+  const handleEditCategoryChange = async (catId: string) => {
+    setEditForm(f => ({ ...f, academic_category_id: catId, specialization_id: "" }));
+    if (catId) {
+      const r = await academicService.getSpecializations(parseInt(catId)).catch(() => ({ results: [] }));
+      setSpecs(r.results || []);
+    } else { setSpecs([]); }
+  };
+
+  const handleSaveEdit = async () => {
+    if (editForm.title.length < 5) { toast.warning("Title must be at least 5 characters."); return; }
+    if (editForm.description.length < 10) { toast.warning("Description must be at least 10 characters."); return; }
+    setSavingEdit(true);
+    try {
+      const payload = {
+        title: editForm.title,
+        description: editForm.description,
+        is_urgent: editForm.is_urgent,
+        academic_category_id: editForm.academic_category_id ? parseInt(editForm.academic_category_id) : null,
+        specialization_id: editForm.specialization_id ? parseInt(editForm.specialization_id) : null,
+        education_level_id: editForm.education_level_id ? parseInt(editForm.education_level_id) : null,
+        deadline: editForm.deadline ? `${editForm.deadline}T23:59:59Z` : undefined,
+      };
+      await taskService.updateTask(parseInt(taskIdParam), payload);
+      toast.success("Task updated successfully!");
+      setShowEdit(false);
+      await loadData(parseInt(taskIdParam));
+    } catch (err: any) { toast.error(err.message || "Failed to update task."); }
+    finally { setSavingEdit(false); }
   };
 
   const handleApprove = async () => {
@@ -155,13 +220,21 @@ export default function OrderDetails() {
             </div>
             <h1 className="text-xl font-semibold text-foreground">{task.title}</h1>
           </div>
-          <div className="text-right flex-shrink-0">
-            <p className="text-xs text-muted-foreground">
-              {isBidding ? "Budget (awaiting bids)" : "Agreed Budget"}
-            </p>
-            <p className="text-lg font-semibold text-foreground">
-              {isBidding ? "Awaiting Bids" : `$${parseFloat(task.budget).toFixed(2)}`}
-            </p>
+          <div className="flex items-start gap-4">
+            <div className="text-right flex-shrink-0">
+              <p className="text-xs text-muted-foreground">
+                {isBidding ? "Budget (awaiting bids)" : "Agreed Budget"}
+              </p>
+              <p className="text-lg font-semibold text-foreground">
+                {isBidding ? "Awaiting Bids" : `$${parseFloat(task.budget).toFixed(2)}`}
+              </p>
+            </div>
+            {isBidding && (
+              <button onClick={openEdit}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/50 transition-colors flex-shrink-0">
+                <Pencil className="size-3.5" /> Edit
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -491,6 +564,7 @@ export default function OrderDetails() {
                 <p>• You can accept only <strong>one</strong> bid. Accepting closes bidding.</p>
                 <p>• After accepting, complete payment into escrow.</p>
                 <p>• Payment is released when you approve the work.</p>
+                <p>• You can still edit the task details until you accept a bid.</p>
               </div>
             </div>
           )}
@@ -549,6 +623,99 @@ export default function OrderDetails() {
                   className="flex-1 h-10 rounded-lg bg-orange-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2">
                   {submittingRev ? <Activity className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
                   Submit Request
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Task Modal */}
+      {showEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-white">
+              <h2 className="font-semibold text-foreground flex items-center gap-2">
+                <Pencil className="size-4 text-primary" /> Edit Task
+              </h2>
+              <button onClick={() => setShowEdit(false)}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                <X className="size-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">Title *</label>
+                <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                  className="w-full h-10 px-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors" />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">Description *</label>
+                <textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} rows={4}
+                  className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors resize-none" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-foreground">Category</label>
+                  <div className="relative">
+                    <select value={editForm.academic_category_id} onChange={e => handleEditCategoryChange(e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors appearance-none pr-8 cursor-pointer">
+                      <option value="">Select category</option>
+                      {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <ChevronDown className="size-4 absolute right-2.5 top-3 text-muted-foreground pointer-events-none" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-foreground">Specialization</label>
+                  <div className="relative">
+                    <select value={editForm.specialization_id} onChange={e => setEditForm(f => ({ ...f, specialization_id: e.target.value }))}
+                      disabled={!editForm.academic_category_id}
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors appearance-none pr-8 cursor-pointer disabled:bg-muted/50 disabled:cursor-not-allowed">
+                      <option value="">Select specialization</option>
+                      {specs.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    <ChevronDown className="size-4 absolute right-2.5 top-3 text-muted-foreground pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-foreground">Education Level</label>
+                  <div className="relative">
+                    <select value={editForm.education_level_id} onChange={e => setEditForm(f => ({ ...f, education_level_id: e.target.value }))}
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors appearance-none pr-8 cursor-pointer">
+                      <option value="">Select level</option>
+                      {edLevels.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                    <ChevronDown className="size-4 absolute right-2.5 top-3 text-muted-foreground pointer-events-none" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-foreground">Deadline</label>
+                  <input type="date" value={editForm.deadline} onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))}
+                    className="w-full h-10 px-3 rounded-lg border border-border bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors" />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                <input type="checkbox" checked={editForm.is_urgent} onChange={e => setEditForm(f => ({ ...f, is_urgent: e.target.checked }))}
+                  className="size-4 rounded border-border" />
+                Mark as urgent
+              </label>
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setShowEdit(false)}
+                  className="flex-1 h-10 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
+                  Cancel
+                </button>
+                <button onClick={handleSaveEdit} disabled={savingEdit}
+                  className="flex-1 h-10 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2">
+                  {savingEdit ? <Activity className="size-4 animate-spin" /> : <Pencil className="size-4" />}
+                  Save Changes
                 </button>
               </div>
             </div>
