@@ -18,12 +18,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _tabIndex = 0;
 
   late final List<Widget> _tabs = [
-    const AdminOverviewTab(),
+    AdminOverviewTab(onNavigate: _goToTab),
     const AdminWritersTab(),
     const AdminCustomersTab(),
     const AdminTasksTab(),
     const AdminChatsTab(),
   ];
+
+  void _goToTab(int index) => setState(() => _tabIndex = index);
 
   Future<void> _logout() async {
     await AuthService.logout();

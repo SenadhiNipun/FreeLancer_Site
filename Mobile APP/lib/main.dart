@@ -16,6 +16,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Assignment Mobile',
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
       home: const StartupGate(),
     );
   }

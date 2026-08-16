@@ -21,15 +21,54 @@ class AppColors {
   static const Color onWarningContainer = Color(0xFF7A4D07);
 }
 
+/// Categorical accent colors for dashboard stat tiles — five of the eight
+/// slots from a validated, CVD-safe categorical palette, kept in their
+/// fixed order (never cycled/reassigned). Each tile also carries its own
+/// icon and label, so color is never the only cue distinguishing metrics.
+class AppPalette {
+  AppPalette._();
+
+  static const List<Color> _light = [
+    Color(0xFF2A78D6), // blue
+    Color(0xFFEB6834), // orange
+    Color(0xFF1BAF7A), // aqua
+    Color(0xFFEDA100), // yellow
+    Color(0xFFE87BA4), // magenta
+  ];
+
+  static const List<Color> _dark = [
+    Color(0xFF3987E5),
+    Color(0xFFD95926),
+    Color(0xFF199E70),
+    Color(0xFFC98500),
+    Color(0xFFD55181),
+  ];
+
+  /// Brightness-aware categorical colors, indexed in fixed order.
+  static List<Color> categorical(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? _dark : _light;
+}
+
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get light {
+  static ThemeData get light => _buildTheme(Brightness.light);
+
+  static ThemeData get dark => _buildTheme(Brightness.dark);
+
+  static ThemeData _buildTheme(Brightness brightness) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: kBrandSeed,
-      brightness: Brightness.light,
+      brightness: brightness,
     );
-    final baseTextTheme = GoogleFonts.interTextTheme();
+    // GoogleFonts.interTextTheme() defaults to a light-mode base (near-black
+    // text), so it must be seeded with a brightness-correct base TextTheme
+    // here or dark mode would render near-black text on dark surfaces.
+    final baseTextTheme = GoogleFonts.interTextTheme(
+      brightness == Brightness.dark
+          ? Typography.whiteMountainView
+          : Typography.blackMountainView,
+    );
     final textTheme = baseTextTheme.copyWith(
       headlineMedium: baseTextTheme.headlineMedium?.copyWith(
         fontWeight: FontWeight.w700,
