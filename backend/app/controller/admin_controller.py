@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -10,13 +10,14 @@ from app.model.generic_response import GenericResponse
 from app.model.assign_writer_request import AssignWriterRequest
 from app.exceptions.exception import UnauthorizedException
 from app.enums.role_enum import RoleEnum
+from app.util.auth_scheme_util import CookieOrBearer
 
 router = APIRouter(
     prefix="/api/v1/admin",
     tags=["Admin Management"]
 )
 
-security = HTTPBearer()
+security = CookieOrBearer()
 
 
 # ─── Auth helpers ───────────────────────────────────────────────────────────
@@ -38,7 +39,11 @@ def require_super_admin(db: Session, auth: HTTPAuthorizationCredentials):
 # ─── Original endpoints (preserved) ────────────────────────────────────────
 
 @router.get("/writers/pending")
-def get_pending_writers(db: db_dependency):
+def get_pending_writers(
+    db: db_dependency,
+    auth: HTTPAuthorizationCredentials = Depends(security)
+):
+    require_super_admin(db, auth)
     results = AdminService.get_pending_writers(db)
     return GenericResponse.success(message="Pending writers fetched successfully", results=results)
 

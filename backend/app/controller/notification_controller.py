@@ -5,11 +5,12 @@ from app.service.notification_service import NotificationService
 from app.model.notification_response import NotificationResponse
 from app.model.generic_response import GenericResponse
 from app.controller.task_controller import get_current_user_id
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials
+from app.util.auth_scheme_util import CookieOrBearer
 from typing import List
 
 router = APIRouter(prefix="/api/v1/notifications", tags=["Notifications"])
-security = HTTPBearer()
+security = CookieOrBearer()
 
 @router.get("", response_model=GenericResponse)
 def get_notifications(

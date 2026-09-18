@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { authService } from "@/services/auth.service";
+import { setAuthFlowEmail } from "@/lib/auth-flow-storage";
 import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 
 export default function ForgotPasswordPage() {
@@ -16,6 +17,7 @@ export default function ForgotPasswordPage() {
     setLoading(true); setError(null);
     try {
       await authService.forgotPassword({ email });
+      setAuthFlowEmail(email);
       setSuccess(true);
     } catch (err) {
       setError((err as Error).message || "Something went wrong. Please try again.");
@@ -34,7 +36,7 @@ export default function ForgotPasswordPage() {
             We sent a reset code to <span className="font-medium text-foreground">{email}</span>
           </p>
         </div>
-        <Link href={`/reset-password?email=${encodeURIComponent(email)}`}>
+        <Link href="/reset-password">
           <button className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity">
             Continue to Reset Password
           </button>

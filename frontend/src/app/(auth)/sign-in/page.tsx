@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
+import { setAuthFlowEmail } from "@/lib/auth-flow-storage";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function SignInPage() {
@@ -23,8 +24,6 @@ export default function SignInPage() {
       const res = await authService.login({ email, password });
       if (res.results) {
         const r = res.results as any;
-        localStorage.setItem("token",         r.access_token);
-        localStorage.setItem("refresh_token", r.refresh_token);
         localStorage.setItem("user_roles",    JSON.stringify(r.roles || []));
         localStorage.setItem("user",          JSON.stringify({ id: r.user_id, email: r.email }));
         const roles = r.roles || [];
@@ -35,7 +34,8 @@ export default function SignInPage() {
     } catch (err: any) {
       const msg: string = err.message || "Invalid email or password.";
       if (msg.toLowerCase().includes("pending approval")) {
-        router.push(`/pending-approval?email=${encodeURIComponent(email)}`);
+        setAuthFlowEmail(email);
+        router.push("/pending-approval");
         return;
       }
       setError(msg);

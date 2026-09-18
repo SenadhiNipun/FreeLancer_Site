@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { LogoutConfirmDialog } from "@/components/ui/logout-confirm-dialog";
 import { notificationService } from "@/services/notification.service";
+import { authService } from "@/services/auth.service";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -51,8 +52,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const doLogout = () => {
-    ["token", "refresh_token", "user_roles", "user"].forEach(k => localStorage.removeItem(k));
-    router.push("/sign-in");
+    authService.logout();
   };
 
   return (
@@ -218,18 +218,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [adminName, setAdminName] = useState("Admin");
 
   useEffect(() => {
-    const roles: string[] = JSON.parse(localStorage.getItem("user_roles") || "[]");
-    if (!roles.includes("SUPER_ADMIN") && !roles.includes("ADMIN")) {
-      router.replace("/sign-in");
-      return;
-    }
-    setChecked(true);
-    import("@/services/user.service").then(({ userService }) => {
-      userService.getMyProfile().then((res: any) => {
-        const { first_name, last_name } = res?.results || {};
-        setAdminName(`${first_name || ""} ${last_name || ""}`.trim() || "Admin");
-      }).catch(() => {});
+    let cancelled = false;
+
+    authService.me().then((res: any) => {
+      if (cancelled) return;
+      const user = res?.results;
+      const roles: string[] = user?.role || [];
+
+      if (!roles.includes("SUPER_ADMIN") && !roles.includes("ADMIN")) {
+        // Authenticated but not an admin: send them to the dashboard they
+        // actually have access to, rather than a generic sign-in bounce.
+        if (roles.includes("WRITER")) router.replace("/writer/dashboard");
+        else if (roles.length > 0) router.replace("/customer/dashboard");
+        else router.replace("/sign-in");
+        return;
+      }
+
+      localStorage.setItem("user_roles", JSON.stringify(roles));
+      setAdminName(user?.full_name || "Admin");
+      setChecked(true);
+    }).catch(() => {
+      if (!cancelled) router.replace("/sign-in");
     });
+
+    return () => { cancelled = true; };
   }, [router]);
 
   if (!checked) {

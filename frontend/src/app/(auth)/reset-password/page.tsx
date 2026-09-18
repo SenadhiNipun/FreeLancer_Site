@@ -1,15 +1,19 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
+import { getAuthFlowEmail, clearAuthFlowEmail } from "@/lib/auth-flow-storage";
 import { KeyRound, CheckCircle2, Loader2 } from "lucide-react";
 
 function ResetPasswordForm() {
   const router       = useRouter();
-  const searchParams = useSearchParams();
-  const email        = searchParams.get("email") || "";
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    setEmail(getAuthFlowEmail());
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -27,6 +31,7 @@ function ResetPasswordForm() {
     if (new_password !== verify_password) { setError("Passwords do not match."); setLoading(false); return; }
     try {
       await authService.resetPassword({ email, reset_code, new_password, verify_password });
+      clearAuthFlowEmail();
       setSuccess(true);
       setTimeout(() => router.push("/sign-in"), 3000);
     } catch (err) {
@@ -93,9 +98,5 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={<div className="flex justify-center p-12"><Loader2 className="size-5 animate-spin text-primary" /></div>}>
-      <ResetPasswordForm />
-    </Suspense>
-  );
+  return <ResetPasswordForm />;
 }

@@ -1,6 +1,6 @@
 from typing import List, Annotated, Optional
 from fastapi import APIRouter, Depends, status, File, UploadFile, Form
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.config.database import db_dependency
 from app.service.task_service import TaskService
@@ -11,13 +11,14 @@ from app.model.generic_response import GenericResponse
 from app.model.add_task_file_request import AddTaskFilesRequest
 from app.model.review_model import CreateReviewRequest
 from app.service.review_service import ReviewService
+from app.util.auth_scheme_util import CookieOrBearer
 
 router = APIRouter(
     prefix="/api/v1/customer",
     tags=["Customer Tasks"]
 )
 
-security = HTTPBearer()
+security = CookieOrBearer()
 
 def get_current_user_id(db: Session, auth: HTTPAuthorizationCredentials):
     token = auth.credentials

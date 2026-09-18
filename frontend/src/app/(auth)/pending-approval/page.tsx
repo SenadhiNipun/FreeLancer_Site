@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { getAuthFlowEmail } from "@/lib/auth-flow-storage";
 import { Clock, CheckCircle2, Mail, ShieldCheck, ArrowLeft } from "lucide-react";
 
 const STEPS = [
@@ -13,8 +13,11 @@ const STEPS = [
 ];
 
 function PendingApprovalContent() {
-  const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "";
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    setEmail(getAuthFlowEmail());
+  }, []);
 
   return (
     <div className="space-y-8 text-center">
@@ -91,13 +94,5 @@ function PendingApprovalContent() {
 }
 
 export default function PendingApprovalPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex justify-center py-12">
-        <Clock className="size-6 text-amber-500 animate-pulse" />
-      </div>
-    }>
-      <PendingApprovalContent />
-    </Suspense>
-  );
+  return <PendingApprovalContent />;
 }

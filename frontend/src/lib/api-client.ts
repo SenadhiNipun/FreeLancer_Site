@@ -20,8 +20,8 @@ function formatValidationError(detail: any): string {
     // Pydantic errors usually look like loc: ['body', 'password']
     const field = err.loc[err.loc.length - 1];
     const friendlyField = fieldMap[field] || field;
-    
-    // Clean up message - sometimes it says "String should have..." 
+
+    // Clean up message - sometimes it says "String should have..."
     // We want "Password should have..."
     let msg = err.msg;
     if (msg.startsWith('String ') || msg.startsWith('Value ')) {
@@ -34,43 +34,48 @@ function formatValidationError(detail: any): string {
   }).join(', ');
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
+// Fail loud instead of silently sending auth cookies/tokens over plain HTTP
+// if NEXT_PUBLIC_API_URL is missing or misconfigured in a production build.
+if (process.env.NODE_ENV === 'production' && !BASE_URL.startsWith('https://')) {
+  throw new Error(
+    `NEXT_PUBLIC_API_URL must be an https:// URL in production (got: "${BASE_URL}"). ` +
+    'Refusing to start with an insecure API URL.'
+  );
+}
 
 let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+let refreshSubscribers: (() => void)[] = [];
 
-function subscribeTokenRefresh(cb: (token: string) => void) {
+function subscribeTokenRefresh(cb: () => void) {
   refreshSubscribers.push(cb);
 }
 
-function onTokenRefreshed(token: string) {
-  refreshSubscribers.map((cb) => cb(token));
+function onTokenRefreshed() {
+  refreshSubscribers.forEach((cb) => cb());
   refreshSubscribers = [];
 }
 
 export async function apiClient(endpoint: string, options: RequestInit = {}): Promise<any> {
   const isClient = typeof window !== 'undefined';
-  let token = isClient ? localStorage.getItem('token') : null;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
   if (options.body instanceof FormData) {
     delete headers['Content-Type'];
   }
 
   const url = `${BASE_URL}${endpoint}`;
-  
+
   try {
     const response = await fetch(url, {
       ...options,
       headers,
+      credentials: 'include',
     });
 
     // Handle 204 No Content or empty responses
@@ -83,54 +88,40 @@ export async function apiClient(endpoint: string, options: RequestInit = {}): Pr
     if (!response.ok) {
       // If unauthorized and not already trying to refresh
       if (response.status === 401 && isClient && !endpoint.includes('/auth/refresh') && !endpoint.includes('/auth/login')) {
-        const refreshToken = localStorage.getItem('refresh_token');
+        if (!isRefreshing) {
+          isRefreshing = true;
 
-        if (refreshToken) {
-          if (!isRefreshing) {
-            isRefreshing = true;
-            
-            try {
-              const refreshRes = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refresh_token: refreshToken }),
-              });
-
-              if (refreshRes.ok) {
-                const refreshData = await refreshRes.json();
-                const newToken = refreshData.results.access_token;
-                const newRefreshToken = refreshData.results.refresh_token;
-
-                localStorage.setItem('token', newToken);
-                localStorage.setItem('refresh_token', newRefreshToken);
-                
-                isRefreshing = false;
-                onTokenRefreshed(newToken);
-              } else {
-                // Refresh failed
-                isRefreshing = false;
-                localStorage.removeItem('token');
-                localStorage.removeItem('refresh_token');
-                localStorage.removeItem('user');
-                window.location.href = '/sign-in';
-                throw new Error('Session expired');
-              }
-            } catch (refreshError) {
-              isRefreshing = false;
-              window.location.href = '/sign-in';
-              throw refreshError;
-            }
-          }
-
-          // Return a promise that waits for the token to be refreshed
-          return new Promise((resolve) => {
-            subscribeTokenRefresh((newToken) => {
-              // Retry the original request with the new token
-              const newHeaders = { ...headers, 'Authorization': `Bearer ${newToken}` };
-              resolve(apiClient(endpoint, { ...options, headers: newHeaders }));
+          try {
+            const refreshRes = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
+              method: 'POST',
+              credentials: 'include',
             });
-          });
+
+            if (refreshRes.ok) {
+              isRefreshing = false;
+              onTokenRefreshed();
+            } else {
+              // Refresh failed
+              isRefreshing = false;
+              localStorage.removeItem('user');
+              localStorage.removeItem('user_roles');
+              window.location.href = '/sign-in';
+              throw new Error('Session expired');
+            }
+          } catch (refreshError) {
+            isRefreshing = false;
+            window.location.href = '/sign-in';
+            throw refreshError;
+          }
         }
+
+        // Return a promise that waits for the token to be refreshed
+        return new Promise((resolve) => {
+          subscribeTokenRefresh(() => {
+            // Retry the original request; the refreshed cookie is sent automatically
+            resolve(apiClient(endpoint, options));
+          });
+        });
       }
 
       // If it's still 401 or 403 after refresh attempt (or no refresh token)
@@ -141,16 +132,15 @@ export async function apiClient(endpoint: string, options: RequestInit = {}): Pr
           !endpoint.includes('/auth/refresh') &&
           !endpoint.includes('/auth/login')
         ) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('refresh_token');
           localStorage.removeItem('user');
+          localStorage.removeItem('user_roles');
           window.location.href = '/sign-in';
         }
       }
 
       let errorMessage = 'Something went wrong';
       const errorData = data as any;
-      
+
       if (errorData.results && Array.isArray(errorData.results)) {
         errorMessage = formatValidationError(errorData.results);
       } else if (errorData.message && errorData.message !== 'Validation failed') {
@@ -158,7 +148,7 @@ export async function apiClient(endpoint: string, options: RequestInit = {}): Pr
       } else if (errorData.detail) {
         errorMessage = formatValidationError(errorData.detail);
       }
-      
+
       throw new Error(errorMessage);
     }
 

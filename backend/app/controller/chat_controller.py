@@ -1,18 +1,19 @@
 from fastapi import APIRouter, Depends, File, UploadFile
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.config.database import db_dependency
 from app.service.auth_service import AuthService
 from app.service.chat_service import ChatService
 from app.model.chat_model import ChatMessageCreate, ChatMessageResponse, ChatSessionResponse
 from app.util.response_util import success_response
+from app.util.auth_scheme_util import CookieOrBearer
 from typing import List
 import os
 import shutil
 
 router = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 
-security = HTTPBearer()
+security = CookieOrBearer()
 
 def get_current_user_id(db: Session, auth: HTTPAuthorizationCredentials):
     token = auth.credentials

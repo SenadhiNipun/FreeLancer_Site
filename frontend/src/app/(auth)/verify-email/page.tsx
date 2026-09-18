@@ -1,15 +1,20 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "@/services/auth.service";
+import { getAuthFlowEmail, clearAuthFlowEmail } from "@/lib/auth-flow-storage";
 import { Mail, Loader2 } from "lucide-react";
 
 function VerifyEmailForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const email        = searchParams.get("email") || "";
   const role         = searchParams.get("role") || "";
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    setEmail(getAuthFlowEmail());
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -22,8 +27,9 @@ function VerifyEmailForm() {
     try {
       await authService.verifyEmail({ email, verification_code: code });
       if (role === "WRITER") {
-        router.push(`/pending-approval?email=${encodeURIComponent(email)}`);
+        router.push("/pending-approval");
       } else {
+        clearAuthFlowEmail();
         router.push("/sign-in?verified=true");
       }
     } catch (err) {

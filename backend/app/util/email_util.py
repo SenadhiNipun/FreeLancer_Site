@@ -1,4 +1,5 @@
 import smtplib
+import html
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
@@ -66,6 +67,9 @@ class EmailUtil:
         order_id: int, deadline_str: str, overdue_label: str, link: str,
     ):
         subject = f"Order #{order_id} is overdue - Assignment System"
+        customer_name = html.escape(customer_name)
+        writer_name = html.escape(writer_name)
+        task_title = html.escape(task_title)
         body = f"""
         <h1 style="color: #e74c3c;">Your order has passed its deadline</h1>
         <p>Hi {customer_name},</p>
@@ -86,6 +90,9 @@ class EmailUtil:
         order_id: int, deadline_str: str, overdue_label: str, link: str,
     ):
         subject = f"Order #{order_id} is overdue - action needed"
+        writer_name = html.escape(writer_name)
+        customer_name = html.escape(customer_name)
+        task_title = html.escape(task_title)
         body = f"""
         <h1 style="color: #e74c3c;">This task has passed its deadline</h1>
         <p>Hi {writer_name},</p>
@@ -105,6 +112,9 @@ class EmailUtil:
         order_id: int, deadline_str: str, time_label: str, link: str,
     ):
         subject = f"Order #{order_id} is due in {time_label}"
+        customer_name = html.escape(customer_name)
+        writer_name = html.escape(writer_name)
+        task_title = html.escape(task_title)
         body = f"""
         <h1 style="color: #e67e22;">Your order's deadline is approaching</h1>
         <p>Hi {customer_name},</p>
@@ -124,6 +134,9 @@ class EmailUtil:
         order_id: int, deadline_str: str, time_label: str, link: str,
     ):
         subject = f"Order #{order_id} is due in {time_label}"
+        writer_name = html.escape(writer_name)
+        customer_name = html.escape(customer_name)
+        task_title = html.escape(task_title)
         body = f"""
         <h1 style="color: #e67e22;">Deadline approaching</h1>
         <p>Hi {writer_name},</p>
@@ -139,11 +152,14 @@ class EmailUtil:
     @staticmethod
     def send_custom_email(to_email: str, subject: str, message: str):
         """Send an admin-composed email with a plain-text message rendered into a simple HTML template."""
-        safe_message = message.replace("\n", "<br>")
+        safe_subject = html.escape(subject)
+        safe_message = html.escape(message).replace("\n", "<br>")
         body = f"""
-        <h2 style="color: #4a90e2;">{subject}</h2>
+        <h2 style="color: #4a90e2;">{safe_subject}</h2>
         <p style="white-space: pre-wrap;">{safe_message}</p>
         <hr>
         <p style="color: #888; font-size: 12px;">This message was sent by an administrator of the Assignment System.</p>
         """
         return EmailUtil._dispatch(to_email, subject, body)
+
+

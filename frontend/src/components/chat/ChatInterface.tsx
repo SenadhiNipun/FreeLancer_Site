@@ -137,18 +137,15 @@ export default function ChatInterface() {
       }
 
       if (!userId) {
-        const token = localStorage.getItem('token');
-        if (token) {
-          try {
-            const meRes = await authService.me(token);
-            if (meRes.results) {
-              const u = meRes.results as any;
-              userId = u.id;
-              localStorage.setItem('user', JSON.stringify({ id: u.id, email: u.email }));
-            }
-          } catch (e) {
-            console.error("Failed to fetch current user");
+        try {
+          const meRes = await authService.me();
+          if (meRes.results) {
+            const u = meRes.results as any;
+            userId = u.id;
+            localStorage.setItem('user', JSON.stringify({ id: u.id, email: u.email }));
           }
+        } catch (e) {
+          console.error("Failed to fetch current user");
         }
       }
       

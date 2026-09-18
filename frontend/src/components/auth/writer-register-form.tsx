@@ -9,6 +9,8 @@ import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authService } from "@/services/auth.service";
+import { setAuthFlowEmail } from "@/lib/auth-flow-storage";
+import { BASE_URL } from "@/lib/api-client";
 import { AlertCircle, Loader2, CheckCircle2, ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,16 +48,14 @@ export function WriterRegistrationForm() {
 
   // Fetch education levels and categories on mount
   useEffect(() => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    
-    fetch(`${baseUrl}/api/v1/education-levels`)
+    fetch(`${BASE_URL}/api/v1/education-levels`)
       .then(res => res.json())
       .then(data => {
         if (data.results) setEducationLevels(data.results);
       })
       .catch(err => console.error("Failed to fetch education levels:", err));
 
-    fetch(`${baseUrl}/api/v1/academic-categories`)
+    fetch(`${BASE_URL}/api/v1/academic-categories`)
       .then(res => res.json())
       .then(data => {
         if (data.results) setCategories(data.results);
@@ -66,8 +66,7 @@ export function WriterRegistrationForm() {
   // Fetch specializations when category changes
   useEffect(() => {
     if (formData.main_category_id) {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      fetch(`${baseUrl}/api/v1/academic-categories/${formData.main_category_id}/specializations`)
+      fetch(`${BASE_URL}/api/v1/academic-categories/${formData.main_category_id}/specializations`)
         .then(res => res.json())
         .then(data => {
           if (data.results) setSpecializations(data.results);
@@ -141,7 +140,8 @@ export function WriterRegistrationForm() {
       };
 
       await authService.registerWriter(payload as any);
-      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&role=WRITER`);
+      setAuthFlowEmail(formData.email);
+      router.push("/verify-email?role=WRITER");
     } catch (err: any) {
       setError(err.message || "Failed to register. Please try again.");
     } finally {

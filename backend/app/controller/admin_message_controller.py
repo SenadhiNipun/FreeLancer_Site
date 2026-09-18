@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
 from app.config.database import db_dependency
@@ -8,9 +8,10 @@ from app.service.admin_messaging_service import AdminMessagingService
 from app.model.generic_response import GenericResponse
 from app.exceptions.exception import UnauthorizedException
 from app.enums.role_enum import RoleEnum
+from app.util.auth_scheme_util import CookieOrBearer
 
 router = APIRouter(prefix="/api/v1/admin-messages", tags=["Admin Messaging"])
-security = HTTPBearer()
+security = CookieOrBearer()
 
 
 # ── request models ──────────────────────────────────────────────────────────

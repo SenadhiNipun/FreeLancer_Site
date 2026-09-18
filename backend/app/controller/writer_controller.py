@@ -1,6 +1,6 @@
 from typing import List, Annotated
 from fastapi import APIRouter, Depends, status, File, UploadFile, Form
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.config.database import db_dependency
 from app.service.task_service import TaskService
@@ -8,13 +8,14 @@ from app.service.auth_service import AuthService
 from app.model.submit_task_request import SubmitTaskRequest
 from app.model.bid_request import BidRequest
 from app.model.generic_response import GenericResponse
+from app.util.auth_scheme_util import CookieOrBearer
 
 router = APIRouter(
     prefix="/api/v1/writer",
     tags=["Writer Tasks"]
 )
 
-security = HTTPBearer()
+security = CookieOrBearer()
 
 
 def get_current_user_id(db: Session, auth: HTTPAuthorizationCredentials):

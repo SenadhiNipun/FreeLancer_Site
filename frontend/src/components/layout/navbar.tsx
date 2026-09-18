@@ -17,24 +17,21 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
     const rolesStr = localStorage.getItem("user_roles");
 
-    if (token) {
+    if (rolesStr) {
       setIsLoggedIn(true);
-      if (rolesStr) {
-        try {
-          const roles = JSON.parse(rolesStr) as string[];
-          if (roles.includes("SUPER_ADMIN") || roles.includes("ADMIN")) {
-            setDashboardUrl("/admin/dashboard");
-          } else if (roles.includes("WRITER")) {
-            setDashboardUrl("/writer/dashboard");
-          } else {
-            setDashboardUrl("/customer/dashboard");
-          }
-        } catch {
+      try {
+        const roles = JSON.parse(rolesStr) as string[];
+        if (roles.includes("SUPER_ADMIN") || roles.includes("ADMIN")) {
+          setDashboardUrl("/admin/dashboard");
+        } else if (roles.includes("WRITER")) {
+          setDashboardUrl("/writer/dashboard");
+        } else {
           setDashboardUrl("/customer/dashboard");
         }
+      } catch {
+        setDashboardUrl("/customer/dashboard");
       }
     }
 

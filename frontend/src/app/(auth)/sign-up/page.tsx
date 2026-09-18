@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authService } from "@/services/auth.service";
+import { setAuthFlowEmail } from "@/lib/auth-flow-storage";
 import { Loader2 } from "lucide-react";
 
 export default function SignUpPage() {
@@ -31,7 +32,8 @@ export default function SignUpPage() {
 
     try {
       await authService.register({ first_name, last_name, email, phone_number, password, verify_password });
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      setAuthFlowEmail(email);
+      router.push("/verify-email");
     } catch (err: any) {
       setError(err.message || "Failed to create account. Please try again.");
     } finally {

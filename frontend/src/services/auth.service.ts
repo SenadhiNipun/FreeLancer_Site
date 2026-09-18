@@ -51,19 +51,15 @@ export const authService = {
     });
   },
 
-  me: async (token: string): Promise<AuthResponse> => {
+  me: async (): Promise<AuthResponse> => {
     return apiClient('/api/v1/auth/me', {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
     });
   },
 
-  refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
+  refreshToken: async (): Promise<AuthResponse> => {
     return apiClient('/api/v1/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({ refresh_token: refreshToken }),
     });
   },
   
@@ -81,11 +77,13 @@ export const authService = {
     });
   },
 
-  logout: () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user_roles");
-    localStorage.removeItem("user");
-    window.location.href = "/";
+  logout: async () => {
+    try {
+      await apiClient('/api/v1/auth/logout', { method: 'POST' });
+    } finally {
+      localStorage.removeItem("user_roles");
+      localStorage.removeItem("user");
+      window.location.href = "/";
+    }
   },
 };

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, status, UploadFile, File
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.config.database import db_dependency
 from app.service.writer_service import WriterService
 from app.service.auth_service import AuthService
 from app.model.generic_response import GenericResponse
 from app.model.update_writer_profile_request import UpdateWriterProfileRequest
+from app.util.auth_scheme_util import CookieOrBearer
 import os
 import shutil
 
@@ -14,7 +15,7 @@ router = APIRouter(
     tags=["User Profiles"]
 )
 
-security = HTTPBearer()
+security = CookieOrBearer()
 
 @router.get("/{user_id}/public-profile")
 def get_public_profile(

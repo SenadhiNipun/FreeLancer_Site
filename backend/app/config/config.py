@@ -8,6 +8,7 @@ ENV_PATH = BASE_DIR / ".env"
 load_dotenv(ENV_PATH)
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "DEBUG")
+APP_ENV = os.environ.get("APP_ENV", "development")
 
 MYSQL_USER = os.environ.get("MYSQL_USER", "")
 MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
